@@ -182,6 +182,8 @@ pub use atp_xhs as xhs;
 pub use atp_xianyu as xianyu;
 #[cfg(feature = "xiaoyuzhou")]
 pub use atp_xiaoyuzhou as xiaoyuzhou;
+#[cfg(feature = "yingjiesheng")]
+pub use atp_yingjiesheng as yingjiesheng;
 #[cfg(feature = "youtube")]
 pub use atp_youtube as youtube;
 #[cfg(feature = "zhihu")]

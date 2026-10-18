@@ -106,6 +106,7 @@ atp-nowcoder = { path = "crates/atp-nowcoder" }
 atp-ncss = { path = "crates/atp-ncss" }
 atp-zhilian = { path = "crates/atp-zhilian" }
 atp-shixiseng = { path = "crates/atp-shixiseng" }
+atp-yingjiesheng = { path = "crates/atp-yingjiesheng" }
 
 aes = "0.8"
 base64 = "0.22"
@@ -204,6 +205,7 @@ all = [
   "ncss",
   "zhilian",
   "shixiseng",
+  "yingjiesheng",
 ]
 zhihu = ["dep:atp-zhihu"]
 xhs = ["dep:atp-xhs"]
@@ -278,6 +280,7 @@ nowcoder = ["dep:atp-nowcoder"]
 ncss = ["dep:atp-ncss"]
 zhilian = ["dep:atp-zhilian"]
 shixiseng = ["dep:atp-shixiseng"]
+yingjiesheng = ["dep:atp-yingjiesheng"]
 
 [dependencies]
 atp-core.workspace = true
@@ -354,6 +357,7 @@ atp-nowcoder = { workspace = true, optional = true }
 atp-ncss = { workspace = true, optional = true }
 atp-zhilian = { workspace = true, optional = true }
 atp-shixiseng = { workspace = true, optional = true }
+atp-yingjiesheng = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio.workspace = true

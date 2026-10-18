@@ -446,6 +446,7 @@ dependencies = [
  "atp-xhs",
  "atp-xianyu",
  "atp-xiaoyuzhou",
+ "atp-yingjiesheng",
  "atp-youtube",
  "atp-zhihu",
  "atp-zhilian",
@@ -1539,6 +1540,20 @@ version = "0.2.0"
 dependencies = [
  "atp-core",
  "jiff",
+ "url",
+]
+
+[[package]]
+name = "atp-yingjiesheng"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "encoding_rs",
+ "jiff",
+ "regex",
+ "serde_json",
+ "tracing",
  "url",
 ]
 

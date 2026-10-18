@@ -1,0 +1,16 @@
+[package]
+name = "atp-yingjiesheng"
+description = "Yingjiesheng (应届生求职网) support for all-the-platforms: campus recruitment talks (宣讲会) by city, province, school, company, date and industry"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+encoding_rs = "0.8"
+jiff.workspace = true
+regex.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+url.workspace = true

@@ -31,7 +31,8 @@ one of them.
   work), `liepin` (Liepin 猎聘), `zhilian` (Zhilian 智联招聘), `nowcoder`
   (Nowcoder 牛客, campus hiring, internships, 面经), `shixiseng`
   (Shixiseng 实习僧, internships), `ncss` (NCSS 国家大学生就业服务平台, the
-  national job board for graduates, job fairs).
+  national job board for graduates, job fairs), `yingjiesheng`
+  (Yingjiesheng 应届生求职网, campus recruitment talks).
 
 Chat apps share `chats`, `messages`, `send`, `members`, `react`, `edit` and
 `listen` (see `atp guide interact`); `edit` also changes published posts

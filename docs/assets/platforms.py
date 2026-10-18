@@ -117,6 +117,7 @@ GROUPS = [
         ("nowcoder", "牛客", "Nowcoder", "app:962209511", ""),
         ("shixiseng", "实习僧", "Shixiseng", "app:1064868841", ""),
         ("ncss", "国家大学生就业服务平台", "NCSS", "url:https://t3.chei.com.cn/ncss/favicon.ico", ""),
+        ("yingjiesheng", "应届生求职网", "Yingjiesheng", "app:1232983203", ""),
     ]),
 ]
 
