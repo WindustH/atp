@@ -111,6 +111,7 @@ atp-careers = { path = "crates/atp-careers" }
 atp-linkedin = { path = "crates/atp-linkedin" }
 atp-1point3acres = { path = "crates/atp-1point3acres" }
 atp-51job = { path = "crates/atp-51job" }
+atp-boss = { path = "crates/atp-boss" }
 
 aes = "0.8"
 base64 = "0.22"
@@ -214,6 +215,7 @@ all = [
   "linkedin",
   "1point3acres",
   "51job",
+  "boss",
 ]
 zhihu = ["dep:atp-zhihu"]
 xhs = ["dep:atp-xhs"]
@@ -293,6 +295,7 @@ careers = ["dep:atp-careers"]
 linkedin = ["dep:atp-linkedin"]
 1point3acres = ["dep:atp-1point3acres"]
 51job = ["dep:atp-51job"]
+boss = ["dep:atp-boss"]
 
 [dependencies]
 atp-core.workspace = true
@@ -374,6 +377,7 @@ atp-careers = { workspace = true, optional = true }
 atp-linkedin = { workspace = true, optional = true }
 atp-1point3acres = { workspace = true, optional = true }
 atp-51job = { workspace = true, optional = true }
+atp-boss = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio.workspace = true

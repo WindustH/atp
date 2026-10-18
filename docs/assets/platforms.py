@@ -123,6 +123,7 @@ GROUPS = [
         ("linkedin", "LinkedIn", "LinkedIn", "app:288429040@us", ""),
         ("1point3acres", "一亩三分地", "1Point3Acres", "app:1018241310@us", ""),
         ("51job", "前程无忧", "51job", "app:415443644", ""),
+        ("boss", "BOSS直聘", "BOSS Zhipin", "app:887314963", ""),
     ]),
 ]
 

@@ -383,6 +383,7 @@ dependencies = [
  "atp-bangumi",
  "atp-bilibili",
  "atp-bluesky",
+ "atp-boss",
  "atp-careers",
  "atp-core",
  "atp-ctrip",
@@ -568,6 +569,18 @@ dependencies = [
  "base64 0.22.1",
  "clap",
  "jiff",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "atp-boss"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "regex",
  "serde_json",
  "url",
 ]

@@ -198,9 +198,10 @@ and `extra` into the `--coord` system.
 
 Some sites answer their own JSON API only to a real browser: a bot check
 in front of it runs the site's scripts (Aliyun's WAF on 51job), or the
-requests carry a token the site's pages compute. ATP never ports or runs
-such token code itself, in Rust or in an embedded engine. A platform
-declaring `BROWSER_TAB` reads through a browser instead:
+requests carry a token the site's pages compute (BOSS Zhipin's
+`__zp_stoken__`). ATP never ports or runs such token code itself, in
+Rust or in an embedded engine. A platform declaring `BROWSER_TAB` reads
+through a browser instead:
 
 - `Ctx::tab()` starts, on first use, a Chromium-family browser of the
   person's machine (the one `verify` finds; `ATP_BROWSER` names another)
