@@ -114,6 +114,8 @@ pub use atp_misskey as misskey;
 pub use atp_mp as mp;
 #[cfg(feature = "netease")]
 pub use atp_netease as netease;
+#[cfg(feature = "nowcoder")]
+pub use atp_nowcoder as nowcoder;
 #[cfg(feature = "onebot")]
 pub use atp_onebot as onebot;
 #[cfg(feature = "pinduoduo")]

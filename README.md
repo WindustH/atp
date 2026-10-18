@@ -144,6 +144,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Juejin 掘金 | `juejin` | articles as text, pins, hot ranking, comments with replies, users, likes, collection sets, daily check-in | browser |
 | Jobs | Eleduck 电鸭社区 | `eleduck` | remote and part-time jobs with tag filters, pay read from titles, discussions, comments, your applications | QR, browser, token |
 | | Liepin 猎聘 | `liepin` | job search with city, pay, experience and industry filters, job and company pages, saved jobs, applying one job at a time, recruiter chats | QR, browser |
+| | Nowcoder 牛客 | `nowcoder` | campus, internship and experienced jobs with city, career, graduation year and pay filters, the 校招 schedule with referral codes and application links, 面经, posts, comments, saved jobs, your applications | QR, browser, token |
 
 ## Quick start
 

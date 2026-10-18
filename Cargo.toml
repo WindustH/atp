@@ -102,6 +102,7 @@ atp-xiaoyuzhou = { path = "crates/atp-xiaoyuzhou" }
 atp-jike = { path = "crates/atp-jike" }
 atp-eleduck = { path = "crates/atp-eleduck" }
 atp-liepin = { path = "crates/atp-liepin" }
+atp-nowcoder = { path = "crates/atp-nowcoder" }
 
 aes = "0.8"
 base64 = "0.22"
@@ -196,6 +197,7 @@ all = [
   "jike",
   "eleduck",
   "liepin",
+  "nowcoder",
 ]
 zhihu = ["dep:atp-zhihu"]
 xhs = ["dep:atp-xhs"]
@@ -266,6 +268,7 @@ xiaoyuzhou = ["dep:atp-xiaoyuzhou"]
 jike = ["dep:atp-jike"]
 eleduck = ["dep:atp-eleduck"]
 liepin = ["dep:atp-liepin"]
+nowcoder = ["dep:atp-nowcoder"]
 
 [dependencies]
 atp-core.workspace = true
@@ -338,6 +341,7 @@ atp-xiaoyuzhou = { workspace = true, optional = true }
 atp-jike = { workspace = true, optional = true }
 atp-eleduck = { workspace = true, optional = true }
 atp-liepin = { workspace = true, optional = true }
+atp-nowcoder = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio.workspace = true
