@@ -381,6 +381,7 @@ dependencies = [
  "atp-bangumi",
  "atp-bilibili",
  "atp-bluesky",
+ "atp-careers",
  "atp-core",
  "atp-ctrip",
  "atp-dewu",
@@ -562,6 +563,21 @@ dependencies = [
  "sha2 0.10.9",
  "sm3",
  "tracing",
+ "url",
+]
+
+[[package]]
+name = "atp-careers"
+version = "0.2.0"
+dependencies = [
+ "aes 0.8.4",
+ "atp-core",
+ "base64 0.22.1",
+ "cbc 0.1.2",
+ "clap",
+ "jiff",
+ "serde",
+ "serde_json",
  "url",
 ]
 

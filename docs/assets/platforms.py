@@ -23,8 +23,9 @@ GITHUB_AVATAR = "https://github.com/{}.png?size=96"
 OUT = Path(__file__).resolve().parent
 
 # (command, name, latin name, icon, tile color). The icon is a Simple Icons
-# slug drawn in white (or black) on the tile color, `app:ID[@country]` for
-# the App Store icon of that app, `github:ORG` for an organization avatar, or
+# slug drawn in white (or black) on the tile color (or one of the GLYPHS
+# below, for entries no brand stands for), `app:ID[@country]` for the App
+# Store icon of that app, `github:ORG` for an organization avatar, or
 # `url:LINK` for a site's own icon.
 GROUPS = [
     ("社交", "SOCIAL", [
@@ -118,6 +119,7 @@ GROUPS = [
         ("shixiseng", "实习僧", "Shixiseng", "app:1064868841", ""),
         ("ncss", "国家大学生就业服务平台", "NCSS", "url:https://t3.chei.com.cn/ncss/favicon.ico", ""),
         ("yingjiesheng", "应届生求职网", "Yingjiesheng", "app:1232983203", ""),
+        ("careers", "校招官网", "Career sites", "briefcase", "#3370FF"),
     ]),
 ]
 
@@ -153,7 +155,19 @@ CRISTAE = (
 )
 
 
+# Glyphs of our own on Simple Icons' 24x24 grid, for entries no brand stands
+# for: a briefcase for the companies' career sites.
+GLYPHS = {
+    "briefcase": (
+        "M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4"
+        "a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM10 7h4V5h-4z"
+    ),
+}
+
+
 def glyph(slug, cache={}):
+    if slug in GLYPHS:
+        return GLYPHS[slug]
     if slug not in cache:
         svg = fetch(SIMPLE_ICONS.format(slug))[0].decode()
         cache[slug] = re.search(r' d="([^"]+)"', svg).group(1)

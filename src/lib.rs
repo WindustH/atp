@@ -54,6 +54,8 @@ pub use atp_bangumi as bangumi;
 pub use atp_bilibili as bilibili;
 #[cfg(feature = "bluesky")]
 pub use atp_bluesky as bluesky;
+#[cfg(feature = "careers")]
+pub use atp_careers as careers;
 #[cfg(feature = "ctrip")]
 pub use atp_ctrip as ctrip;
 #[cfg(feature = "dewu")]

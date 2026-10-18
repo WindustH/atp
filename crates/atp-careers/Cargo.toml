@@ -1,0 +1,17 @@
+[package]
+name = "atp-careers"
+description = "Companies' own career sites for all-the-platforms: ByteDance, Tencent, Alibaba, Meituan and Kuaishou, and any site on Feishu Hire, Beisen or Moka, through the requests their pages make"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aes.workspace = true
+atp-core.workspace = true
+base64.workspace = true
+cbc.workspace = true
+clap.workspace = true
+jiff.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true

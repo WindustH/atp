@@ -149,6 +149,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Shixiseng 实习僧 | `shixiseng` | internships with city, days a week, months, degree, pay and return-offer filters, campus jobs, job and company pages, saved jobs, your applications, applying one job at a time | QR, browser |
 | | NCSS 国家大学生就业服务平台 | `ncss` | the national job board for graduates with area, type, pay, degree, category, industry and source filters, job and company pages, job fairs with their jobs and companies, saving jobs, applying one job at a time | browser |
 | | Yingjiesheng 应届生求职网 | `yingjiesheng` | campus recruitment talks (宣讲会) by province, city, school, company, day and industry, with their venue, times and announcement | not needed |
+| | Career sites 校招官网 | `careers` | companies' own career sites: ByteDance, Tencent, Alibaba, Meituan and Kuaishou by name, any Feishu Hire, Beisen or Moka site by its link (the application links of Nowcoder's 校招 schedule); jobs by kind, city, batch and category, job pages with where to apply | not needed |
 
 ## Quick start
 
