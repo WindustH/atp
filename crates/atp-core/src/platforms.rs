@@ -1,6 +1,6 @@
 //! `atp platforms`: every platform on one row, grouped by kind, or one
-//! platform in detail (`atp platforms bili`). Structured formats carry
-//! the same data as JSON.
+//! platform in detail (`atp platforms bili`), including whether it reads
+//! through a browser tab. Structured formats carry the same data as JSON.
 
 use std::process::ExitCode;
 
@@ -31,6 +31,7 @@ fn entry_value(e: &Entry) -> Value {
     "aliases": info.aliases,
     "home": info.home,
     "kind": info.kind.name(),
+    "browser_tab": e.browser_tab,
     "capabilities": info.caps.iter().map(|c| c.name()).collect::<Vec<_>>(),
     "extra_commands": (e.extras)(),
     "login": {
@@ -83,11 +84,12 @@ fn table(app: &App) {
   t.load_style(presets::NOTHING)
     .set_content_arrangement(ContentArrangement::Dynamic);
   t.set_header(
-    ["ID", "NAME", "ALIASES", "LOGIN", "SHARED", "OWN"]
+    ["ID", "NAME", "ALIASES", "LOGIN", "TAB", "SHARED", "OWN"]
       .map(|h| Cell::new(h).add_attribute(Attribute::Bold)),
   );
-  // On narrow terminals names and aliases wrap; ids, logins and counts stay whole.
-  for i in [0, 3, 4, 5] {
+  // On narrow terminals names and aliases wrap; ids, logins, the tab mark
+  // and counts stay whole.
+  for i in [0, 3, 4, 5, 6] {
     if let Some(column) = t.column_mut(i) {
       column.set_constraint(ColumnConstraint::ContentWidth);
     }
@@ -113,6 +115,7 @@ fn table(app: &App) {
         Cell::new(e.info.name),
         Cell::new(e.info.aliases.join(", ")),
         Cell::new(e.info.login_words().join(" ")),
+        Cell::new(if e.browser_tab { "yes" } else { "" }),
         count(shared.len()),
         count(own.len()),
       ]);
@@ -120,8 +123,9 @@ fn table(app: &App) {
   }
   println!("{t}");
   println!(
-    "\nSHARED and OWN count the shared and the platform's own commands. One \
-     platform in detail: `atp platforms <id>` or `atp guide <id>`."
+    "\nTAB marks the platforms read through a browser tab: Chrome, Chromium, Edge or Brave \
+     on this machine, without a window. SHARED and OWN count the shared and the platform's \
+     own commands. One platform in detail: `atp platforms <id>` or `atp guide <id>`."
   );
 }
 
@@ -154,6 +158,12 @@ fn detail(e: &Entry) {
     lines.push(("Aliases", info.aliases.join(", ")));
   }
   lines.push(("Login", info.login_words().join(", ")));
+  if e.browser_tab {
+    lines.push((
+      "Browser",
+      "read through a tab of Chrome, Chromium, Edge or Brave, without a window".to_owned(),
+    ));
+  }
   if !info.required_cookies.is_empty() {
     lines.push(("Cookies", info.required_cookies.join(", ")));
   }

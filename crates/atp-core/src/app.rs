@@ -22,6 +22,8 @@ pub(crate) type CallFuture = Pin<Box<dyn Future<Output = crate::error::Result<Da
 
 pub(crate) struct Entry {
   pub info: PlatformInfo,
+  /// Whether the platform reads through a browser tab ([`Platform::BROWSER_TAB`]).
+  pub browser_tab: bool,
   pub command: fn() -> clap::Command,
   pub extras: fn() -> Vec<String>,
   run: fn(GlobalArgs, ArgMatches) -> RunFuture,
@@ -57,6 +59,7 @@ impl App {
   pub fn platform<P: Platform + 'static>(mut self) -> Self {
     self.platforms.push(Entry {
       info: P::INFO,
+      browser_tab: P::BROWSER_TAB,
       command: cli::command::<P>,
       extras: cli::extra_commands::<P>,
       run: run_boxed::<P>,

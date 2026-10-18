@@ -14,7 +14,7 @@ Other clients take the same command in their configuration:
 
 | Tool | What it does |
 | --- | --- |
-| `platforms` | every platform, its capabilities and its own commands |
+| `platforms` | every platform, its capabilities, its own commands and whether it reads through a browser (`browser_tab`) |
 | `help` | this guide: the index, a topic, `login [platform]`, a platform (`bili`) or a command (`bili search`, `ncm playlist create`) |
 | `read` | commands that only read: search, hot, read, comments, user, followers, notifications, chats, messages, whoami ... |
 | `run` | everything else: like, comment, follow, post, delete, send, download, `listen`, platform-only commands (left out with `--read-only`) |

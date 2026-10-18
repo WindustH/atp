@@ -39,7 +39,7 @@ one. Each platform crate re-exports its `Command` enum for `run_extra`.
 | `cli` | the shared commands, one module per area (`account`, `read`, `library`, `history`, `write`, `follows`, `folders`, `media`, `chat`) flattened into `CommonCommand`; per-platform clap command; global and paging options; questions on the terminal (`prompt`) |
 | `app` | top-level program, multi-call (`bili` symlink) |
 | `open` | platforms in Rust code: `open`, `Open` (cookies, proxy, timeout, the site of `careers`), `save_session` |
-| `platforms` | `atp platforms`: one row per platform grouped by kind, `atp platforms <id>` in detail, the same data as JSON |
+| `platforms` | `atp platforms`: one row per platform grouped by kind (TAB marks those read through a browser tab, `Platform::BROWSER_TAB`), `atp platforms <id>` in detail, the same data as JSON (`browser_tab`) |
 | `account` | `login` (QR / token / browser / cookie string), `logout`, `status` |
 | `http` | Chrome-fingerprinted client (wreq), cookie jar, pacing, proxy; `request` (building, sending, retries, streaming), `response` |
 | `store` | session file (0600), data files the user keeps beside it (`data`, `put_data`: lists and settings `logout` leaves alone), TTL cache (values and raw bytes), `#N` short-index lists |
