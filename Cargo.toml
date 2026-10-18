@@ -104,6 +104,7 @@ atp-eleduck = { path = "crates/atp-eleduck" }
 atp-liepin = { path = "crates/atp-liepin" }
 atp-nowcoder = { path = "crates/atp-nowcoder" }
 atp-ncss = { path = "crates/atp-ncss" }
+atp-zhilian = { path = "crates/atp-zhilian" }
 
 aes = "0.8"
 base64 = "0.22"
@@ -200,6 +201,7 @@ all = [
   "liepin",
   "nowcoder",
   "ncss",
+  "zhilian",
 ]
 zhihu = ["dep:atp-zhihu"]
 xhs = ["dep:atp-xhs"]
@@ -272,6 +274,7 @@ eleduck = ["dep:atp-eleduck"]
 liepin = ["dep:atp-liepin"]
 nowcoder = ["dep:atp-nowcoder"]
 ncss = ["dep:atp-ncss"]
+zhilian = ["dep:atp-zhilian"]
 
 [dependencies]
 atp-core.workspace = true
@@ -346,6 +349,7 @@ atp-eleduck = { workspace = true, optional = true }
 atp-liepin = { workspace = true, optional = true }
 atp-nowcoder = { workspace = true, optional = true }
 atp-ncss = { workspace = true, optional = true }
+atp-zhilian = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio.workspace = true

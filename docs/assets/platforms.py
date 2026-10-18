@@ -113,6 +113,7 @@ GROUPS = [
     ("求职招聘", "JOBS", [
         ("eleduck", "电鸭社区", "Eleduck", "app:1536307730", ""),
         ("liepin", "猎聘", "Liepin", "app:540996859", ""),
+        ("zhilian", "智联招聘", "Zhilian", "app:488033535", ""),
         ("nowcoder", "牛客", "Nowcoder", "app:962209511", ""),
         ("ncss", "国家大学生就业服务平台", "NCSS", "url:https://t3.chei.com.cn/ncss/favicon.ico", ""),
     ]),

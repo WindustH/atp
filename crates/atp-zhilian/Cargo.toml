@@ -1,0 +1,14 @@
+[package]
+name = "atp-zhilian"
+description = "Zhilian Zhaopin (智联招聘) support for all-the-platforms: job search with the site's filters, job and company pages, applying to one job at a time"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+jiff.workspace = true
+rand.workspace = true
+serde_json.workspace = true
+url.workspace = true

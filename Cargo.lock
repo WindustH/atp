@@ -447,6 +447,7 @@ dependencies = [
  "atp-xiaoyuzhou",
  "atp-youtube",
  "atp-zhihu",
+ "atp-zhilian",
  "tokio",
 ]
 
@@ -1559,6 +1560,18 @@ dependencies = [
  "sha1 0.10.7",
  "tokio",
  "tracing",
+ "url",
+]
+
+[[package]]
+name = "atp-zhilian"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "rand 0.9.5",
+ "serde_json",
  "url",
 ]
 
