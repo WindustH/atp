@@ -101,7 +101,7 @@ Use these instead of writing another copy:
 | listings | `cli::PageArgs`, `paging` (`paging::slice` for lists held in memory), `PageReq` |
 | commands on several users, posts or folders: one Action each, failures marked, the run stopped at login / check / rate-limit errors | `bulk::{each, batches}`; `Data::actions` |
 | lyrics and track lists of music platforms | `music::{Lyrics, with_tracks}` |
-| the pay of job posts (`15-25K·14薪`, `200-300元/天`, `$100k-150k/yr`, `面议`, pay named in a title) and its job keys in `Post.extra` | `jobs::{Salary, Period}` (`Salary::parse`, `in_text`, `fill`); the other job keys are documented on `Post.extra` |
+| the pay of job posts (`15-25K·14薪`, `200-300元/天`, `$100k-150k/yr`, `€50,000.00/yr - €60,000.00/yr`, `184,000 USD - 287,500 USD`, `面议`, pay named in a title) and its job keys in `Post.extra` | `jobs::{Salary, Period}` (`Salary::parse`, `in_text`, `fill`); the other job keys are documented on `Post.extra` |
 | RSS / Atom / JSON feeds: fetching (conditional requests, feed discovery), parsing into posts, `FEED_URL#ENTRY_ID` references | `feed::{load, get, parse, discover, entry_ref, split_entry_ref}` |
 | lists and settings a user keeps (neither credentials nor cache) | `Store::{data, put_data}` |
 | text and file arguments, confirmations (a terminal is asked; pipes need `--yes`) | `cli::{read_text, check_images, check_files, confirm}` |

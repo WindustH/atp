@@ -1,7 +1,8 @@
 //! What job platforms share: the pay of a job ([`Salary`]), read from the
 //! pay a platform shows (`15-25K·14薪`, `200-300元/天`, `20-40万/年`,
-//! `$100k-150k/yr`, `面议`) or found in a job's title, and written into
-//! the job keys of `Post.extra` (see [`Post::extra`](crate::model::Post)).
+//! `$100k-150k/yr`, `$117,000.00/yr - $234,000.00/yr`, `184,000 USD -
+//! 287,500 USD`, `面议`) or found in a job's title, and written into the
+//! job keys of `Post.extra` (see [`Post::extra`](crate::model::Post)).
 //!
 //! Figures are kept per the period they are paid for (`salary_period`):
 //! pay per hour, day or year cannot honestly be turned into pay per month.
@@ -13,21 +14,44 @@ use serde_json::{Value, json};
 
 use crate::model::Extra;
 
+/// Currency signs written before an amount, longest first (`CA$` before
+/// `$`). `¥` is the yuan, as Chinese sites write it.
+const SIGNS: &str = r"US\$|\$US|HK\$|CA\$|AU\$|A\$|NZ\$|MX\$|R\$|CN¥|\$|¥|€|£|₹|₩";
+
+/// ISO codes amounts may be given in, before or after them (`USD 120,000`,
+/// `184,000 USD`); `RMB` is the yuan.
+const CODES: &[&str] = &[
+  "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "NZD", "HKD", "SGD", "INR", "CHF", "SEK", "NOK", "DKK",
+  "PLN", "BRL", "MXN", "KRW", "TWD", "CNY", "RMB",
+];
+
+/// An amount: `15`, `1.5`, `3,000`, `117,000.00`.
+const NUMBER: &str = r"(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)";
+
+/// The periods pay is given per (`/月`, `/yr`, `per hour`).
+const PERIODS: &str = "小时|时|天|日|周|月|年|hour|hr|h|day|week|wk|month|mo|year|yr|annum";
+
 /// An amount (`15`, `1.5`, `3,000`), a range of two (`15-25K`, `1-1.5万`,
-/// `$100k-150k`), its currency in front and `以上` / `起` / `+` behind.
+/// `$100k-150k`, `$50 to $60`), its currency in front and `以上` / `起` /
+/// `+` behind. The first amount of a range may carry its own period or
+/// currency code (`$117,000.00/yr - $234,000.00/yr`, `184,000 USD -
+/// 287,500 USD`); what follows the range is read by [`AFTER`].
 static AMOUNT: LazyLock<Regex> = LazyLock::new(|| {
-  Regex::new(
-    r"(?i)(US\$|\$US|HK\$|\$|¥|€|£|USD|RMB|CNY)?\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*([kw万千])?(?:\s*(?:-|~|到|至)\s*(?:US\$|\$US|HK\$|\$|¥|€|£)?\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*([kw万千])?)?(\+|以上|起)?",
-  )
+  let codes = CODES.join("|");
+  Regex::new(&format!(
+    r"(?i)({SIGNS}|{codes})?\s*{NUMBER}\s*([kw万千])?(?:(?:\s*/\s*(?:{PERIODS})\b|\s*({codes})\b)?(?:\s*(?:-|~|到|至)\s*|\s*\bto\s+)(?:{SIGNS}|{codes})?\s*{NUMBER}\s*([kw万千])?)?(\+|以上|起)?"
+  ))
   .expect("valid pattern")
 });
 
-/// What may follow an amount: a currency word, a word for pay, the period
-/// (`/月`, `元/天`, `/yr`, `per hour`, `annually`), `以上` and `·14薪`.
+/// What may follow an amount: a currency code or word, a word for pay, the
+/// period (`/月`, `元/天`, `/yr`, `per hour`, `annually`), `以上` and
+/// `·14薪`.
 static AFTER: LazyLock<Regex> = LazyLock::new(|| {
-  Regex::new(
-    r"(?i)^\s*(USD|RMB|CNY|美元|美金|元)?\s*(年薪|月薪|底薪|薪资|工资)?\s*(?:(?:/|每|一|per\s*|an?\s+)\s*(小时|时|天|日|周|月|年|hour|hr|h|day|week|wk|month|mo|year|yr|annum)|(annually|annual|yearly|monthly|weekly|daily|hourly))?\s*(以上|起)?\s*(?:[·•・*x×]?\s*(\d{2})\s*薪)?",
-  )
+  let codes = CODES.join("|");
+  Regex::new(&format!(
+    r"(?i)^\s*({codes}|美元|美金|元)?\s*(年薪|月薪|底薪|薪资|工资)?\s*(?:(?:/|每|一|per\s*|an?\s+)\s*({PERIODS})|(annually|annual|yearly|monthly|weekly|daily|hourly))?\s*(以上|起)?\s*(?:[·•・*x×]?\s*(\d{{2}})\s*薪)?"
+  ))
   .expect("valid pattern")
 });
 
@@ -86,10 +110,10 @@ impl Salary {
   }
 
   /// The pay a platform shows in its own field (`15-25K·14薪`, `1-1.5万`,
-  /// `月薪1万-2万`, `8000-12000元/月`, `150/天`, `面议`): the whole text is
-  /// the pay. Figures count with a unit, a currency, a word for pay or a
-  /// period; a bare number keeps only the text. Without a period the pay
-  /// is monthly. `None` for an empty text.
+  /// `月薪1万-2万`, `8000-12000元/月`, `150/天`, `$25.00/hr - $35.00/hr`,
+  /// `面议`): the whole text is the pay. Figures count with a unit, a
+  /// currency, a word for pay or a period; a bare number keeps only the
+  /// text. Without a period the pay is monthly. `None` for an empty text.
   pub fn parse(text: &str) -> Option<Self> {
     let shown = text.trim();
     if shown.is_empty() {
@@ -181,10 +205,15 @@ impl Found {
     let before = text[..whole.start()].trim_end();
     let keyword = KEYWORDS.iter().find(|k| before.ends_with(*k)).copied();
     let after = AFTER.captures(&text[whole.end()..])?;
-    let symbol = caps.get(1).or(after.get(1)).map(|m| m.as_str());
+    // The sign in front, the code inside a range or the code after it.
+    let symbol = caps
+      .get(1)
+      .or(caps.get(4))
+      .or(after.get(1))
+      .map(|m| m.as_str());
     let named = keyword.or(after.get(2).map(|m| m.as_str()));
-    let ranged = caps.get(4).is_some();
-    let (unit_a, unit_b) = (unit(caps, 3), unit(caps, 5));
+    let ranged = caps.get(5).is_some();
+    let (unit_a, unit_b) = (unit(caps, 3), unit(caps, 6));
     let has_unit = unit_a.is_some() || unit_b.is_some();
     let per = after.get(3).or(after.get(4)).map(|m| m.as_str());
     let period = period(named, per);
@@ -202,8 +231,8 @@ impl Found {
     if strict && !ranged && a < 100.0 && !hourly_or_daily {
       return None;
     }
-    let b = number(caps, 4).map(|b| b * unit_b.or(unit_a).unwrap_or(1.0));
-    let open = caps.get(6).is_some() || after.get(5).is_some();
+    let b = number(caps, 5).map(|b| b * unit_b.or(unit_a).unwrap_or(1.0));
+    let open = caps.get(7).is_some() || after.get(5).is_some();
     let (min, max) = match b {
       Some(b) => (Some(a), Some(b)),
       None if keyword == Some("最高") => (None, Some(a)),
@@ -282,13 +311,26 @@ fn number(caps: &Captures, i: usize) -> Option<f64> {
     .and_then(|m| m.as_str().replace(',', "").parse().ok())
 }
 
+/// The ISO code of a sign, code or word; the yuan (`¥`, `RMB`, `元`) and
+/// anything unknown are `CNY`.
 fn currency(symbol: &str) -> &'static str {
   match symbol.to_uppercase().as_str() {
-    "$" | "US$" | "$US" | "USD" | "美元" | "美金" => "USD",
+    "$" | "US$" | "$US" | "美元" | "美金" => "USD",
     "HK$" => "HKD",
+    "CA$" => "CAD",
+    "A$" | "AU$" => "AUD",
+    "NZ$" => "NZD",
+    "MX$" => "MXN",
+    "R$" => "BRL",
     "€" => "EUR",
     "£" => "GBP",
-    _ => "CNY",
+    "₹" => "INR",
+    "₩" => "KRW",
+    code => CODES
+      .iter()
+      .find(|c| **c == code && code != "RMB")
+      .copied()
+      .unwrap_or("CNY"),
   }
 }
 
