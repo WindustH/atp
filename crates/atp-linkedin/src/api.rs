@@ -128,7 +128,9 @@ fn walled() -> Error {
   Error::auth(
     "LinkedIn put up its sign-in wall instead of the page, as it does for visitors who come often",
   )
-  .with_hint("ATP reads LinkedIn without an account; wait a while (an hour or more) before retrying")
+  .with_hint(
+    "ATP reads LinkedIn without an account; wait a while (an hour or more) before retrying",
+  )
 }
 
 /// A security check (captcha) instead of the page asked for; requests

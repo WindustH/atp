@@ -59,7 +59,10 @@ impl Filter {
       ("keywords", self.words.trim().to_owned()),
       ("location", trimmed(&self.location)),
       ("geoId", trimmed(&self.geo)),
-      ("f_TPR", self.posted.map(Posted::code).unwrap_or_default().into()),
+      (
+        "f_TPR",
+        self.posted.map(Posted::code).unwrap_or_default().into(),
+      ),
       ("f_C", self.companies.join(",")),
     ]
     .into_iter()

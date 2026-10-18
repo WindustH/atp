@@ -23,14 +23,15 @@ static HEADLINE: LazyLock<Regex> =
   LazyLock::new(|| re(r#"(?s)<h2 class="top-card-layout__headline[^"]*">(.*?)</h2>"#));
 static TAGLINE: LazyLock<Regex> =
   LazyLock::new(|| re(r#"(?s)<h4 class="top-card-layout__second-subline[^"]*">(.*?)</h4>"#));
-static CANONICAL: LazyLock<Regex> =
-  LazyLock::new(|| re(r#"<link rel="canonical" href="([^"]+)""#));
+static CANONICAL: LazyLock<Regex> = LazyLock::new(|| re(r#"<link rel="canonical" href="([^"]+)""#));
 static IMAGE: LazyLock<Regex> =
   LazyLock::new(|| re(r#"<meta property="og:image" content="([^"]+)""#));
 static FOLLOWERS: LazyLock<Regex> =
   LazyLock::new(|| re(r#"<meta name="description" content="[^"|]*\|\s*([\d,]+) followers"#));
 static ORGANIZATION: LazyLock<Regex> = LazyLock::new(|| {
-  re(r#"(?s)<code id="flagshipOrganizationTracking"[^>]*><!--.*?"objectUrn":"urn:li:organization:(\d+)""#)
+  re(
+    r#"(?s)<code id="flagshipOrganizationTracking"[^>]*><!--.*?"objectUrn":"urn:li:organization:(\d+)""#,
+  )
 });
 static OWN_URN: LazyLock<Regex> =
   LazyLock::new(|| re(r#"data-semaphore-content-urn="urn:li:organization:(\d+)""#));
@@ -124,6 +125,8 @@ pub fn company(html: &str, name: &str) -> Option<User> {
 /// text (the website, without the words for screen readers beside it).
 fn fact(html: &str, key: &str) -> Option<String> {
   let value = FACT.captures_iter(html).find(|c| &c[1] == key)?[2].to_owned();
-  let shown = LINK.captures(&value).map_or(value.as_str(), |c| c.get(1).map_or("", |m| m.as_str()));
+  let shown = LINK
+    .captures(&value)
+    .map_or(value.as_str(), |c| c.get(1).map_or("", |m| m.as_str()));
   Some(line(shown)).filter(|v| !v.is_empty())
 }

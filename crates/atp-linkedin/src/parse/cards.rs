@@ -16,8 +16,7 @@ use super::{
 use crate::refs;
 
 static CARD: LazyLock<Regex> = LazyLock::new(|| re(r"(?s)<li[^>]*>(.*?)</li>"));
-static URN: LazyLock<Regex> =
-  LazyLock::new(|| re(r#"data-entity-urn="urn:li:jobPosting:(\d+)""#));
+static URN: LazyLock<Regex> = LazyLock::new(|| re(r#"data-entity-urn="urn:li:jobPosting:(\d+)""#));
 static LINK: LazyLock<Regex> =
   LazyLock::new(|| re(r#"<a[^>]*base-card__full-link[^>]*href="([^"]+)""#));
 static TITLE: LazyLock<Regex> =

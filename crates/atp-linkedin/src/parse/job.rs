@@ -41,8 +41,7 @@ static CRITERION: LazyLock<Regex> = LazyLock::new(|| {
 });
 static SALARY: LazyLock<Regex> =
   LazyLock::new(|| re(r#"(?s)class="[^"]*compensation__salary[^"]*"[^>]*>(.*?)</div>"#));
-static COMPANY_ID: LazyLock<Regex> =
-  LazyLock::new(|| re(r"facetCurrentCompany(?:%3D|=)(\d+)"));
+static COMPANY_ID: LazyLock<Regex> = LazyLock::new(|| re(r"facetCurrentCompany(?:%3D|=)(\d+)"));
 static LOGO: LazyLock<Regex> =
   LazyLock::new(|| re(r#"class="artdeco-entity-image[^"]*"[^>]*data-delayed-url="([^"]+)""#));
 static APPLY_URL: LazyLock<Regex> =
@@ -99,7 +98,10 @@ impl Page {
       ("posted", text_value(&self.posted)),
       ("applicants", text_value(&self.applicants)),
       ("salary", text_value(&self.shown_pay)),
-      ("criteria", (!criteria.is_empty()).then_some(Value::Object(criteria))),
+      (
+        "criteria",
+        (!criteria.is_empty()).then_some(Value::Object(criteria)),
+      ),
     ])
   }
 }
@@ -154,9 +156,7 @@ fn top(extra: &mut Extra, page: &Page) {
     extra.insert("remote".into(), json!(true));
   }
   if let Some(shown) = &page.applicants {
-    let exact = EXACT
-      .captures(shown)
-      .and_then(|c| parse_count(&c[1]));
+    let exact = EXACT.captures(shown).and_then(|c| parse_count(&c[1]));
     if let Some(n) = exact {
       extra.insert("applicants".into(), json!(n));
     }

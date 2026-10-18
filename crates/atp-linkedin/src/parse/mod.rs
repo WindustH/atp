@@ -34,15 +34,18 @@ static AGO: LazyLock<Regex> =
   LazyLock::new(|| re(r"(?i)(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago"));
 /// A period named in pay (`/yr`, `per hour`).
 static PER: LazyLock<Regex> = LazyLock::new(|| {
-  re(r"(?i)/\s*(?:hr|hour|day|wk|week|mo|month|yr|year)\b|\bper\s+(?:hour|day|week|month|year|annum)\b|\b(?:hourly|daily|weekly|monthly|yearly|annually)\b|\ban?\s+(?:hour|day|week|month|year)\b")
+  re(
+    r"(?i)/\s*(?:hr|hour|day|wk|week|mo|month|yr|year)\b|\bper\s+(?:hour|day|week|month|year|annum)\b|\b(?:hourly|daily|weekly|monthly|yearly|annually)\b|\ban?\s+(?:hour|day|week|month|year)\b",
+  )
 });
 /// Lines of a description that speak of pay.
-static PAY_WORDS: LazyLock<Regex> = LazyLock::new(|| {
-  re(r"(?i)\b(?:salary|salaries|pay|compensation|wage|wages|hourly rate|OTE)\b")
-});
+static PAY_WORDS: LazyLock<Regex> =
+  LazyLock::new(|| re(r"(?i)\b(?:salary|salaries|pay|compensation|wage|wages|hourly rate|OTE)\b"));
 /// Words of a job's title or place that say it is remote.
 static REMOTE: LazyLock<Regex> = LazyLock::new(|| {
-  re(r"(?i)[(\[]\s*(?:fully\s+|100%\s+)?remote\b|\bremote\s*[)\]]|[-–|,]\s*remote\s*$|^remote\s*[-–|:]")
+  re(
+    r"(?i)[(\[]\s*(?:fully\s+|100%\s+)?remote\b|\bremote\s*[)\]]|[-–|,]\s*remote\s*$|^remote\s*[-–|:]",
+  )
 });
 
 /// The first capture of `re` in `html`, as one line of text.
@@ -65,7 +68,12 @@ pub fn line(html: &str) -> String {
 /// note going on with `+3 benefits`).
 pub fn first_line(html: &str) -> String {
   let text = TAG.replace_all(html, "");
-  line(text.lines().find(|l| !l.trim().is_empty()).unwrap_or_default())
+  line(
+    text
+      .lines()
+      .find(|l| !l.trim().is_empty())
+      .unwrap_or_default(),
+  )
 }
 
 /// A link as written in an attribute (`&amp;` and all).
