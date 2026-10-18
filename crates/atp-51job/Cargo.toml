@@ -1,0 +1,15 @@
+[package]
+name = "atp-51job"
+description = "51job (前程无忧) support for all-the-platforms: job search with the site's filters, job and company pages, read through a browser tab"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+hmac = "0.12"
+jiff.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+url.workspace = true

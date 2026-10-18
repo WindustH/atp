@@ -128,6 +128,9 @@ pub use atp_onebot as onebot;
 // is the module `onepoint3acres`.
 #[cfg(feature = "1point3acres")]
 pub use atp_1point3acres as onepoint3acres;
+// Likewise the feature `51job` is the module `fiftyonejob`.
+#[cfg(feature = "51job")]
+pub use atp_51job as fiftyonejob;
 #[cfg(feature = "pinduoduo")]
 pub use atp_pinduoduo as pinduoduo;
 #[cfg(feature = "podcast")]

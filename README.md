@@ -152,6 +152,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Career sites 校招官网 | `careers` | companies' own career sites: ByteDance, Tencent, Alibaba, Meituan and Kuaishou by name, any Feishu Hire, Beisen or Moka site by its link (the application links of Nowcoder's 校招 schedule); jobs by kind, city, batch and category, job pages with where to apply | not needed |
 | | LinkedIn | `linkedin` | the job search by place, date posted and company, job pages with criteria, pay where shown and how to apply, company pages and their open jobs; read-only, no people | not needed |
 | | 1Point3Acres 一亩三分地 | `1point3acres` | 面经, 内推 and life abroad: hot and newest threads, boards by thread type, threads with their replies, hiring posts with company, place and pay; search, profiles and replying with a login | browser |
+| | 51job 前程无忧 | `51job` | job search with city, pay, experience, degree, company and job type filters, whole descriptions in the results, job and company pages; reads through Chrome, Chromium, Edge or Brave | not needed |
 
 ## Quick start
 

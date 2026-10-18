@@ -376,6 +376,7 @@ name = "atp"
 version = "0.2.0"
 dependencies = [
  "atp-1point3acres",
+ "atp-51job",
  "atp-amap",
  "atp-baidumap",
  "atp-baidupan",
@@ -464,6 +465,19 @@ dependencies = [
  "clap",
  "jiff",
  "serde_json",
+ "url",
+]
+
+[[package]]
+name = "atp-51job"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "hmac 0.12.1",
+ "jiff",
+ "serde_json",
+ "sha2 0.10.9",
  "url",
 ]
 

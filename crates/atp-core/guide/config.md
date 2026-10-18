@@ -36,7 +36,7 @@ the names (never the values) of cookies responses set.
 | --- | --- |
 | `<config>/all-the-platforms/<platform>/session.json` | saved session (only you can read it) |
 | `<cache>/all-the-platforms/<platform>/` | caches (signing keys, query ids, tokens), `#N` lists, the login QR code |
-| `<cache>/all-the-platforms/<platform>/browser/` | the browser profile of a platform read through a browser: the site's cookies and storage; `logout` deletes it |
+| `<cache>/all-the-platforms/<platform>/browser/` | the browser profile of a platform read through a browser (51job): the site's cookies and storage; `logout` deletes it |
 
 | System | `<config>` | `<cache>` |
 | --- | --- | --- |
