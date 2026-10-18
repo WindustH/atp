@@ -21,7 +21,8 @@ one of them.
 - Chat: `wechat`, `telegram`, `discord`, `whatsapp`, `qq`, `onebot`,
   `feishu`, `dingtalk`, `wecom`, `slack`, `mattermost`, `rocketchat`,
   `matrix`, `kook`, `vocechat`, `line`, `satori`.
-- Shopping: `taobao`, `xianyu`, `jd`, `pdd`, `dewu`.
+- Shopping: `taobao`, `xianyu`, `jd`, `pdd`, `dewu`, `steam` (the
+  Steam store: games, prices in any storefront, reviews).
 - Maps, local life and travel: `amap`, `meituan`, `dianping`, `ctrip`.
 - Cloud drives: `quark`, `baidupan`. Music and podcasts: `ncm` (NetEase
   Cloud Music), `qqmusic` (QQ Music), `spotify`, `podcast` (Apple's

@@ -73,6 +73,7 @@ GROUPS = [
         ("dewu", "得物", "Poizon", "app:1012871328", ""),
         ("meituan", "美团", "Meituan", "meituan", "#FFD100"),
         ("dianping", "大众点评", "Dianping", "app:351091731", ""),
+        ("steam", "Steam", "Steam", "steam", "#000000"),
     ]),
     ("地图与出行", "MAPS · TRAVEL", [
         ("amap", "高德地图", "Amap", "app:461703208", ""),

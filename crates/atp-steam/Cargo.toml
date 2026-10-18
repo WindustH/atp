@@ -1,0 +1,13 @@
+[package]
+name = "atp-steam"
+description = "Steam support for all-the-platforms: the store's search, apps with regional prices, featured lists and user reviews, and with a Web API key public profiles and owned games"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+jiff.workspace = true
+regex.workspace = true
+serde_json.workspace = true

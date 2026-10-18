@@ -161,6 +161,8 @@ pub use atp_slack as slack;
 pub use atp_spotify as spotify;
 #[cfg(feature = "stackexchange")]
 pub use atp_stackexchange as stackexchange;
+#[cfg(feature = "steam")]
+pub use atp_steam as steam;
 #[cfg(feature = "taobao")]
 pub use atp_taobao as taobao;
 #[cfg(feature = "telegram")]

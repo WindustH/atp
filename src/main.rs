@@ -53,6 +53,7 @@ fn main() -> ExitCode {
   .platform::<atp_meituan::Meituan>()
   .platform::<atp_dianping::Dianping>()
   .platform::<atp_dewu::Dewu>()
+  .platform::<atp_steam::Steam>()
   .platform::<atp_ctrip::Ctrip>()
   .platform::<atp_quark::Quark>()
   .platform::<atp_baidupan::Baidupan>()

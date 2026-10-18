@@ -434,6 +434,7 @@ dependencies = [
  "atp-slack",
  "atp-spotify",
  "atp-stackexchange",
+ "atp-steam",
  "atp-taobao",
  "atp-telegram",
  "atp-tencentmap",
@@ -1351,6 +1352,17 @@ dependencies = [
  "serde_json",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "atp-steam"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "regex",
+ "serde_json",
 ]
 
 [[package]]

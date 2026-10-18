@@ -114,6 +114,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Dewu / POIZON 得物 | `dewu` | community posts, no-watermark videos, Open Platform prices and sales | key |
 | | Meituan 美团 | `meituan` | 联盟 deals and rankings, shop reviews, city lookup | key, browser |
 | | Dianping 大众点评 | `dianping` | shops, scores, reviews, discovery notes | QR, browser |
+| | Steam | `steam` | store search, games with their price in any storefront, top sellers and specials, user reviews by language and kind; profiles and owned games with a Web API key | not needed, key |
 | Maps / travel | Amap 高德地图 | `amap` | places, geocoding, routes, weather, traffic | key |
 | | Google Maps | `gmap` | places, photos, geocoding, routes, distance matrices, time zones, elevation | key |
 | | Baidu Map 百度地图 | `bmap` | places, geocoding, routes, weather, traffic | key |
