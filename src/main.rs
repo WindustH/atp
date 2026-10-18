@@ -67,6 +67,7 @@ fn main() -> ExitCode {
   .platform::<atp_eleduck::Eleduck>()
   .platform::<atp_liepin::Liepin>()
   .platform::<atp_nowcoder::Nowcoder>()
+  .platform::<atp_ncss::Ncss>()
   .platform::<atp_bangumi::Bangumi>()
   .platform::<atp_douban::Douban>()
   .platform::<atp_weread::WeRead>()

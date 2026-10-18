@@ -2,9 +2,9 @@
 """Draw the platform grid in the README: docs/assets/platforms-{light,dark}.svg.
 
 Brand glyphs come from Simple Icons (CC0) at a pinned version; brands it
-lacks use their official App Store icon or GitHub organization avatar. All
-are fetched when this runs. Edit the tables below when platforms are added,
-then run:
+lacks use their official App Store icon, GitHub organization avatar or,
+without either, the site's own icon. All are fetched when this runs. Edit
+the tables below when platforms are added, then run:
 
     python3 docs/assets/platforms.py
 """
@@ -24,7 +24,8 @@ OUT = Path(__file__).resolve().parent
 
 # (command, name, latin name, icon, tile color). The icon is a Simple Icons
 # slug drawn in white (or black) on the tile color, `app:ID[@country]` for
-# the App Store icon of that app, or `github:ORG` for an organization avatar.
+# the App Store icon of that app, `github:ORG` for an organization avatar, or
+# `url:LINK` for a site's own icon.
 GROUPS = [
     ("社交", "SOCIAL", [
         ("zhihu", "知乎", "Zhihu", "zhihu", "#0084FF"),
@@ -113,6 +114,7 @@ GROUPS = [
         ("eleduck", "电鸭社区", "Eleduck", "app:1536307730", ""),
         ("liepin", "猎聘", "Liepin", "app:540996859", ""),
         ("nowcoder", "牛客", "Nowcoder", "app:962209511", ""),
+        ("ncss", "国家大学生就业服务平台", "NCSS", "url:https://t3.chei.com.cn/ncss/favicon.ico", ""),
     ]),
 ]
 
@@ -173,7 +175,7 @@ def fetch(url, tries=4):
 
 
 def picture(icon, cache={}):
-    """An App Store icon or a GitHub avatar as a data URI (96 px)."""
+    """An App Store icon, a GitHub avatar (96 px) or a site's icon as a data URI."""
     if icon not in cache:
         kind, _, ref = icon.partition(":")
         if kind == "app":
@@ -181,11 +183,26 @@ def picture(icon, cache={}):
             info = json.loads(fetch(APP_STORE.format(app, country or "cn"))[0])
             art = info["results"][0]["artworkUrl512"]
             url = re.sub(r"/\d+x\d+bb\.\w+$", "/96x96bb.jpg", art)
+        elif kind == "url":
+            url = ref
         else:
             url = GITHUB_AVATAR.format(ref)
         data, mime = fetch(url)
+        if mime == "image/x-icon":
+            data = largest_icon(data)
         cache[icon] = f"data:{mime};base64,{base64.b64encode(data).decode()}"
     return cache[icon]
+
+
+def largest_icon(data):
+    """The biggest picture of an .ico file, as an .ico of its own."""
+    count = int.from_bytes(data[4:6], "little")
+    entries = [data[6 + 16 * i:22 + 16 * i] for i in range(count)]
+    best = max(entries, key=lambda e: e[0] or 256)
+    size = int.from_bytes(best[8:12], "little")
+    offset = int.from_bytes(best[12:16], "little")
+    header = data[:4] + (1).to_bytes(2, "little") + best[:12] + (22).to_bytes(4, "little")
+    return header + data[offset:offset + size]
 
 
 def tile(x, y, icon, color, t, size):

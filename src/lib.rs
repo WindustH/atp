@@ -112,6 +112,8 @@ pub use atp_meituan as meituan;
 pub use atp_misskey as misskey;
 #[cfg(feature = "mp")]
 pub use atp_mp as mp;
+#[cfg(feature = "ncss")]
+pub use atp_ncss as ncss;
 #[cfg(feature = "netease")]
 pub use atp_netease as netease;
 #[cfg(feature = "nowcoder")]

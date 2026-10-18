@@ -411,6 +411,7 @@ dependencies = [
  "atp-meituan",
  "atp-misskey",
  "atp-mp",
+ "atp-ncss",
  "atp-netease",
  "atp-nowcoder",
  "atp-onebot",
@@ -1025,6 +1026,18 @@ dependencies = [
  "jiff",
  "rand 0.9.5",
  "regex",
+ "url",
+]
+
+[[package]]
+name = "atp-ncss"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "regex",
+ "serde_json",
  "url",
 ]
 

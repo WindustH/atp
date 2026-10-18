@@ -1,0 +1,14 @@
+[package]
+name = "atp-ncss"
+description = "NCSS (国家大学生就业服务平台) support for all-the-platforms: the national job board for graduates, its job fairs and company pages"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+jiff.workspace = true
+regex.workspace = true
+serde_json.workspace = true
+url.workspace = true

@@ -29,7 +29,8 @@ one of them.
   site), `hn` (Hacker News), `lobsters`, `v2ex`, `juejin` (Juejin 掘金).
 - Jobs and careers: `eleduck` (Eleduck 电鸭社区, remote and part-time
   work), `liepin` (Liepin 猎聘), `nowcoder` (Nowcoder 牛客, campus hiring,
-  internships, 面经).
+  internships, 面经), `ncss` (NCSS 国家大学生就业服务平台, the national job
+  board for graduates, job fairs).
 
 Chat apps share `chats`, `messages`, `send`, `members`, `react`, `edit` and
 `listen` (see `atp guide interact`); `edit` also changes published posts
