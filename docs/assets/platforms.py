@@ -121,6 +121,7 @@ GROUPS = [
         ("yingjiesheng", "应届生求职网", "Yingjiesheng", "app:1232983203", ""),
         ("careers", "校招官网", "Career sites", "briefcase", "#3370FF"),
         ("linkedin", "LinkedIn", "LinkedIn", "app:288429040@us", ""),
+        ("1point3acres", "一亩三分地", "1Point3Acres", "app:1018241310@us", ""),
     ]),
 ]
 

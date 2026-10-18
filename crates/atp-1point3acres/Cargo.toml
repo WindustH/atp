@@ -1,0 +1,13 @@
+[package]
+name = "atp-1point3acres"
+description = "1Point3Acres (一亩三分地) support for all-the-platforms: hot and newest threads, boards, threads with their replies, through the API of the site's own pages"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+jiff.workspace = true
+serde_json.workspace = true
+url.workspace = true

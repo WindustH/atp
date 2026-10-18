@@ -36,7 +36,8 @@ one of them.
   (companies' own career sites: ByteDance, Tencent, Alibaba, Meituan,
   Kuaishou, and Feishu Hire, Beisen and Moka sites by their link),
   `linkedin` (LinkedIn's jobs and companies, read-only, without an
-  account).
+  account), `1point3acres` (1Point3Acres 一亩三分地, 面经, 内推 and life
+  abroad).
 
 Chat apps share `chats`, `messages`, `send`, `members`, `react`, `edit` and
 `listen` (see `atp guide interact`); `edit` also changes published posts
