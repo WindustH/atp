@@ -142,6 +142,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Lobsters | `lobsters` | hottest, newest and active stories, comment threads, tags, search | not needed |
 | | V2EX | `v2ex` | hot and latest topics, replies, members, nodes, notifications | token |
 | | Juejin 掘金 | `juejin` | articles as text, pins, hot ranking, comments with replies, users, likes, collection sets, daily check-in | browser |
+| Jobs | Eleduck 电鸭社区 | `eleduck` | remote and part-time jobs with tag filters, pay read from titles, discussions, comments, your applications | QR, browser, token |
 
 ## Quick start
 

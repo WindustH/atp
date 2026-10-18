@@ -109,6 +109,9 @@ GROUPS = [
         ("v2ex", "V2EX", "V2EX", "v2ex", "#1F1F1F"),
         ("juejin", "掘金", "Juejin", "juejin", "#007FFF"),
     ]),
+    ("求职招聘", "JOBS", [
+        ("eleduck", "电鸭社区", "Eleduck", "app:1536307730", ""),
+    ]),
 ]
 
 # (name, latin name, icon, tile color) of platforms on the way; the

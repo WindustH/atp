@@ -390,6 +390,7 @@ dependencies = [
  "atp-discourse",
  "atp-douban",
  "atp-douyin",
+ "atp-eleduck",
  "atp-facebook",
  "atp-feishu",
  "atp-googlemaps",
@@ -712,6 +713,18 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "url",
+]
+
+[[package]]
+name = "atp-eleduck"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "regex",
+ "serde_json",
  "url",
 ]
 

@@ -70,6 +70,8 @@ pub use atp_discourse as discourse;
 pub use atp_douban as douban;
 #[cfg(feature = "douyin")]
 pub use atp_douyin as douyin;
+#[cfg(feature = "eleduck")]
+pub use atp_eleduck as eleduck;
 #[cfg(feature = "facebook")]
 pub use atp_facebook as facebook;
 #[cfg(feature = "feishu")]
