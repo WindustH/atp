@@ -1,5 +1,6 @@
 //! The browser behind a context's tab: started on first use on the
-//! platform's kept profile, its one page attached over DevTools, and the
+//! platform's kept profile, without a window or in a small one
+//! ([`super::Window`]), its one page attached over DevTools, and the
 //! steps every use of the page is made of (opening an address, waiting for
 //! a load, evaluating a script, taking the site's cookies back).
 
@@ -14,6 +15,7 @@ use crate::chrome::{self, Browser, Launch, Profile};
 use crate::ctx::Ctx;
 use crate::error::{Error, Result};
 use crate::json::ValueExt;
+use crate::output;
 use crate::store::Store;
 use crate::text::{one_line, truncate};
 
@@ -23,11 +25,18 @@ pub fn profile(store: &Store) -> PathBuf {
   store.cache_dir().join("browser")
 }
 
-/// The tab of a context: whether its platform may open one, and the
-/// browser once opened.
+/// The size of the tab's window: small, out of the way of the person's
+/// work, yet a normal window.
+const WINDOW: (u32, u32) = (800, 600);
+/// The page size of a browser without a window.
+const WINDOWLESS: (u32, u32) = (1100, 900);
+
+/// The tab of a context: whether its platform may open one, whether in a
+/// window, and the browser once opened.
 #[derive(Default)]
 pub(crate) struct Slot {
   pub(crate) allowed: bool,
+  pub(crate) window: bool,
   open: OnceCell<Session>,
 }
 
@@ -39,7 +48,10 @@ impl Slot {
         ctx.info.name
       )));
     }
-    self.open.get_or_try_init(|| Session::open(ctx)).await
+    self
+      .open
+      .get_or_try_init(|| Session::open(ctx, self.window))
+      .await
   }
 
   pub(crate) async fn close(&self, ctx: &Ctx) {
@@ -52,6 +64,9 @@ impl Slot {
 /// The browser of one run, with its one page attached over DevTools.
 pub(crate) struct Session {
   pub(super) inner: Mutex<Inner>,
+  /// A window was wanted but no display was found: the browser runs
+  /// without one.
+  pub(super) no_display: bool,
 }
 
 pub(super) struct Inner {
@@ -65,7 +80,7 @@ pub(super) struct Inner {
 }
 
 impl Session {
-  async fn open(ctx: &Ctx) -> Result<Self> {
+  async fn open(ctx: &Ctx, window: bool) -> Result<Self> {
     let exe = chrome::find().ok_or_else(|| {
       Error::internal(format!(
         "{} is read through a browser: install Chrome, Chromium, Edge or Brave",
@@ -74,9 +89,19 @@ impl Session {
       .with_hint("ATP_BROWSER names one by its path or command")
     })?;
     let proxy = ctx.http.proxy().and_then(|p| chrome::proxy_server(&p));
+    let windowed = window && chrome::display();
+    let no_display = window && !windowed;
+    if no_display {
+      output::note(&format!(
+        "no display (DISPLAY / WAYLAND_DISPLAY) for the window {} reads through; the browser runs \
+         without one",
+        ctx.info.name
+      ));
+    }
     let launch = Launch {
       profile: Profile::Kept(profile(&ctx.store)),
-      headless: true,
+      headless: !windowed,
+      size: if windowed { WINDOW } else { WINDOWLESS },
       proxy: proxy.as_deref(),
     };
     let mut browser = Browser::launch(&exe, launch)?;
@@ -109,6 +134,7 @@ impl Session {
     };
     Ok(Self {
       inner: Mutex::new(inner),
+      no_display,
     })
   }
 

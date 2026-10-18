@@ -2,7 +2,8 @@
 //! on a profile with DevTools on a local port, and the protocol ([`cdp`]).
 //! Human checks ([`crate::verify`]) open a page in a window on a throwaway
 //! profile; platforms that read through a browser ([`crate::tab`]) run one
-//! without a window on a profile of their own.
+//! on a profile of their own, without a window or, where the site turns
+//! such browsers away, in a small one.
 
 pub mod cdp;
 
@@ -49,6 +50,18 @@ const INSTALLS: &[&str] = &[
 const PORT_FILE: &str = "DevToolsActivePort";
 /// The file ATP locks while a kept profile is in use.
 const LOCK_FILE: &str = "atp.lock";
+
+/// Whether a window can open: on Linux and the BSDs, an X or Wayland
+/// display (`DISPLAY`, `WAYLAND_DISPLAY`; none over plain ssh); macOS and
+/// Windows always have one.
+pub fn display() -> bool {
+  if cfg!(any(target_os = "macos", windows)) {
+    return true;
+  }
+  ["DISPLAY", "WAYLAND_DISPLAY"]
+    .iter()
+    .any(|var| std::env::var_os(var).is_some_and(|v| !v.is_empty()))
+}
 
 /// The browser to drive: `ATP_BROWSER` (a path or a command), else the
 /// first installed Chrome, Chromium, Edge or Brave.
@@ -109,6 +122,8 @@ pub struct Launch<'a> {
   pub profile: Profile,
   /// Without a window (`--headless=new`).
   pub headless: bool,
+  /// The size of the window, also the page's size without one.
+  pub size: (u32, u32),
   /// Chrome's `--proxy-server`: `scheme://host:port` without credentials.
   pub proxy: Option<&'a str>,
 }
@@ -155,8 +170,8 @@ impl Browser {
         // neither read nor asked for.
         "--password-store=basic",
         "--use-mock-keychain",
-        "--window-size=1100,900",
-      ]);
+      ])
+      .arg(format!("--window-size={},{}", launch.size.0, launch.size.1));
     if launch.headless {
       cmd.arg("--headless=new");
     }

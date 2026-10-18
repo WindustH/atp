@@ -69,6 +69,14 @@ pub trait Platform: Sized {
   /// human checks in a window on the same profile.
   const BROWSER_TAB: bool = false;
 
+  /// Whether the tab opens in a small window by default: for sites
+  /// whose checks turn away a browser without one (it names itself
+  /// HeadlessChrome; driven over DevTools, Chrome tells pages it is
+  /// automated with a window too). `--browser-window`
+  /// / `ATP_BROWSER_WINDOW` override it ([`crate::tab::Window`]); without
+  /// a display the tab runs without a window anyway.
+  const TAB_WINDOW: bool = false;
+
   /// Platform-only commands, merged next to the shared ones.
   type Extra: clap::Subcommand;
 

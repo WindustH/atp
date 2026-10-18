@@ -46,9 +46,11 @@ impl Ctx {
     }
   }
 
-  /// Let the platform open a browser tab ([`Platform::BROWSER_TAB`](crate::Platform::BROWSER_TAB)).
-  pub(crate) fn allow_tab(&mut self, allowed: bool) {
+  /// Let the platform open a browser tab ([`Platform::BROWSER_TAB`](crate::Platform::BROWSER_TAB)),
+  /// in a window when `window` ([`tab::Window`]).
+  pub(crate) fn allow_tab(&mut self, allowed: bool, window: bool) {
     self.tab.allowed = allowed;
+    self.tab.window = window;
   }
 
   /// The platform's browser tab, started on first use and kept for the

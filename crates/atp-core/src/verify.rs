@@ -70,6 +70,8 @@ async fn drive(
   let launch = Launch {
     profile,
     headless: false,
+    // Large enough for a check to be passed in it.
+    size: (1100, 900),
     proxy: proxy.as_deref(),
   };
   let mut browser = Browser::launch(exe, launch)?;

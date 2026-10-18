@@ -146,7 +146,13 @@ the site's own page make the request through `Ctx::tab`: `Tab::fetch`
 from a page of the site, or `Tab::capture` of a request the page makes
 itself. Keep plain HTTP for whatever answers it. Read answers with
 `Answer::json`, which turns checks, login walls and other pages into
-errors, never into data.
+errors, never into data. A site whose check turns away the browser
+without a window (it names itself HeadlessChrome) gets
+`Platform::TAB_WINDOW`: its tab opens in a small, normal window. Driven
+over DevTools, Chrome tells pages it is automated
+(`navigator.webdriver`) with a window too; a site that turns that away
+cannot be read through the tab. Never disguise the browser instead (another user agent, hidden
+automation flags, a window moved off-screen).
 
 ## Documentation
 

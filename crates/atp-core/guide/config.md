@@ -15,6 +15,7 @@ These work anywhere on the command line:
 | `-v, --verbose` | `ATP_LOG` | log requests (method, host, status, time) to stderr |
 | `--no-verify` | `ATP_NO_VERIFY=1` | fail on captchas instead of opening them in a browser |
 | | `ATP_BROWSER` | the browser for human checks and for platforms read through one: a path or a command (`chromium`) |
+| `--browser-window WHEN` | `ATP_BROWSER_WINDOW` | platforms read through a browser: `auto` (default) opens it without a window, or in a small one for sites that turn windowless browsers away; `always` and `never` choose for every such platform. Without a display (`DISPLAY`, `WAYLAND_DISPLAY`, e.g. over ssh) it runs without a window |
 
 Yes / no variables such as `ATP_NO_VERIFY` take `1` / `0`, `true` /
 `false`, `yes` / `no` or `on` / `off`.

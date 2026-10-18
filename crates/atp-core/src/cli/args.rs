@@ -46,6 +46,16 @@ pub struct GlobalArgs {
     action = clap::ArgAction::SetTrue
   )]
   pub no_verify: bool,
+  /// Platforms read through a browser: when to open it in a small window
+  /// (auto: for sites that turn windowless browsers away)
+  #[arg(
+    long,
+    global = true,
+    value_enum,
+    env = "ATP_BROWSER_WINDOW",
+    value_name = "WHEN"
+  )]
+  pub browser_window: Option<crate::tab::Window>,
 }
 
 impl GlobalArgs {

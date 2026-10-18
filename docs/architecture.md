@@ -39,7 +39,7 @@ one. Each platform crate re-exports its `Command` enum for `run_extra`.
 | `cli` | the shared commands, one module per area (`account`, `read`, `library`, `history`, `write`, `follows`, `folders`, `media`, `chat`) flattened into `CommonCommand`; per-platform clap command; global and paging options; questions on the terminal (`prompt`) |
 | `app` | top-level program, multi-call (`bili` symlink) |
 | `open` | platforms in Rust code: `open`, `Open` (cookies, proxy, timeout, the site of `careers`), `save_session` |
-| `platforms` | `atp platforms`: one row per platform grouped by kind (TAB marks those read through a browser tab, `Platform::BROWSER_TAB`), `atp platforms <id>` in detail, the same data as JSON (`browser_tab`) |
+| `platforms` | `atp platforms`: one row per platform grouped by kind (TAB marks those read through a browser tab, `Platform::BROWSER_TAB`, and `window` those whose tab opens in a window, `TAB_WINDOW`), `atp platforms <id>` in detail, the same data as JSON (`browser_tab`, `tab_window`) |
 | `account` | `login` (QR / token / browser / cookie string), `logout`, `status` |
 | `http` | Chrome-fingerprinted client (wreq), cookie jar, pacing, proxy; `request` (building, sending, retries, streaming), `response` |
 | `store` | session file (0600), data files the user keeps beside it (`data`, `put_data`: lists and settings `logout` leaves alone), TTL cache (values and raw bytes), `#N` short-index lists |
@@ -104,6 +104,8 @@ A platform crate exports one type implementing `atp_core::Platform`:
   `Error::unclearable()`.
 - `const BROWSER_TAB: bool`: the platform reads through a browser tab
   (`Ctx::tab`, see [Browser tabs](#browser-tabs)); off by default.
+  `const TAB_WINDOW: bool`: that tab opens in a small window by default,
+  for sites whose checks turn away a browser without one.
 - `follow_ref` picks the `#N` list `follow` takes from: users by default,
   chats or communities where following joins one.
 - `token_whoami` is the account `login --token` checks: `whoami` by
@@ -206,6 +208,16 @@ through a browser instead:
 - `Ctx::tab()` starts, on first use, a Chromium-family browser of the
   person's machine (the one `verify` finds; `ATP_BROWSER` names another)
   without a window (`--headless=new`), with DevTools on a local port.
+  Without a window Chrome names itself HeadlessChrome; sites whose checks
+  turn that away declare `TAB_WINDOW`, and their tab opens in a small
+  window instead: the same browser with its usual user agent, nothing
+  hidden, moved or minimised. Window or not, Chrome driven over DevTools
+  tells pages it is automated (`navigator.webdriver`), and ATP leaves it
+  so. `--browser-window never|auto|always`
+  (`ATP_BROWSER_WINDOW`, `Open::browser_window`, `tab::Window`) overrides
+  the platform's choice; without a display (`DISPLAY`,
+  `WAYLAND_DISPLAY`) the tab runs without a window, says so, and a check
+  it then meets says so in its hint (`tab::NO_DISPLAY`).
   It runs on the platform's own profile, `<cache>/<platform>/browser`,
   kept between runs so the site's cookies, storage and device ids last;
   another atp using it at the same time gets a throwaway profile

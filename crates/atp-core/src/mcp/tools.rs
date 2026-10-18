@@ -186,7 +186,7 @@ fn platforms_tool() -> Value {
   json!({
     "name": "platforms",
     "title": "List platforms",
-    "description": "Every platform ATP supports: id, name, aliases, kind, whether it reads through a browser tab (`browser_tab`: a Chromium-family browser must be installed), capabilities, its own extra commands and how to log in (ways, token form, cookies, environment variables, what works without an account).",
+    "description": "Every platform ATP supports: id, name, aliases, kind, whether it reads through a browser tab (`browser_tab`: a Chromium-family browser must be installed; `tab_window`: in a small window by default), capabilities, its own extra commands and how to log in (ways, token form, cookies, environment variables, what works without an account).",
     "inputSchema": {"type": "object", "properties": {}},
     "annotations": {"readOnlyHint": true, "openWorldHint": false},
   })

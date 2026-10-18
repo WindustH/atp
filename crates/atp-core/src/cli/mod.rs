@@ -391,7 +391,8 @@ async fn attempt<P: Platform>(
   ctx.coord = P::COORD.and_then(|_| matches.get_one::<System>(COORD).copied());
   // Likewise `--site`.
   ctx.site = P::SITE.and_then(|_| matches.get_one::<String>(SITE).cloned());
-  ctx.allow_tab(P::BROWSER_TAB);
+  let window = global.browser_window.unwrap_or_default();
+  ctx.allow_tab(P::BROWSER_TAB, window.wanted(P::TAB_WINDOW));
   let coord = ctx.coord;
   let platform = P::new(ctx)?;
   let result = dispatch(&platform, global, matches, loaded).await;

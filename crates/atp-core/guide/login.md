@@ -86,7 +86,8 @@ captchas itself.
 Platforms ATP reads through a browser (51job, boss) keep a browser
 profile of their own, and their checks open in a window on that profile:
 what you pass there stays for the next commands, which run in the same
-browser without a window. When such a check is reported instead (a pipe, a
+browser (without a window, or in a small one for sites that turn
+windowless browsers away; `atp guide config`, `--browser-window`). When such a check is reported instead (a pipe, a
 script, `--no-verify`, an AI agent), run the same command once on a
 terminal, pass the check in the window ATP opens and press Enter; later
 runs, scripted ones too, go on from there. Captchas and sliders are

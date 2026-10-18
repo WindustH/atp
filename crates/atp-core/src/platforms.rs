@@ -32,6 +32,7 @@ fn entry_value(e: &Entry) -> Value {
     "home": info.home,
     "kind": info.kind.name(),
     "browser_tab": e.browser_tab,
+    "tab_window": e.tab_window,
     "capabilities": info.caps.iter().map(|c| c.name()).collect::<Vec<_>>(),
     "extra_commands": (e.extras)(),
     "login": {
@@ -115,7 +116,7 @@ fn table(app: &App) {
         Cell::new(e.info.name),
         Cell::new(e.info.aliases.join(", ")),
         Cell::new(e.info.login_words().join(" ")),
-        Cell::new(if e.browser_tab { "yes" } else { "" }),
+        Cell::new(tab_mark(e)),
         count(shared.len()),
         count(own.len()),
       ]);
@@ -124,9 +125,19 @@ fn table(app: &App) {
   println!("{t}");
   println!(
     "\nTAB marks the platforms read through a browser tab: Chrome, Chromium, Edge or Brave \
-     on this machine, without a window. SHARED and OWN count the shared and the platform's \
-     own commands. One platform in detail: `atp platforms <id>` or `atp guide <id>`."
+     on this machine, without a window (yes) or in a small one (window; --browser-window \
+     changes it). SHARED and OWN count the shared and the platform's own commands. One \
+     platform in detail: `atp platforms <id>` or `atp guide <id>`."
   );
+}
+
+/// The TAB column: `window` for tabs that open in a window by default.
+fn tab_mark(e: &Entry) -> &'static str {
+  match (e.browser_tab, e.tab_window) {
+    (false, _) => "",
+    (true, false) => "yes",
+    (true, true) => "window",
+  }
 }
 
 /// The visible shared and own commands of a platform, in `--help` order.
@@ -159,9 +170,14 @@ fn detail(e: &Entry) {
   }
   lines.push(("Login", info.login_words().join(", ")));
   if e.browser_tab {
+    let how = if e.tab_window {
+      "in a small window"
+    } else {
+      "without a window"
+    };
     lines.push((
       "Browser",
-      "read through a tab of Chrome, Chromium, Edge or Brave, without a window".to_owned(),
+      format!("read through a tab of Chrome, Chromium, Edge or Brave, {how}"),
     ));
   }
   if !info.required_cookies.is_empty() {

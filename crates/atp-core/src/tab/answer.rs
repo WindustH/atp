@@ -69,16 +69,26 @@ pub(crate) fn login_page(url: &str) -> bool {
   LOGIN_PATHS.iter().any(|part| place.contains(part))
 }
 
-/// The error for a human check of `platform` shown at `page`.
-pub(crate) fn check_error(platform: &str, name: &str, page: &str) -> Error {
+/// What the hint of a check says when the tab wanted a window but found
+/// no display.
+pub const NO_DISPLAY: &str = "ATP's browser ran without a window, as no display was found \
+                              (DISPLAY, WAYLAND_DISPLAY), and the site may turn such browsers \
+                              away; run the command where a display is available";
+
+/// The error for a human check of `platform` shown at `page`;
+/// `no_display` when the tab wanted a window but found no display.
+pub(crate) fn check_error(platform: &str, name: &str, page: &str, no_display: bool) -> Error {
+  let hint = if no_display {
+    NO_DISPLAY
+  } else {
+    "run the command on a terminal (without --no-verify): ATP opens the check in a window of \
+     its browser for you to pass, then carries on"
+  };
   Error::verification(format!(
     "{platform} shows a human check ({name}) instead of its data"
   ))
   .with_url(page)
-  .with_hint(
-    "run the command on a terminal (without --no-verify): ATP opens the check in a window of \
-     its browser for you to pass, then carries on",
-  )
+  .with_hint(hint)
 }
 
 /// What a request made in the tab answered.
@@ -93,6 +103,8 @@ pub struct Answer {
   pub page: String,
   pub(crate) platform: &'static str,
   pub(crate) login_hint: String,
+  /// The tab wanted a window but found no display.
+  pub(crate) no_display: bool,
 }
 
 impl Answer {
@@ -111,7 +123,12 @@ impl Answer {
   /// redirect to a login page: `not_authenticated`).
   pub fn passed(&self) -> Result<&Self> {
     if let Some(name) = self.check() {
-      return Err(check_error(self.platform, name, &self.page));
+      return Err(check_error(
+        self.platform,
+        name,
+        &self.page,
+        self.no_display,
+      ));
     }
     if self.status == 401 || (login_page(&self.url) && !login_page(&self.page)) {
       return Err(

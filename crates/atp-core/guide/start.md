@@ -7,8 +7,9 @@ command set:
 
 `atp platforms` lists every platform with its shorter names, login ways,
 whether it reads through a browser tab (TAB: Chrome, Chromium, Edge or
-Brave must be installed) and command counts; `atp platforms <id>` and
-`atp guide <platform>` explain one of them.
+Brave must be installed; `window` opens it in a small window) and
+command counts; `atp platforms <id>` and `atp guide <platform>` explain
+one of them.
 
 - Social and news: `zhihu`, `xhs`, `weibo`, `tieba`, `mp` (WeChat
   Official Accounts), `twitter`, `reddit`, `facebook`, `instagram`,

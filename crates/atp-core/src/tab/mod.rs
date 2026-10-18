@@ -3,7 +3,10 @@
 //! compute. ATP never computes or forges such tokens. A platform that
 //! declares [`Platform::BROWSER_TAB`](crate::Platform::BROWSER_TAB) gets,
 //! on its first use of [`Ctx::tab`], a Chromium-family browser of the
-//! person's machine without a window, on the platform's own profile
+//! person's machine without a window (or in a small one, [`Window`]: for
+//! sites that turn browsers without a window away,
+//! [`Platform::TAB_WINDOW`](crate::Platform::TAB_WINDOW)), on the
+//! platform's own profile
 //! ([`profile`]: the site's cookies, storage and device ids last between
 //! runs), seeded with the session's cookies and through the same proxy as
 //! ATP's requests. The site's own page loads in its one tab and its
@@ -32,7 +35,7 @@ use std::time::{Duration, Instant};
 use serde_json::{Value, json};
 use tokio::sync::MutexGuard;
 
-pub use self::answer::Answer;
+pub use self::answer::{Answer, NO_DISPLAY};
 use self::answer::{check, check_error, login_page};
 pub use self::network::Trigger;
 use self::session::Inner;
@@ -41,6 +44,34 @@ pub(crate) use self::session::{Session, Slot};
 use crate::ctx::Ctx;
 use crate::error::{Error, Result};
 use crate::json::ValueExt;
+
+/// When a platform's tab opens in a window (`--browser-window`,
+/// `ATP_BROWSER_WINDOW`). A window shows the browser as it is, with its
+/// usual user agent; without one, Chrome names itself HeadlessChrome, which
+/// some sites' checks turn away. Window or not, Chrome driven over
+/// DevTools tells pages it is automated (`navigator.webdriver`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
+pub enum Window {
+  /// Without a window, on every platform
+  Never,
+  /// In a window only for platforms whose site turns windowless browsers away
+  #[default]
+  Auto,
+  /// In a small window, on every platform read through a browser
+  Always,
+}
+
+impl Window {
+  /// Whether a platform's tab opens in a window; `platform` is its
+  /// [`Platform::TAB_WINDOW`](crate::Platform::TAB_WINDOW).
+  pub fn wanted(self, platform: bool) -> bool {
+    match self {
+      Self::Never => false,
+      Self::Auto => platform,
+      Self::Always => true,
+    }
+  }
+}
 
 /// How long a page may take to load.
 const LOAD_WAIT: Duration = Duration::from_secs(30);
@@ -82,6 +113,12 @@ pub struct Tab<'a> {
 impl<'a> Tab<'a> {
   pub(crate) fn new(ctx: &'a Ctx, session: &'a Session) -> Self {
     Self { ctx, session }
+  }
+
+  /// Whether the tab wanted a window but found no display, so runs
+  /// without one: checks it meets may then say so ([`NO_DISPLAY`]).
+  pub fn no_display(&self) -> bool {
+    self.session.no_display
   }
 
   async fn lock(&self) -> Result<MutexGuard<'a, Inner>> {
@@ -195,7 +232,8 @@ impl<'a> Tab<'a> {
         return Ok(at);
       };
       if !inner.loaded(deadline).await? {
-        return Err(check_error(self.ctx.info.name, name, url));
+        let no_display = self.session.no_display;
+        return Err(check_error(self.ctx.info.name, name, url, no_display));
       }
     }
   }
@@ -242,6 +280,7 @@ impl<'a> Tab<'a> {
       page,
       platform: self.ctx.info.name,
       login_hint: self.ctx.login_hint(),
+      no_display: self.session.no_display,
     }
   }
 }

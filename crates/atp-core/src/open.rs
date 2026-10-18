@@ -22,6 +22,7 @@ use crate::error::Result;
 use crate::http::{Http, HttpConfig};
 use crate::platform::Platform;
 use crate::store::{Session, Store};
+use crate::tab::Window;
 
 /// The platform with the session the command line keeps for it; without
 /// one, a guest (what works without an account still works).
@@ -38,6 +39,7 @@ pub struct Open {
   timeout: Duration,
   interval: Option<Duration>,
   site: Option<String>,
+  window: Window,
 }
 
 impl Default for Open {
@@ -49,6 +51,7 @@ impl Default for Open {
       timeout: Duration::from_secs(30),
       interval: None,
       site: None,
+      window: Window::default(),
     }
   }
 }
@@ -98,6 +101,13 @@ impl Open {
     self
   }
 
+  /// When a platform read through a browser opens it in a window
+  /// (`--browser-window`; as the platform needs by default).
+  pub fn browser_window(mut self, window: Window) -> Self {
+    self.window = window;
+    self
+  }
+
   /// Open platform `P` with these settings.
   pub fn platform<P: Platform>(&self) -> Result<P> {
     let info = P::INFO;
@@ -122,7 +132,7 @@ impl Open {
     let http = Http::new(&config, session.cookies)?;
     let mut ctx = Ctx::new(info, http, store, session.extra);
     ctx.site = self.site.clone();
-    ctx.allow_tab(P::BROWSER_TAB);
+    ctx.allow_tab(P::BROWSER_TAB, self.window.wanted(P::TAB_WINDOW));
     P::new(ctx)
   }
 }

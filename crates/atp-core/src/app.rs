@@ -24,6 +24,8 @@ pub(crate) struct Entry {
   pub info: PlatformInfo,
   /// Whether the platform reads through a browser tab ([`Platform::BROWSER_TAB`]).
   pub browser_tab: bool,
+  /// Whether that tab opens in a window by default ([`Platform::TAB_WINDOW`]).
+  pub tab_window: bool,
   pub command: fn() -> clap::Command,
   pub extras: fn() -> Vec<String>,
   run: fn(GlobalArgs, ArgMatches) -> RunFuture,
@@ -60,6 +62,7 @@ impl App {
     self.platforms.push(Entry {
       info: P::INFO,
       browser_tab: P::BROWSER_TAB,
+      tab_window: P::BROWSER_TAB && P::TAB_WINDOW,
       command: cli::command::<P>,
       extras: cli::extra_commands::<P>,
       run: run_boxed::<P>,
