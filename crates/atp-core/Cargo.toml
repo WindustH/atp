@@ -12,6 +12,7 @@ browser = ["dep:rookie"]
 
 [dependencies]
 anstyle-query = "1"
+base64.workspace = true
 clap.workspace = true
 comfy-table = "8"
 csv = "1"
@@ -35,7 +36,7 @@ serde.workspace = true
 serde-saphyr = "1"
 serde_json.workspace = true
 sha1 = { workspace = true, features = ["compress"] }
-tokio = { workspace = true, features = ["net"] }
+tokio = { workspace = true, features = ["net", "sync"] }
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 unicode-width = "0.2"

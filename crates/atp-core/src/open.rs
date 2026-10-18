@@ -7,6 +7,11 @@
 //! The futures borrow the platform, which is not `Sync`: run them on a
 //! current-thread runtime (`#[tokio::main(flavor = "current_thread")]`) or
 //! in a `tokio::task::LocalSet`.
+//!
+//! A platform that reads through a browser tab
+//! ([`Platform::BROWSER_TAB`]) keeps its browser from the first call that
+//! needs it until the platform is dropped or
+//! [`Ctx::close_tab`](crate::Ctx::close_tab) ends it.
 
 use std::time::Duration;
 
@@ -117,6 +122,7 @@ impl Open {
     let http = Http::new(&config, session.cookies)?;
     let mut ctx = Ctx::new(info, http, store, session.extra);
     ctx.site = self.site.clone();
+    ctx.allow_tab(P::BROWSER_TAB);
     P::new(ctx)
   }
 }

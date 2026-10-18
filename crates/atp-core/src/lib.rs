@@ -5,6 +5,7 @@
 //! - [`http`]: Chrome-fingerprinted HTTP with cookie jar, pacing and retries.
 //! - [`json`] / [`text`]: helpers for picking apart upstream payloads.
 //! - [`jobs`]: the pay of job posts, for job platforms.
+//! - [`tab`]: a browser tab for platforms whose data only a real browser gets.
 //! - [`app`] / [`cli`]: the shared command set and dispatch; [`output`]: tables and the JSON/YAML envelope.
 
 mod account;
@@ -12,6 +13,7 @@ pub mod app;
 pub mod browser;
 pub mod bulk;
 pub mod chat;
+mod chrome;
 pub mod cli;
 pub mod credentials;
 pub mod ctx;
@@ -38,6 +40,7 @@ pub mod proto;
 pub mod qr;
 pub mod socket;
 pub mod store;
+pub mod tab;
 pub mod task;
 pub mod text;
 pub mod token;

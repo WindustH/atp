@@ -47,7 +47,7 @@ use crate::model::Data;
 use crate::output;
 use crate::platform::{Cap, Platform, PlatformInfo};
 use crate::store::{RefKind, Store};
-use crate::verify;
+use crate::{tab, verify};
 
 /// Which capability a shared subcommand needs; `None` means always available.
 fn required_cap(name: &str) -> Option<&'static [Cap]> {
@@ -359,8 +359,9 @@ async fn execute<P: Platform>(
     done => return done,
   };
   let session = &loaded.session.cookies;
-  let Some(cookies) = verify::complete(&info, &error, session, global.proxy.as_deref()).await
-  else {
+  let proxy = global.proxy.as_deref();
+  let profile = P::BROWSER_TAB.then(|| tab::profile(&Store::new(info.id)));
+  let Some(cookies) = verify::complete(&info, &error, session, proxy, profile).await else {
     return Err(error);
   };
   loaded.session.cookies.extend(cookies);
@@ -390,23 +391,13 @@ async fn attempt<P: Platform>(
   ctx.coord = P::COORD.and_then(|_| matches.get_one::<System>(COORD).copied());
   // Likewise `--site`.
   ctx.site = P::SITE.and_then(|_| matches.get_one::<String>(SITE).cloned());
+  ctx.allow_tab(P::BROWSER_TAB);
   let coord = ctx.coord;
   let platform = P::new(ctx)?;
-
-  let name = matches.subcommand_name().unwrap_or_default();
-  let mut outcome = if CommonCommand::has_subcommand(name) {
-    let cmd = CommonCommand::from_arg_matches(matches).map_err(|e| Error::input(e.to_string()))?;
-    let run = Run {
-      loaded,
-      format: global.output_format(),
-      raw: global.raw,
-    };
-    cmd.run(&platform, &run).await?
-  } else {
-    let cmd = <P::Extra as FromArgMatches>::from_arg_matches(matches)
-      .map_err(|e| Error::input(e.to_string()))?;
-    Outcome::saved(platform.run_extra(cmd).await?)
-  };
+  let result = dispatch(&platform, global, matches, loaded).await;
+  // A browser tab ends with the command, its cookies kept first.
+  platform.ctx().close_tab().await;
+  let mut outcome = result?;
 
   let ctx = platform.ctx();
   // Only logged-in sessions are saved; guest cookies are not worth keeping.
@@ -422,6 +413,28 @@ async fn attempt<P: Platform>(
   }
   remember(ctx, &outcome.data);
   Ok((outcome.data, outcome.code))
+}
+
+/// Run the shared or platform-only command `matches` names.
+async fn dispatch<P: Platform>(
+  platform: &P,
+  global: &GlobalArgs,
+  matches: &ArgMatches,
+  loaded: &Loaded,
+) -> Result<Outcome> {
+  let name = matches.subcommand_name().unwrap_or_default();
+  if CommonCommand::has_subcommand(name) {
+    let cmd = CommonCommand::from_arg_matches(matches).map_err(|e| Error::input(e.to_string()))?;
+    let run = Run {
+      loaded,
+      format: global.output_format(),
+      raw: global.raw,
+    };
+    return cmd.run(platform, &run).await;
+  }
+  let cmd = <P::Extra as FromArgMatches>::from_arg_matches(matches)
+    .map_err(|e| Error::input(e.to_string()))?;
+  Ok(Outcome::saved(platform.run_extra(cmd).await?))
 }
 
 fn http_config(global: &GlobalArgs, info: &PlatformInfo) -> HttpConfig {

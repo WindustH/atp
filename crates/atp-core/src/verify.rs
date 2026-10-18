@@ -4,19 +4,20 @@
 //! the site set come back into the session and the command runs again.
 //!
 //! A Chromium-family browser (Chrome, Chromium, Edge, Brave) is driven over
-//! DevTools on a throwaway profile, through the same proxy as atp so the
-//! site sees the same address. Without one, the default browser opens the
-//! page and the command is retried with the session as it was.
-
-mod cdp;
-mod chrome;
+//! DevTools on a throwaway profile, or on the platform's own profile for
+//! platforms that read through a browser tab ([`crate::tab`]), so the
+//! check passed there stays with the pages ATP opens later. It goes
+//! through the same proxy as atp so the site sees the same address.
+//! Without one, the default browser opens the page and the command is
+//! retried with the session as it was.
 
 use std::io::IsTerminal;
+use std::path::PathBuf;
 use std::time::Duration;
 
-use self::cdp::Cdp;
-use self::chrome::Browser;
-pub(crate) use self::chrome::open_default;
+use crate::chrome::cdp::Cdp;
+pub(crate) use crate::chrome::open_default;
+use crate::chrome::{self, Browser, Launch, Profile};
 use crate::error::{Error, Result};
 use crate::http::{Cookies, proxy_url};
 use crate::output;
@@ -31,21 +32,24 @@ pub fn wanted(disabled: bool) -> bool {
   !disabled && std::io::stdin().is_terminal() && std::io::stderr().is_terminal()
 }
 
-/// Let the person pass the check behind `error`. `Some(cookies)` means
-/// "retry with these cookies merged in" (possibly none); `None` means they
-/// gave up or no browser could be opened.
+/// Let the person pass the check behind `error`, in a window on `profile`
+/// (the platform's kept profile) or on a throwaway one. `Some(cookies)`
+/// means "retry with these cookies merged in" (possibly none); `None`
+/// means they gave up or no browser could be opened.
 pub async fn complete(
   info: &PlatformInfo,
   error: &Error,
   cookies: &Cookies,
   proxy: Option<&str>,
+  profile: Option<PathBuf>,
 ) -> Option<Cookies> {
   let url = error.link().unwrap_or_else(|| info.home.to_owned());
   eprintln!("{} wants a human check: {}", info.name, error.message);
   let Some(exe) = chrome::find() else {
     return fallback(&url).await;
   };
-  match drive(&exe, info, &url, cookies, proxy).await {
+  let profile = profile.map_or(Profile::Throwaway, Profile::Kept);
+  match drive(&exe, info, &url, cookies, proxy, profile).await {
     Ok(found) => found,
     Err(e) => {
       output::note(&format!("could not drive {}: {e}", exe.display()));
@@ -60,12 +64,22 @@ async fn drive(
   url: &str,
   cookies: &Cookies,
   proxy: Option<&str>,
+  profile: Profile,
 ) -> Result<Option<Cookies>> {
-  let proxy = proxy_url(proxy).and_then(|p| browser_proxy(&p));
-  let mut browser = Browser::launch(exe, proxy.as_deref())?;
+  let proxy = proxy_url(proxy).and_then(|p| chrome::proxy_server(&p));
+  let launch = Launch {
+    profile,
+    headless: false,
+    proxy: proxy.as_deref(),
+  };
+  let mut browser = Browser::launch(exe, launch)?;
   let mut cdp = Cdp::connect(&browser.endpoint().await?).await?;
   let domains = info.cookie_domains;
-  cdp.set_cookies(cookies, domains).await?;
+  if browser.kept() {
+    cdp.seed(cookies, domains, info.required_cookies).await?;
+  } else {
+    cdp.set_cookies(cookies, domains).await?;
+  }
   cdp.open(url).await?;
   eprintln!("Opened in {}: {url}", name(exe));
   let mut latest = cdp.cookies(domains).await?;
@@ -118,26 +132,6 @@ async fn wait_for_enter(mut tick: impl AsyncFnMut()) -> bool {
       () = tokio::time::sleep(POLL) => tick().await,
     }
   }
-}
-
-/// `proxy` as Chrome's `--proxy-server` takes it: no credentials, `socks5`
-/// for `socks5h`.
-fn browser_proxy(proxy: &str) -> Option<String> {
-  let mut parsed = url::Url::parse(proxy).ok()?;
-  if !parsed.username().is_empty() {
-    output::note("the browser cannot use the proxy's password; it may ask for it");
-    let _ = parsed.set_username("");
-    let _ = parsed.set_password(None);
-  }
-  let scheme = match parsed.scheme() {
-    "socks5h" => "socks5",
-    other => other,
-  };
-  Some(format!(
-    "{scheme}://{}:{}",
-    parsed.host_str()?,
-    parsed.port_or_known_default()?
-  ))
 }
 
 fn name(exe: &std::path::Path) -> String {

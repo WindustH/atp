@@ -1,4 +1,5 @@
-//! What a platform works with at run time: HTTP client, files and session extras.
+//! What a platform works with at run time: HTTP client, files, session
+//! extras and, for platforms that read through one, a browser tab.
 
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
@@ -8,6 +9,7 @@ use crate::geo::System;
 use crate::http::Http;
 use crate::platform::PlatformInfo;
 use crate::store::{RefKind, Session, Store};
+use crate::tab::{self, Tab};
 
 /// Runtime handed to a platform: HTTP client (with the session cookies), files and session extras.
 pub struct Ctx {
@@ -22,6 +24,7 @@ pub struct Ctx {
   pub site: Option<String>,
   extra: RefCell<BTreeMap<String, String>>,
   extra_changed: Cell<bool>,
+  tab: tab::Slot,
 }
 
 impl Ctx {
@@ -39,7 +42,27 @@ impl Ctx {
       site: None,
       extra: RefCell::new(extra),
       extra_changed: Cell::new(false),
+      tab: tab::Slot::default(),
     }
+  }
+
+  /// Let the platform open a browser tab ([`Platform::BROWSER_TAB`](crate::Platform::BROWSER_TAB)).
+  pub(crate) fn allow_tab(&mut self, allowed: bool) {
+    self.tab.allowed = allowed;
+  }
+
+  /// The platform's browser tab, started on first use and kept for the
+  /// run: for platforms that declare
+  /// [`Platform::BROWSER_TAB`](crate::Platform::BROWSER_TAB).
+  pub async fn tab(&self) -> Result<Tab<'_>> {
+    let session = self.tab.get(self).await?;
+    Ok(Tab::new(self, session))
+  }
+
+  /// End the browser of [`Ctx::tab`], if one was started, with the cookies
+  /// the site set kept in the session. Dropping the context ends it too.
+  pub async fn close_tab(&self) {
+    self.tab.close(self).await;
   }
 
   /// How to log in, for error hints: every way the platform offers.

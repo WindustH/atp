@@ -56,9 +56,18 @@ pub trait Platform: Sized {
   /// Whether a `verification_required` error may be passed in the person's
   /// browser and the command retried with the cookies it set. A platform
   /// without session cookies (`cookie_domains` empty) has none to take
-  /// back, so by default only cookie platforms get the browser; single
-  /// errors opt out with [`Error::unclearable`].
-  const BROWSER_CHECKS: bool = !Self::INFO.cookie_domains.is_empty();
+  /// back, so by default only cookie platforms get the browser, and those
+  /// reading through a browser tab ([`Self::BROWSER_TAB`]), whose profile
+  /// keeps what the check set; single errors opt out with
+  /// [`Error::unclearable`].
+  const BROWSER_CHECKS: bool = !Self::INFO.cookie_domains.is_empty() || Self::BROWSER_TAB;
+
+  /// Whether the platform reads through a browser tab
+  /// ([`Ctx::tab`](crate::Ctx::tab)): a Chromium-family browser without a
+  /// window on the platform's own profile, for sites whose API answers a
+  /// real browser only. The CLI ends it after each command, and opens
+  /// human checks in a window on the same profile.
+  const BROWSER_TAB: bool = false;
 
   /// Platform-only commands, merged next to the shared ones.
   type Extra: clap::Subcommand;

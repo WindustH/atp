@@ -14,7 +14,7 @@ These work anywhere on the command line:
 | `--interval SECS` | `ATP_INTERVAL` | minimum gap between requests |
 | `-v, --verbose` | `ATP_LOG` | log requests (method, host, status, time) to stderr |
 | `--no-verify` | `ATP_NO_VERIFY=1` | fail on captchas instead of opening them in a browser |
-| | `ATP_BROWSER` | the browser for human checks: a path or a command (`chromium`) |
+| | `ATP_BROWSER` | the browser for human checks and for platforms read through one: a path or a command (`chromium`) |
 
 Yes / no variables such as `ATP_NO_VERIFY` take `1` / `0`, `true` /
 `false`, `yes` / `no` or `on` / `off`.
@@ -36,6 +36,7 @@ the names (never the values) of cookies responses set.
 | --- | --- |
 | `<config>/all-the-platforms/<platform>/session.json` | saved session (only you can read it) |
 | `<cache>/all-the-platforms/<platform>/` | caches (signing keys, query ids, tokens), `#N` lists, the login QR code |
+| `<cache>/all-the-platforms/<platform>/browser/` | the browser profile of a platform read through a browser: the site's cookies and storage; `logout` deletes it |
 
 | System | `<config>` | `<cache>` |
 | --- | --- | --- |

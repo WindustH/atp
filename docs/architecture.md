@@ -66,7 +66,9 @@ one. Each platform crate re-exports its `Command` enum for `run_extra`.
 | `socket` | websocket connections through the same client |
 | `proto` | protobuf by hand for binary frames read without a schema: `Msg` (fields on demand) and writers |
 | `qr` | login QR codes in the terminal, from a URL or a QR image |
-| `verify` | human checks by hand: a Chromium-family browser over DevTools with the session cookies, then one retry (`chrome`, `cdp`); skipped for checks a browser cannot clear (`Error::unclearable`, `Platform::BROWSER_CHECKS`) |
+| `chrome` | Chromium-family browsers over DevTools: finding one (`ATP_BROWSER`), starting it on a throwaway profile or a platform's kept one (locked while in use, written out on exit), with or without a window, through ATP's proxy; `cdp`, the protocol: calls on the browser and on a page attached with `flatten`, events kept while calls wait, cookies in and out |
+| `tab` | a browser tab for platforms whose API answers a real browser only (`Platform::BROWSER_TAB`, `Ctx::tab`): `fetch` made by the site's own page, `capture` of a request the page makes itself (Network domain), `goto`, `eval`; `Answer::json` turns checks, login walls and pages where data was expected into errors (see [Browser tabs](#browser-tabs)) |
+| `verify` | human checks by hand: a browser window with the session cookies (on the platform's own profile for tab platforms), then one retry; skipped for checks a browser cannot clear (`Error::unclearable`, `Platform::BROWSER_CHECKS`) |
 | `mcp` | `atp mcp`: JSON-RPC over stdio; tools `platforms`, `help`, `read`, `run` calling commands without printing; the guide as resources (`atp://guide/…`) |
 
 ### The Platform contract
@@ -97,8 +99,11 @@ A platform crate exports one type implementing `atp_core::Platform`:
   returns `Data` like everything else.
 - `const BROWSER_CHECKS: bool`: whether a `verification_required` error
   may be passed in the person's browser and retried with its cookies; by
-  default platforms with session cookies (`cookie_domains`) only. Single
-  errors opt out with `Error::unclearable()`.
+  default platforms with session cookies (`cookie_domains`) and those
+  reading through a browser tab. Single errors opt out with
+  `Error::unclearable()`.
+- `const BROWSER_TAB: bool`: the platform reads through a browser tab
+  (`Ctx::tab`, see [Browser tabs](#browser-tabs)); off by default.
 - `follow_ref` picks the `#N` list `follow` takes from: users by default,
   chats or communities where following joins one.
 - `token_whoami` is the account `login --token` checks: `whoami` by
@@ -189,6 +194,49 @@ answered in. After the command, `geo::localize` converts every typed point
 (places, routes, distances) and every `{lat, lng, system}` object in values
 and `extra` into the `--coord` system.
 
+### Browser tabs
+
+Some sites answer their own JSON API only to a real browser: a bot check
+in front of it runs the site's scripts (Aliyun's WAF, Cloudflare), or the
+requests carry a token the site's pages compute. ATP never ports or runs
+such token code itself, in Rust or in an embedded engine. A platform
+declaring `BROWSER_TAB` reads through a browser instead:
+
+- `Ctx::tab()` starts, on first use, a Chromium-family browser of the
+  person's machine (the one `verify` finds; `ATP_BROWSER` names another)
+  without a window (`--headless=new`), with DevTools on a local port.
+  It runs on the platform's own profile, `<cache>/<platform>/browser`,
+  kept between runs so the site's cookies, storage and device ids last;
+  another atp using it at the same time gets a throwaway profile
+  instead. The profile is seeded with the session's cookies it lacks
+  (the login's always), and the cookies the site sets come back into the
+  session after each step, as `verify` does. The proxy is ATP's.
+- One page is attached over DevTools. `Tab::fetch(page, url, init)` opens
+  a page of the site (once per origin) and runs `fetch(url, {credentials:
+  'include', …init})` in it: the site's own scripts have run, the
+  request is same-origin and carries the page's cookies. `Tab::capture`
+  opens a page (or runs a call of the page's own code) and returns the
+  answer to the first request whose URL matches, read from the Network
+  domain (`getResponseBody`, 16 MB at most). `goto` and `eval` open a page
+  and read from it.
+- Nothing is disguised: no other user agent, no automation marks hidden,
+  no scripts added to pages, no `Runtime.enable`. Requests through the
+  tab (page loads, fetches) keep the platform's `min_interval`.
+- A page that loads a check waits for the page to pass it by itself (a
+  script that sets a cookie and reloads); a check still there, or an
+  answer that is one, is `verification_required` with the page.
+  `Platform::BROWSER_CHECKS` is on for tab platforms, so on a terminal
+  the CLI opens that page in a window on the same profile for the person
+  to pass, then runs the command again. ATP never clicks, drags or solves
+  a captcha or slider. HTML where JSON was expected is never parsed as
+  data: `Answer::json` makes it `verification_required` (known checks),
+  `not_authenticated` (a 401 or a redirect to a login page) or
+  `upstream_error`.
+- The CLI ends the browser after each command (`Ctx::close_tab`, which
+  keeps its cookies in the session first); dropping the context ends it
+  too, giving the browser a few seconds to write its profile out.
+  `logout` deletes the profile.
+
 ### Flow of one command
 
 1. `app` parses arguments, picks the platform, starts a current-thread tokio runtime.
@@ -196,7 +244,9 @@ and `extra` into the `--coord` system.
    file), builds `Http` with those cookies and calls `P::new(ctx)`.
 3. The shared command maps to a trait method (listings go through `paging::collect`);
    on map platforms the points of the result are converted to the `--coord` system.
-4. Cookies changed by responses are written back to the session file (logged-in sessions only).
+4. A browser tab the command opened ends; cookies changed by responses
+   (and the tab) are written back to the session file (logged-in
+   sessions only).
 5. Lists are remembered for `#N`; `raw` payloads are dropped unless `--raw`;
    `output` prints a table or the JSON/YAML envelope.
 

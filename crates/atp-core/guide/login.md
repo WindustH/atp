@@ -83,6 +83,15 @@ path or a command name). Pipes, scripts and `--no-verify` (`ATP_NO_VERIFY=1`)
 get the error with the page in `error.url` instead. ATP never solves
 captchas itself.
 
+Platforms ATP reads through a browser keep a browser profile of
+their own, and their checks open in a window on that profile: what you
+pass there stays for the next commands, which run in the same browser
+without a window. When such a check is reported instead (a pipe, a
+script, `--no-verify`, an AI agent), run the same command once on a
+terminal, pass the check in the window ATP opens and press Enter; later
+runs, scripted ones too, go on from there. Captchas and sliders are
+always yours to pass: ATP never clicks or drags them.
+
 Some checks a browser cannot clear for ATP, so none is opened and the
 error comes with its page at once: on platforms whose requests carry no
 session cookies (tokens, API keys, public reads), for challenges bound to

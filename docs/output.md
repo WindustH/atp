@@ -83,7 +83,7 @@ error:
 | Code | What to do |
 | --- | --- |
 | `not_authenticated` | log in (`atp <platform> login`) |
-| `verification_required` | the platform wants a captcha or check (`url`): pass it in a browser, retry later; on a terminal ATP opens it itself where a browser pass clears it for ATP |
+| `verification_required` | the platform wants a captcha or check (`url`): pass it in a browser, retry later; on a terminal ATP opens it itself where a browser pass clears it for ATP (for platforms read through a browser, in a window of that browser) |
 | `ip_blocked` | switch network |
 | `rate_limited` | wait before retrying |
 | `signature_error` | the request signature was rejected; update all-the-platforms |
@@ -93,7 +93,7 @@ error:
 | `unsupported_operation` | the platform has no such feature |
 | `network_error` | connection problem; retry |
 | `upstream_error` | the platform answered something unexpected |
-| `internal_error` | local problem (files, ffmpeg ...) |
+| `internal_error` | local problem (files, ffmpeg, no Chromium-family browser for a platform read through one ...) |
 
 ## Data shapes
 

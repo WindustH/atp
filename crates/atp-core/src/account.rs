@@ -228,11 +228,25 @@ async fn qr_login<P: Platform>(p: &P) -> Result<()> {
 }
 
 pub fn logout<P: Platform>(ctx: &Ctx) -> Result<Data> {
+  // The browser profile of a platform read through a tab holds the
+  // site's cookies too, a login among them.
+  let profile = crate::tab::profile(&ctx.store);
+  let browser = P::BROWSER_TAB && profile.is_dir();
+  if browser && crate::chrome::in_use(&profile) {
+    return Err(Error::input(format!(
+      "the browser profile {} is in use by another atp; log out once it has ended",
+      profile.display()
+    )));
+  }
   let removed = ctx.store.clear_session()?;
-  let message = if removed {
-    "saved session removed"
-  } else {
-    "there was no saved session"
+  if browser {
+    std::fs::remove_dir_all(&profile)?;
+  }
+  let message = match (removed, browser) {
+    (true, true) => "saved session and the browser profile removed",
+    (true, false) => "saved session removed",
+    (false, true) => "the browser profile removed",
+    (false, false) => "there was no saved session",
   };
   Ok(Data::Action(
     Action::done("logout", P::INFO.id).with_message(message),

@@ -599,6 +599,7 @@ name = "atp-core"
 version = "0.2.0"
 dependencies = [
  "anstyle-query",
+ "base64 0.22.1",
  "clap",
  "comfy-table",
  "csv",

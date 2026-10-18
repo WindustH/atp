@@ -109,6 +109,7 @@ Use these instead of writing another copy:
 | questions a login asks on the terminal (a phone number, a texted code, a password without echo) | `cli::prompt::{line, secret}` |
 | HTTP errors | `http::status_error`, `Req::retries` |
 | a declared client name for open APIs that challenge look-alike browsers | `http::TOOL_USER_AGENT` |
+| an API only a real browser gets (a bot check running the site's scripts, a token the site's pages compute): the site's page makes the request | `Platform::BROWSER_TAB`, `Ctx::tab` (`Tab::fetch`, `Tab::capture`, `goto`, `eval`), `tab::Answer::json` |
 
 Session cookies go only to the hosts in `PlatformInfo::cookie_domains` (and
 their subdomains), so list every domain the session is used on.
@@ -134,6 +135,18 @@ browser can set, so:
   session cookies. Override it only when a whole platform's checks differ.
 
 Never solve a check in code, and say in the GUIDE whether ATP opens it.
+
+Never port or run a site's anti-bot tokens (Aliyun's `acw_sc__v2`, Boss
+Zhipin's `__zp_stoken__`, Meituan's `mtgsig`, Ruishu, Pinduoduo's
+`anti_content`, ByteDance's `_signature` …), in Rust or in an embedded
+JavaScript engine. Request signatures with keys from a site's public
+scripts (WBI, an HMAC header) are fine. When an API needs such a token
+or only answers a real browser, declare `Platform::BROWSER_TAB` and let
+the site's own page make the request through `Ctx::tab`: `Tab::fetch`
+from a page of the site, or `Tab::capture` of a request the page makes
+itself. Keep plain HTTP for whatever answers it. Read answers with
+`Answer::json`, which turns checks, login walls and other pages into
+errors, never into data.
 
 ## Documentation
 

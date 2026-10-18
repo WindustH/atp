@@ -263,7 +263,8 @@ impl Http {
     tokio::time::sleep(Duration::from_millis(ms)).await;
   }
 
-  async fn throttle(&self) {
+  /// Wait until the platform's pacing allows the next request.
+  pub(crate) async fn throttle(&self) {
     if self.min_interval.is_zero() {
       return;
     }
@@ -279,6 +280,12 @@ impl Http {
         tokio::time::sleep(self.min_interval - elapsed + Duration::from_millis(jitter)).await;
       }
     }
+  }
+
+  /// Count a request sent another way (through a browser tab) for the
+  /// pacing.
+  pub(crate) fn sent(&self) {
+    self.last.set(Some(Instant::now()));
   }
 
   fn absorb_cookies(&self, resp: &wreq::Response) {
