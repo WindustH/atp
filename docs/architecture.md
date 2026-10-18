@@ -34,11 +34,11 @@ one. Each platform crate re-exports its `Command` enum for `run_extra`.
 | Module | Role |
 | --- | --- |
 | `platform` | `Platform` trait; `cap` (capabilities), `info` (`PlatformInfo`, `Choices`, login ways), `request` (`PageReq`, `Query`, `Draft`, `Edit`, `Reply`, `Message`, `QrTicket`) |
-| `ctx` | `Ctx`: what a platform works with (HTTP client with the session cookies, files, session extras, login hints, `#N` resolution) |
+| `ctx` | `Ctx`: what a platform works with (HTTP client with the session cookies, files, session extras, login hints, `#N` resolution, `--coord` and `--site`) |
 | `model` | normalized `Post`, `User`, `Comment`, `Collection`, `Notification`, `FileEntry` (drives), `Page<T>`, `Action`, `AuthStatus`, `Insights`, `Transcript`, and `Data` (everything a command can print), one file per type |
 | `cli` | the shared commands, one module per area (`account`, `read`, `library`, `history`, `write`, `follows`, `folders`, `media`, `chat`) flattened into `CommonCommand`; per-platform clap command; global and paging options; questions on the terminal (`prompt`) |
 | `app` | top-level program, multi-call (`bili` symlink) |
-| `open` | platforms in Rust code: `open`, `Open` (cookies, proxy, timeout), `save_session` |
+| `open` | platforms in Rust code: `open`, `Open` (cookies, proxy, timeout, the site of `careers`), `save_session` |
 | `platforms` | `atp platforms`: one row per platform grouped by kind, `atp platforms <id>` in detail, the same data as JSON |
 | `account` | `login` (QR / token / browser / cookie string), `logout`, `status` |
 | `http` | Chrome-fingerprinted client (wreq), cookie jar, pacing, proxy; `request` (building, sending, retries, streaming), `response` |
@@ -106,6 +106,9 @@ A platform crate exports one type implementing `atp_core::Platform`:
   token instead.
 - `const COORD: Option<geo::System>`: map platforms name the coordinate
   system they work in; it is the default of the `--coord` option they get.
+- `const SITE: Option<&str>`: a platform reaching many sites through one
+  crate (companies' career sites, `careers`) gets a global `--site`
+  option with this help; its value is `Ctx::site`.
 - `const FOLLOWING_SORT` / `FOLLOW_GROUP_SORT`: the values of
   `following --sort` and `follow-group --sort` (`recent`, `oldest`,
   `smart`, `visited`); empty hides the option. `following_with` takes

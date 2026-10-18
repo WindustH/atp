@@ -17,6 +17,9 @@ pub struct Ctx {
   /// Map platforms: the system of the points users give and of the
   /// points printed (`--coord`); `None` elsewhere.
   pub coord: Option<System>,
+  /// Platforms reaching many sites: the site named by `--site`; `None`
+  /// elsewhere and when it is not given.
+  pub site: Option<String>,
   extra: RefCell<BTreeMap<String, String>>,
   extra_changed: Cell<bool>,
 }
@@ -33,6 +36,7 @@ impl Ctx {
       http,
       store,
       coord: None,
+      site: None,
       extra: RefCell::new(extra),
       extra_changed: Cell::new(false),
     }

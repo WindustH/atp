@@ -40,6 +40,11 @@ pub trait Platform: Sized {
   /// `--coord`.
   const COORD: Option<crate::geo::System> = None;
 
+  /// Platforms reaching many sites through one crate (companies' career
+  /// sites): the help of a global `--site` option, whose value lands in
+  /// [`Ctx::site`](crate::Ctx). `None` (the default) adds no `--site`.
+  const SITE: Option<&'static str> = None;
+
   /// Values of `following --sort`, the plain order first: `recent` (latest
   /// follow first), `oldest`, `smart` (the platform's own mix), `visited`
   /// (most visited). Empty (the default) hides the option.

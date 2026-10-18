@@ -49,10 +49,12 @@ fn arguments(cmd: &Command) -> String {
   section("Arguments", &lines)
 }
 
-/// Global options a platform adds itself (`--coord` of map platforms),
-/// listed with the command's own.
+/// Global options a platform adds itself (`--coord` of map platforms,
+/// `--site` of career sites), listed with the command's own.
 fn platform_global(a: &Arg) -> bool {
-  a.is_global_set() && !a.is_hide_set() && a.get_id() == crate::cli::COORD
+  a.is_global_set()
+    && !a.is_hide_set()
+    && [crate::cli::COORD, crate::cli::SITE].contains(&a.get_id().as_str())
 }
 
 fn options(cmd: &Command) -> String {

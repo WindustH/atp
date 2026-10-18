@@ -194,6 +194,9 @@ pub fn command<P: Platform>() -> clap::Command {
   if let Some(system) = P::COORD {
     cmd = cmd.arg(coord_arg(system));
   }
+  if let Some(help) = P::SITE {
+    cmd = cmd.arg(site_arg(help));
+  }
   cmd
 }
 
@@ -242,6 +245,18 @@ fn coord_arg(default: System) -> clap::Arg {
 
 /// Id of `--coord`.
 pub(crate) const COORD: &str = "coord";
+
+/// `--site` of platforms reaching many sites, on every command.
+fn site_arg(help: &'static str) -> clap::Arg {
+  clap::Arg::new(SITE)
+    .long(SITE)
+    .global(true)
+    .value_name("SITE")
+    .help(help)
+}
+
+/// Id of `--site`.
+pub(crate) const SITE: &str = "site";
 
 /// On a drive the shared commands handle files, not posts.
 fn drive_words(cmd: clap::Command, id: &str) -> clap::Command {
@@ -373,6 +388,8 @@ async fn attempt<P: Platform>(
   let mut ctx = Ctx::new(info, http, store, loaded.session.extra.clone());
   // Only map platforms define `--coord` (asking clap for it elsewhere panics).
   ctx.coord = P::COORD.and_then(|_| matches.get_one::<System>(COORD).copied());
+  // Likewise `--site`.
+  ctx.site = P::SITE.and_then(|_| matches.get_one::<String>(SITE).cloned());
   let coord = ctx.coord;
   let platform = P::new(ctx)?;
 

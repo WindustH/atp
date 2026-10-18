@@ -32,6 +32,7 @@ pub struct Open {
   proxy: Option<String>,
   timeout: Duration,
   interval: Option<Duration>,
+  site: Option<String>,
 }
 
 impl Default for Open {
@@ -42,6 +43,7 @@ impl Default for Open {
       proxy: None,
       timeout: Duration::from_secs(30),
       interval: None,
+      site: None,
     }
   }
 }
@@ -84,6 +86,13 @@ impl Open {
     self
   }
 
+  /// The site of a platform reaching many sites (`--site` of `careers`:
+  /// `bytedance`, or a career site's link).
+  pub fn site(mut self, site: impl Into<String>) -> Self {
+    self.site = Some(site.into());
+    self
+  }
+
   /// Open platform `P` with these settings.
   pub fn platform<P: Platform>(&self) -> Result<P> {
     let info = P::INFO;
@@ -106,7 +115,9 @@ impl Open {
         .map_or(info.min_interval, |d| d.max(info.min_interval)),
     };
     let http = Http::new(&config, session.cookies)?;
-    P::new(Ctx::new(info, http, store, session.extra))
+    let mut ctx = Ctx::new(info, http, store, session.extra);
+    ctx.site = self.site.clone();
+    P::new(ctx)
   }
 }
 
