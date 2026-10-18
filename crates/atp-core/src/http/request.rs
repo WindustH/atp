@@ -57,6 +57,7 @@ pub struct Req<'a> {
   body: Body,
   cookies: bool,
   throttle: bool,
+  redirects: bool,
   retries: u32,
   timeout: Option<Duration>,
 }
@@ -74,6 +75,7 @@ impl<'a> Req<'a> {
       body: Body::Empty,
       cookies: true,
       throttle: true,
+      redirects: true,
       retries,
       timeout: None,
     }
@@ -155,6 +157,14 @@ impl<'a> Req<'a> {
   /// Skip the per-platform pacing for this request.
   pub fn no_throttle(mut self) -> Self {
     self.throttle = false;
+    self
+  }
+
+  /// Answer with a redirect instead of following it (`status` 3xx, the
+  /// `location` header), for redirects that mean "not here" and lead to
+  /// pages ATP should not fetch.
+  pub fn no_redirects(mut self) -> Self {
+    self.redirects = false;
     self
   }
 
@@ -319,8 +329,8 @@ impl<'a> Req<'a> {
         self.http.absorb_cookies(&resp);
       }
       match hop.next(&resp, &origin) {
-        Some(next) => hop = next,
-        None => return Ok(Ok(resp)),
+        Some(next) if self.redirects => hop = next,
+        _ => return Ok(Ok(resp)),
       }
     }
     Err(Error::network(format!(
