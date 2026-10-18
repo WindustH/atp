@@ -154,6 +154,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | 1Point3Acres 一亩三分地 | `1point3acres` | 面经, 内推 and life abroad: hot and newest threads, boards by thread type, threads with their replies, hiring posts with company, place and pay; search, profiles and replying with a login | browser |
 | | 51job 前程无忧 | `51job` | job search with city, pay, experience, degree, company and job type filters, whole descriptions in the results, job and company pages; reads through Chrome, Chromium, Edge or Brave | not needed |
 | | BOSS Zhipin BOSS直聘 | `boss` | hot jobs of its city pages; with a login (not yet tried with an account): saved jobs, followed companies, applications, interviews, recruiter chats, applying one job at a time; the job search and job and company pages (read through Chrome, Chromium, Edge or Brave) are currently blocked by the site's check | QR, browser |
+| | Proginn 程序员客栈 | `proginn` | remote and on-site freelance jobs for developers with city and role filters, job pages with the whole description; with a login (not yet tried with an account): unread counts, applying one job at a time | browser |
 
 ## Quick start
 

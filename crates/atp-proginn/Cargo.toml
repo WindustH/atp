@@ -1,0 +1,13 @@
+[package]
+name = "atp-proginn"
+description = "Proginn (程序员客栈) support for all-the-platforms: remote and on-site developer jobs with the job board's filters, job pages, and applying from a logged-in session"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+jiff.workspace = true
+serde_json.workspace = true
+url.workspace = true

@@ -422,6 +422,7 @@ dependencies = [
  "atp-onebot",
  "atp-pinduoduo",
  "atp-podcast",
+ "atp-proginn",
  "atp-qq",
  "atp-qqmusic",
  "atp-quark",
@@ -1183,6 +1184,17 @@ dependencies = [
  "jiff",
  "serde_json",
  "sha1 0.10.7",
+ "url",
+]
+
+[[package]]
+name = "atp-proginn"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "serde_json",
  "url",
 ]
 

@@ -76,6 +76,7 @@ fn main() -> ExitCode {
   .platform::<atp_1point3acres::OnePoint3Acres>()
   .platform::<atp_51job::FiftyOneJob>()
   .platform::<atp_boss::Boss>()
+  .platform::<atp_proginn::Proginn>()
   .platform::<atp_bangumi::Bangumi>()
   .platform::<atp_douban::Douban>()
   .platform::<atp_weread::WeRead>()

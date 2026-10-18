@@ -137,6 +137,8 @@ pub use atp_51job as fiftyonejob;
 pub use atp_pinduoduo as pinduoduo;
 #[cfg(feature = "podcast")]
 pub use atp_podcast as podcast;
+#[cfg(feature = "proginn")]
+pub use atp_proginn as proginn;
 #[cfg(feature = "qq")]
 pub use atp_qq as qq;
 #[cfg(feature = "qqmusic")]
