@@ -80,6 +80,8 @@ pub use atp_eleduck as eleduck;
 pub use atp_facebook as facebook;
 #[cfg(feature = "feishu")]
 pub use atp_feishu as feishu;
+#[cfg(feature = "forem")]
+pub use atp_forem as forem;
 #[cfg(feature = "googlemaps")]
 pub use atp_googlemaps as googlemaps;
 #[cfg(feature = "hackernews")]

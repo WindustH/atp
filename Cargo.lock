@@ -397,6 +397,7 @@ dependencies = [
  "atp-eleduck",
  "atp-facebook",
  "atp-feishu",
+ "atp-forem",
  "atp-googlemaps",
  "atp-hackernews",
  "atp-instagram",
@@ -817,6 +818,18 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "atp-forem"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "serde_json",
+ "tokio",
+ "url",
 ]
 
 [[package]]

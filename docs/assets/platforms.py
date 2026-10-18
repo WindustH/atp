@@ -111,6 +111,7 @@ GROUPS = [
         ("lobsters", "Lobsters", "Lobsters", "lobsters", "#AC130D"),
         ("v2ex", "V2EX", "V2EX", "v2ex", "#1F1F1F"),
         ("juejin", "掘金", "Juejin", "juejin", "#007FFF"),
+        ("forem", "dev.to", "Forem", "devdotto", "#0A0A0A"),
     ]),
     ("求职招聘", "JOBS", [
         ("eleduck", "电鸭社区", "Eleduck", "app:1536307730", ""),

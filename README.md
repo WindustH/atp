@@ -143,6 +143,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Lobsters | `lobsters` | hottest, newest and active stories, comment threads, tags, search | not needed |
 | | V2EX | `v2ex` | hot and latest topics, replies, members, nodes, notifications | token |
 | | Juejin 掘金 | `juejin` | articles as text, pins, hot ranking, comments with replies, users, likes, collection sets, daily check-in | browser |
+| | DEV / Forem | `forem` | articles with their Markdown, popular, top and latest lists, tags, comment threads, users; publishing, drafts and editing with an API key; dev.to or any Forem community | not needed, API key |
 | Jobs | Eleduck 电鸭社区 | `eleduck` | remote and part-time jobs with tag filters, pay read from titles, discussions, comments, your applications | QR, browser, token |
 | | Liepin 猎聘 | `liepin` | job search with city, pay, experience and industry filters, job and company pages, saved jobs, applying one job at a time, recruiter chats | QR, browser |
 | | Zhilian 智联招聘 | `zhilian` | job search with city, pay, experience, degree and job type filters, whole descriptions in the results, job and company pages, applying one job at a time | browser |

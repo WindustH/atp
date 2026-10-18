@@ -29,7 +29,8 @@ one of them.
   directory, show feeds, Podcast Index), `xiaoyuzhou` (Xiaoyuzhou 小宇宙,
   read-only).
 - Developer communities: `so` (Stack Overflow and every Stack Exchange
-  site), `hn` (Hacker News), `lobsters`, `v2ex`, `juejin` (Juejin 掘金).
+  site), `hn` (Hacker News), `lobsters`, `v2ex`, `juejin` (Juejin 掘金),
+  `forem` (DEV / dev.to and any other Forem community).
 - Jobs and careers: `eleduck` (Eleduck 电鸭社区, remote and part-time
   work), `liepin` (Liepin 猎聘), `zhilian` (Zhilian 智联招聘), `nowcoder`
   (Nowcoder 牛客, campus hiring, internships, 面经), `shixiseng`
