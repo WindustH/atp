@@ -40,8 +40,9 @@ one of them.
   `linkedin` (LinkedIn's jobs and companies, read-only, without an
   account), `1point3acres` (1Point3Acres 一亩三分地, 面经, 内推 and life
   abroad), `51job` (51job 前程无忧, read through Chrome, Chromium, Edge
-  or Brave), `boss` (BOSS Zhipin BOSS直聘, its hot jobs; the search and
-  job pages read through Chrome, Chromium, Edge or Brave).
+  or Brave), `boss` (BOSS Zhipin BOSS直聘: its hot jobs; the search and
+  job pages, read through a browser, are currently blocked by the site's
+  check).
 
 Chat apps share `chats`, `messages`, `send`, `members`, `react`, `edit` and
 `listen` (see `atp guide interact`); `edit` also changes published posts

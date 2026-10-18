@@ -9,7 +9,7 @@ use atp_core::{Error, ErrorCode, Result, Value, json};
 use jiff::Timestamp;
 use url::Url;
 
-use super::{Api, Call, ENVIRONMENT, STALE_TOKEN, WWW, ZP_TOKEN, check, code, encode};
+use super::{Api, Call, ENVIRONMENT, STALE_TOKEN, WWW, ZP_TOKEN, code, encode};
 
 /// The requests the search page makes for its job list: the search, and
 /// the recommendations it shows without search words.
@@ -21,6 +21,9 @@ const JOB_LISTS: &[&str] = &[
 const PAGE_TOKEN: &str = "(((window._PAGE || {}).token) || '').split('|')[0]";
 /// The address the tab shows.
 const WHERE: &str = "location.href";
+/// The site's login page, where its security check sends a browser it
+/// does not let through.
+const LOGIN: &str = "/web/user/";
 /// Marks of the site's security page and of the pages it sends the
 /// browser back to.
 const CHECKING: &[&str] = &["/security", "_security_check", "safe-validate", "/verify"];
@@ -31,11 +34,18 @@ fn path(url: &str) -> Option<String> {
 }
 
 impl Api {
+  /// The platform's tab, noting whether it found a display for its window.
+  async fn tab(&self) -> Result<Tab<'_>> {
+    let tab = self.ctx.tab().await?;
+    self.no_display.set(tab.no_display());
+    Ok(tab)
+  }
+
   /// The job list the search page `url` asks for when it opens. The
   /// first visit may meet the environment check (37) while the page's
   /// scripts set their cookie; the page is opened once more then.
   pub async fn jobs(&self, url: &str) -> Result<Value> {
-    let tab = self.ctx.tab().await?;
+    let tab = self.tab().await?;
     let mut v = self.list(&tab, url).await?;
     if code(&v) == Some(ENVIRONMENT) {
       v = self.list(&tab, url).await?;
@@ -57,7 +67,7 @@ impl Api {
   /// `script`. The page's own document is waited for, past the site's
   /// security page if it shows first.
   pub async fn page(&self, url: &str, script: &str) -> Result<Value> {
-    let tab = self.ctx.tab().await?;
+    let tab = self.tab().await?;
     let wanted = path(url);
     let answer = match tab.capture(Trigger::Goto(url), |u| path(u) == wanted).await {
       Ok(answer) => answer,
@@ -70,10 +80,10 @@ impl Api {
 
   /// What a page `url` that did not answer stands for. The site's
   /// security page, when its check fails, sends the browser on to the
-  /// page again (`_security_check`), to itself or to the home page: the
-  /// tab showing one of those, or anything but `url`, is the check
-  /// turning the browser away (`verification_required` with `url`, for
-  /// the person to open in a window); otherwise the error as it is.
+  /// page again (`_security_check`), to itself, to the home page or to the
+  /// login page: the tab showing one of those, or anything but `url`, is
+  /// the check turning the browser away (`verification_required` with
+  /// `url`); otherwise the error as it is.
   async fn missed(&self, tab: &Tab<'_>, error: Error, url: &str) -> Error {
     if !matches!(
       error.code,
@@ -86,11 +96,17 @@ impl Api {
     };
     let at = at.as_str().unwrap_or_default();
     let elsewhere = path(at) != path(url);
-    if elsewhere || CHECKING.iter().any(|mark| at.contains(mark)) {
-      return check(
+    if at.contains(LOGIN) {
+      return self.turned_away(
         url,
-        "the site's security check kept turning ATP's browser away (it runs without a window, \
-         as HeadlessChrome)",
+        "the site's security check did not let ATP's browser through and sent it to the login \
+         page",
+      );
+    }
+    if elsewhere || CHECKING.iter().any(|mark| at.contains(mark)) {
+      return self.turned_away(
+        url,
+        "the site's security check kept sending ATP's browser back instead of the page",
       );
     }
     error
@@ -100,7 +116,7 @@ impl Api {
   /// (122) is renewed and the environment check (37) given one more load
   /// of the page, each once.
   pub async fn in_tab(&self, call: &Call<'_>) -> Result<Value> {
-    let tab = self.ctx.tab().await?;
+    let tab = self.tab().await?;
     let mut v = self.send(&tab, call).await?;
     match code(&v) {
       Some(STALE_TOKEN) => {

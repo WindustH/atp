@@ -36,6 +36,7 @@ use std::cell::{Cell, RefCell};
 use std::time::Duration;
 
 use atp_core::http::{Method, Resp};
+use atp_core::tab::NO_DISPLAY;
 use atp_core::text::encode_uri_component;
 use atp_core::{Ctx, Error, ErrorCode, Result, Value, ValueExt, json};
 use jiff::Timestamp;
@@ -73,6 +74,8 @@ pub struct Api {
   pub ctx: Ctx,
   /// Whether the tab shows a page of the site.
   opened: Cell<bool>,
+  /// Whether the tab wanted a window but found no display.
+  no_display: Cell<bool>,
   /// The `token` header of requests made in the tab: the page's token,
   /// once read.
   token: RefCell<Option<String>>,
@@ -85,6 +88,7 @@ impl Api {
     Self {
       ctx,
       opened: Cell::new(false),
+      no_display: Cell::new(false),
       token: RefCell::new(None),
       me: RefCell::new(None),
     }
@@ -262,11 +266,11 @@ impl Api {
         };
         Error::auth(format!("{text}; {why}")).with_hint(self.ctx.login_hint())
       }
-      ENVIRONMENT => check(
+      ENVIRONMENT => self.turned_away(
         page,
         &format!("the site's environment check did not let the request through ({message})"),
       ),
-      5012 => check(SAFE_VALIDATE, "the site asks for its captcha (安全验证)"),
+      5012 => self.check(SAFE_VALIDATE, "the site asks for its captcha (安全验证)"),
       9 => Error::new(ErrorCode::RateLimited, format!("{text}: too many requests"))
         .with_hint("wait a while before the next command; ATP does not retry"),
       24 => Error::new(
@@ -294,13 +298,36 @@ fn encode(pairs: &[(&str, String)]) -> String {
     .join("&")
 }
 
-/// A page answering ATP's browser in place of its data, for the person
-/// to pass in a window of that browser.
-fn check(page: &str, what: &str) -> Error {
-  Error::verification(format!("BOSS Zhipin: {what}"))
-    .with_url(page)
-    .with_hint(
+impl Api {
+  /// The site's security check turning ATP's browser away. It checks the
+  /// browser, not a person: Chrome driven over DevTools reports itself
+  /// automated (`navigator.webdriver`) in a window too, so passing the
+  /// page by hand in ATP's window is not offered (`unclearable`).
+  pub fn turned_away(&self, page: &str, what: &str) -> Error {
+    let hint = if self.no_display.get() {
+      NO_DISPLAY
+    } else {
+      "the site turns away the browser ATP drives over DevTools (it reports itself automated, \
+       with or without a window), and ATP does not disguise it; `hot` works without it"
+    };
+    Error::verification(format!("BOSS Zhipin: {what}"))
+      .with_url(page)
+      .with_hint(hint)
+      .unclearable()
+  }
+
+  /// A page answering ATP's browser in place of its data, for the person
+  /// to pass in a window of that browser; or, when the tab found no
+  /// display for its window, the reason it may have been turned away.
+  fn check(&self, page: &str, what: &str) -> Error {
+    let hint = if self.no_display.get() {
+      NO_DISPLAY
+    } else {
       "run the command on a terminal (without --no-verify): ATP opens the page in a window of \
-       its browser, where the site's own scripts finish; pass any check yourself, then press Enter",
-    )
+       its browser, where the site's own scripts finish; pass any check yourself, then press Enter"
+    };
+    Error::verification(format!("BOSS Zhipin: {what}"))
+      .with_url(page)
+      .with_hint(hint)
+  }
 }

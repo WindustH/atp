@@ -11,10 +11,12 @@ The site's job search and job pages answer only requests carrying a
 cookie its own security script computes in the page (`__zp_stoken__`, a
 scrambled program that reads the browser it runs in). ATP never runs,
 copies or computes that script. It starts Chrome, Chromium, Edge or
-Brave on your machine, without a window, lets the site's search page or
-job page load there with its scripts, and reads what the page asked for
-or shows (`atp guide login` explains the browser ATP uses for human
-checks). See Risk control for how the site has answered that browser.
+Brave on your machine, lets the site's search page or job page load
+there with its scripts, and reads what the page asked for or shows. When
+this was written the site's check turned that browser away every time,
+with and without a window, so the search, job pages and company pages
+are blocked (see Risk control); `hot` reads the site's city pages without
+the browser.
 
 ## Logging in
 
@@ -44,7 +46,8 @@ which ATP reports as `permission_denied`; switch roles in the BOSS app.
 ### Without an account
 
 `hot`, `cities` and `industries`; `search`, `jobs`, `read`, `user` and
-`user-posts` through the browser (see Risk control). The site shows a
+`user-posts` through the browser, currently blocked by the site's check
+(see Risk control). The site shows a
 search's first 15 jobs to visitors; its search page asks for further
 pages only with a login.
 
@@ -78,30 +81,31 @@ pages do) and the hint to log in again.
   site's cookies and storage last; `atp boss logout` deletes it with the
   session. Two atp runs at once: the second uses an empty profile.
 - It goes through ATP's proxy (`--proxy`, `ATP_PROXY`, `HTTPS_PROXY`).
-- The browser is used as it is: it tells pages it is HeadlessChrome and
-  automated (`navigator.webdriver`), as Chrome without a window does;
-  ATP hides nothing and adds nothing to the site's pages.
+- It runs without a window (`--browser-window always` opens a small one;
+  `atp guide config`). The browser is used as it is: without a window it
+  names itself HeadlessChrome, and driven over DevTools it tells pages it
+  is automated (`navigator.webdriver`) with a window too; ATP hides
+  nothing and adds nothing to the site's pages.
 
 ### Risk control
 
 - When this was written (October 2026), the site's security check
-  turned the browser without a window away every time: the search
+  turned ATP's browser away every time. Without a window: the search
   page's request got the environment check (code 37, 您的环境存在异常),
   the site's security page (请稍候) ran its script and sent the browser
   back to the search, which got the check again, until the site showed
-  its home page. ATP reports this as `verification_required` with the
-  page after about 30 s. The check most likely reads the browser's
-  HeadlessChrome name and automation flag, which ATP does not disguise.
-  So `search`, `jobs`, `read`, `user` and `user-posts` have not been
-  seen working.
-- On a terminal (without `--no-verify`), ATP then opens the page in a
-  window of the same browser, on the same profile, where the site's
-  scripts run as in any browser; press Enter and the command runs again
-  without a window. Whether the site then lets the windowless browser
-  through, with the cookie its script set in the window, has not been
-  seen.
-- The site's captcha page (安全验证, code 5012) is reported the same
-  way; ATP never solves it.
+  its home page. In a window (`--browser-window always`, the browser's
+  usual user agent, on a fresh profile): the security page ran twice,
+  then the site sent the browser to its login page. In both, Chrome told
+  the page it is automated (`navigator.webdriver`), as Chrome driven over
+  DevTools does, window or not; ATP does not disguise that. So `search`,
+  `jobs`, `read`, `user` and `user-posts` are blocked: after about 30 s
+  ATP reports `verification_required` with the page. The check tests
+  the browser, not a person, so ATP opens no window for you to pass it.
+  Whether a logged-in session fares better has not been seen.
+- The site's captcha page (安全验证, code 5012) is reported as
+  `verification_required`, and on a terminal ATP opens it in a window
+  of its browser for you; ATP never solves it.
 - ATP keeps at least 5 s between requests and page loads. Too many
   requests get code 9 (`rate_limited`); ATP does not retry, wait a
   while. Saving, following and applying wait 2 to 5 s more.
@@ -145,7 +149,8 @@ cookies; their cards carry no pay. Seen working.
 
 `search WORDS` searches jobs all over China (全国), 15 a page, in the
 site's order; `--filter full-time|part-time` keeps one kind of job.
-`jobs` narrows further. Read through the browser (see Risk control).
+`jobs` narrows further. Read through the browser: currently blocked by
+the site's check (see Risk control).
 
 ### jobs
 
@@ -194,20 +199,21 @@ groups, for `jobs --industry`.
 A job's page: the title, pay, city, experience, degree, the whole
 description, skills and benefits (as tags), the address and the company
 with its industry, funding stage and size. Job pages first pass the
-site's security page, which has turned the browser away (see Risk
-control); what `read` reads follows the page's markup as other tools
-read it and has not been seen working.
+site's security page, which has turned the browser away: currently
+blocked (see Risk control). What `read` reads follows the page's markup
+as other tools read it and has not been seen working.
 
 ### user
 
 `user COMPANY` reads a company's page: name, logo, funding stage, size,
-industry, introduction and address. Like `read`, it has not been seen
-working.
+industry, introduction and address. Like `read`, it is currently
+blocked and has not been seen working.
 
 ### user-posts
 
 `user-posts COMPANY` lists the jobs of the company's page of jobs, as one
-page. Like `read`, it has not been seen working.
+page. Like `read`, it is currently blocked and has not been seen
+working.
 
 ### favorites
 
@@ -229,7 +235,9 @@ size and benefits (needs a login). The site shows no one else's.
 ### follow, unfollow
 
 Follow a company (收藏) or leave it, as the 收藏 button of your list of
-companies does (needs a login).
+companies does (needs a login). The button's code sends `flag` 0 to
+follow and 1 to leave, the other way round from saving jobs; ATP follows
+that reading, which has not been tried with an account.
 
 ### chatted
 
@@ -291,9 +299,9 @@ dates.
 ## Limits
 
 - The job search, job pages and company pages are read through a
-  browser without a window, which the site's security check has turned
-  away (see Risk control); `hot` is what has been seen working without
-  an account.
+  browser, which the site's security check has turned away with and
+  without a window (see Risk control); `hot` is what has been seen
+  working without an account.
 - Nothing that needs a login has been tried with a real account.
 - Sending messages is not offered: the site's chat sends over its own
   socket protocol. Neither are exchanging phone numbers or WeChat ids,

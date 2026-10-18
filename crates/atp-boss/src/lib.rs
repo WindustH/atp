@@ -82,6 +82,8 @@ impl Platform for Boss {
     guide: include_str!("../GUIDE.md"),
   };
 
+  // No TAB_WINDOW: the site's check turned the browser away in a window
+  // too (Chrome reports navigator.webdriver when driven over DevTools).
   const BROWSER_TAB: bool = true;
 
   type Extra = Command;
