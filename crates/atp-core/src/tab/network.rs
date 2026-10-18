@@ -88,11 +88,13 @@ impl Watch {
           let Some(response) = self.wanted.remove(&id) else {
             continue;
           };
-          let answer = finished(tab, inner, &id, &response, params).await?;
-          if answer.check().is_none() {
-            return Ok(answer);
+          match finished(tab, inner, &id, &response, params).await {
+            Ok(answer) if answer.check().is_none() => return Ok(answer),
+            Ok(answer) => self.check = Some(answer),
+            // The page went on to another document before its answer
+            // could be read; it may ask again from there.
+            Err(e) => self.failed = Some(e.message),
           }
-          self.check = Some(answer);
         }
         Some("Network.loadingFailed")
           if self.wanted.remove(&id).is_some() && params.bool("canceled") != Some(true) =>
