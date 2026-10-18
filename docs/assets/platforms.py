@@ -120,6 +120,7 @@ GROUPS = [
         ("ncss", "国家大学生就业服务平台", "NCSS", "url:https://t3.chei.com.cn/ncss/favicon.ico", ""),
         ("yingjiesheng", "应届生求职网", "Yingjiesheng", "app:1232983203", ""),
         ("careers", "校招官网", "Career sites", "briefcase", "#3370FF"),
+        ("linkedin", "LinkedIn", "LinkedIn", "app:288429040@us", ""),
     ]),
 ]
 

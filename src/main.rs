@@ -72,6 +72,7 @@ fn main() -> ExitCode {
   .platform::<atp_ncss::Ncss>()
   .platform::<atp_yingjiesheng::Yingjiesheng>()
   .platform::<atp_careers::Careers>()
+  .platform::<atp_linkedin::LinkedIn>()
   .platform::<atp_bangumi::Bangumi>()
   .platform::<atp_douban::Douban>()
   .platform::<atp_weread::WeRead>()

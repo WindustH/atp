@@ -34,7 +34,9 @@ one of them.
   national job board for graduates, job fairs), `yingjiesheng`
   (Yingjiesheng 应届生求职网, campus recruitment talks), `careers`
   (companies' own career sites: ByteDance, Tencent, Alibaba, Meituan,
-  Kuaishou, and Feishu Hire, Beisen and Moka sites by their link).
+  Kuaishou, and Feishu Hire, Beisen and Moka sites by their link),
+  `linkedin` (LinkedIn's jobs and companies, read-only, without an
+  account).
 
 Chat apps share `chats`, `messages`, `send`, `members`, `react`, `edit` and
 `listen` (see `atp guide interact`); `edit` also changes published posts

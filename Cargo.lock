@@ -405,6 +405,7 @@ dependencies = [
  "atp-lemmy",
  "atp-liepin",
  "atp-line",
+ "atp-linkedin",
  "atp-lobsters",
  "atp-mastodon",
  "atp-matrix",
@@ -927,6 +928,18 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "atp-linkedin"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "regex",
+ "serde_json",
+ "url",
 ]
 
 [[package]]

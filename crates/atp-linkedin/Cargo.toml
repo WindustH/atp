@@ -1,0 +1,14 @@
+[package]
+name = "atp-linkedin"
+description = "LinkedIn jobs for all-the-platforms: the job search with LinkedIn's filters, job pages, companies and their open jobs, read as a guest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+jiff.workspace = true
+regex.workspace = true
+serde_json.workspace = true
+url.workspace = true

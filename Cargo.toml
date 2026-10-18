@@ -108,6 +108,7 @@ atp-zhilian = { path = "crates/atp-zhilian" }
 atp-shixiseng = { path = "crates/atp-shixiseng" }
 atp-yingjiesheng = { path = "crates/atp-yingjiesheng" }
 atp-careers = { path = "crates/atp-careers" }
+atp-linkedin = { path = "crates/atp-linkedin" }
 
 aes = "0.8"
 base64 = "0.22"
@@ -208,6 +209,7 @@ all = [
   "shixiseng",
   "yingjiesheng",
   "careers",
+  "linkedin",
 ]
 zhihu = ["dep:atp-zhihu"]
 xhs = ["dep:atp-xhs"]
@@ -284,6 +286,7 @@ zhilian = ["dep:atp-zhilian"]
 shixiseng = ["dep:atp-shixiseng"]
 yingjiesheng = ["dep:atp-yingjiesheng"]
 careers = ["dep:atp-careers"]
+linkedin = ["dep:atp-linkedin"]
 
 [dependencies]
 atp-core.workspace = true
@@ -362,6 +365,7 @@ atp-zhilian = { workspace = true, optional = true }
 atp-shixiseng = { workspace = true, optional = true }
 atp-yingjiesheng = { workspace = true, optional = true }
 atp-careers = { workspace = true, optional = true }
+atp-linkedin = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio.workspace = true
