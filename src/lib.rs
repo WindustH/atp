@@ -138,6 +138,8 @@ pub use atp_rocketchat as rocketchat;
 pub use atp_rss as rss;
 #[cfg(feature = "satori")]
 pub use atp_satori as satori;
+#[cfg(feature = "shixiseng")]
+pub use atp_shixiseng as shixiseng;
 #[cfg(feature = "slack")]
 pub use atp_slack as slack;
 #[cfg(feature = "spotify")]

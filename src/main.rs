@@ -68,6 +68,7 @@ fn main() -> ExitCode {
   .platform::<atp_liepin::Liepin>()
   .platform::<atp_zhilian::Zhilian>()
   .platform::<atp_nowcoder::Nowcoder>()
+  .platform::<atp_shixiseng::Shixiseng>()
   .platform::<atp_ncss::Ncss>()
   .platform::<atp_bangumi::Bangumi>()
   .platform::<atp_douban::Douban>()

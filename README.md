@@ -146,6 +146,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Liepin 猎聘 | `liepin` | job search with city, pay, experience and industry filters, job and company pages, saved jobs, applying one job at a time, recruiter chats | QR, browser |
 | | Zhilian 智联招聘 | `zhilian` | job search with city, pay, experience, degree and job type filters, whole descriptions in the results, job and company pages, applying one job at a time | browser |
 | | Nowcoder 牛客 | `nowcoder` | campus, internship and experienced jobs with city, career, graduation year and pay filters, the 校招 schedule with referral codes and application links, 面经, posts, comments, saved jobs, your applications | QR, browser, token |
+| | Shixiseng 实习僧 | `shixiseng` | internships with city, days a week, months, degree, pay and return-offer filters, campus jobs, job and company pages, saved jobs, your applications, applying one job at a time | QR, browser |
 | | NCSS 国家大学生就业服务平台 | `ncss` | the national job board for graduates with area, type, pay, degree, category, industry and source filters, job and company pages, job fairs with their jobs and companies, saving jobs, applying one job at a time | browser |
 
 ## Quick start
