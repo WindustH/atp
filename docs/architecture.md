@@ -57,6 +57,7 @@ one. Each platform crate re-exports its `Command` enum for `run_extra`.
 | `text` | counts (`1.2万`), durations, truncation, HTML to text, timestamps |
 | `feed` | web feeds for platforms that read them (podcasts, RSS): RSS 0.9x–2.0, Atom and JSON Feed through feed-rs into a `Feed` whose entries are posts (enclosures as media, iTunes episode data in `extra`); `get` fetches as feed readers do (a declared client, `If-None-Match` / `If-Modified-Since` against a private cached copy), `load` also follows a web page to the feed it announces (`discover`); `FEED_URL#ENTRY_ID` entry references (`entry_ref`, `split_entry_ref`) |
 | `music` | what music platforms share: `Lyrics` (LRC with its translation, as plain text or LRC) and track lists inside a post (`with_tracks`) |
+| `jobs` | what job platforms share: `Salary`, the pay of a job read from the text a platform shows (`parse`) or found in a title (`in_text`, conservative), with its figures per `Period` (hour, day, month, year), written into the job keys of `Post.extra` (`fill`) |
 | `browser` | import cookies from local browsers (`browser` feature, on by default) |
 | `credentials` | environment variables, `login --token` fields, credentials saved in the session, instance hosts (`host`) |
 | `token` | `AccessToken`: expiring access tokens cached in memory and in the private cache |

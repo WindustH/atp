@@ -203,10 +203,10 @@ Jobs (`kind: job`) carry the job keys every job platform uses in
 - `company`: the employer as shown (the `author` is the company, with
   its page when the site links one; headhunter jobs often hide it);
 - `salary` as shown (`50-80k·24薪`, `250-300元/天`, `面议`), with
-  `salary_min`, `salary_max` (per month), `salary_currency` (CNY) and
-  `salary_months` (24 for `·24薪`) when the pay is monthly or yearly
-  (yearly pay is divided by the months paid, 12 unless the text says);
-  daily and hourly pay keep only `salary`;
+  `salary_min` and `salary_max` per `salary_period` (`month` for
+  `50-80k`, `day` for `250-300元/天`, `year` for `20-40万/年`),
+  `salary_currency` (CNY) and `salary_months` (24 for `·24薪`) when it
+  names figures; weekly pay keeps only `salary`;
 - `city` (with the district, `北京-海淀区`), `experience`, `degree`, and
   `job_type: intern` for internships.
 

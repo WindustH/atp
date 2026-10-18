@@ -581,6 +581,7 @@ dependencies = [
  "owo-colors",
  "qrcode",
  "rand 0.9.5",
+ "regex",
  "rookie",
  "rqrr",
  "serde",
@@ -724,7 +725,6 @@ dependencies = [
  "atp-core",
  "clap",
  "jiff",
- "regex",
  "serde_json",
  "url",
 ]

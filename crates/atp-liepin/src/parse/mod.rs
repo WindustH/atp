@@ -9,11 +9,11 @@
 
 mod chats;
 mod page;
-mod salary;
 
 pub use chats::{chat, message};
 pub use page::{company, config, job};
 
+use atp_core::jobs::Salary;
 use atp_core::model::Extra;
 use atp_core::text::{from_beijing, from_unix, parse_time};
 use atp_core::{Post, User, Value, ValueExt, json};
@@ -181,7 +181,7 @@ pub fn card(v: &Value) -> Post {
 
 /// The job keys of a card's `job`: pay, city, experience, degree, kind.
 fn job_fields(extra: &mut Extra, job: &Value) {
-  if let Some(pay) = job.str("salary").as_deref().and_then(salary::parse) {
+  if let Some(pay) = job.str("salary").as_deref().and_then(Salary::parse) {
     pay.fill(extra);
   }
   for (key, path) in [
@@ -286,7 +286,7 @@ pub fn invitation(v: &Value) -> Post {
   if let Some(company) = v.str("company").filter(|c| !c.is_empty()) {
     extra.insert("company".into(), json!(company));
   }
-  if let Some(pay) = v.str("salary").as_deref().and_then(salary::parse) {
+  if let Some(pay) = v.str("salary").as_deref().and_then(Salary::parse) {
     pay.fill(extra);
   }
   if let Some(id) = v.str("jobId") {

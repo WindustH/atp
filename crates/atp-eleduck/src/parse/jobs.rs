@@ -7,11 +7,11 @@
 //! From them come `remote`, `job_type`, `city` and the platform's own
 //! `hire`, `role` and `fields`. Posts without a 工作方式 tag (the curated
 //! 精选职位推荐, `【免费推荐/全职远程】…`) are read from the words of their
-//! title. The pay comes from the title ([`super::salary`]).
+//! title. The pay comes from the title, read conservatively
+//! ([`Salary::in_text`]).
 
+use atp_core::jobs::Salary;
 use atp_core::{Post, Value, ValueExt, json};
-
-use super::salary;
 
 /// The tag of a group (by its code), as the site names it.
 fn tag(v: &Value, group: &str) -> Option<String> {
@@ -84,7 +84,7 @@ pub fn fill(post: &mut Post, v: &Value) {
   if !fields.is_empty() {
     extra.insert("fields".into(), json!(fields));
   }
-  if let Some(pay) = salary::parse(&title) {
+  if let Some(pay) = Salary::in_text(&title) {
     pay.fill(extra);
   }
 }

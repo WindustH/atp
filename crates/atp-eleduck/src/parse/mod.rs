@@ -8,7 +8,6 @@
 //! never passes them on.
 
 mod jobs;
-mod salary;
 
 use atp_core::text::{html_to_text, parse_time};
 use atp_core::{

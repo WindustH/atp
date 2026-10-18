@@ -4,6 +4,7 @@
 //! - [`model`]: normalized posts, users, comments ... printed the same way everywhere.
 //! - [`http`]: Chrome-fingerprinted HTTP with cookie jar, pacing and retries.
 //! - [`json`] / [`text`]: helpers for picking apart upstream payloads.
+//! - [`jobs`]: the pay of job posts, for job platforms.
 //! - [`app`] / [`cli`]: the shared command set and dispatch; [`output`]: tables and the JSON/YAML envelope.
 
 mod account;
@@ -21,6 +22,7 @@ pub mod file;
 pub mod geo;
 pub mod guide;
 pub mod http;
+pub mod jobs;
 pub mod json;
 pub mod live;
 mod mcp;

@@ -204,14 +204,14 @@ Job posts (`kind: job`) carry the job keys every job platform uses in
   without a 工作方式 tag (精选职位推荐) are read from the words of their
   title (远程, 全职, 兼职, 实习).
 - `city` from the 城市 tag (海外 for abroad; 其他 is left out).
-- `salary`, `salary_min`, `salary_max` (per month), `salary_currency` and
-  `salary_months` from the title, where it names the pay: `25K-35K`,
-  `$3000-$4000`, `年薪¥95W-150W`, `17-20W/年`, `15-25K·14薪`. Only amounts
-  with a unit or a currency in a range, or a currency or a word for pay
-  (年薪, 月薪, 底薪, 最高 …) next to them, count; pay named only in the text
-  is not read. Annual pay is divided by the months paid (12 unless the
-  title says), and amounts from 100,000 up without a period are taken as
-  annual. Hourly and daily pay keep only `salary`.
+- `salary`, `salary_min`, `salary_max` (per `salary_period`),
+  `salary_period` (`hour`, `day`, `month` or `year`), `salary_currency`
+  and `salary_months` from the title, where it names the pay: `25K-35K`,
+  `$3000-$4000`, `年薪¥95W-150W`, `17-20W/年`, `15-25K·14薪`, `$50/hr`.
+  Only amounts with a unit or a currency in a range, or a currency or a
+  word for pay (年薪, 月薪, 底薪, 最高 …) next to them, count; pay named only
+  in the text is not read. Amounts from 100,000 up without a period (or
+  `·N薪`) are taken as yearly pay; weekly pay keeps only `salary`.
 - Eleduck's own: `hire` (招聘类型: 企业直招, 外包零活, 员工内推, 组队合伙,
   猎头中介), `role` (职业), `fields` (领域), and `closed` once the post is
   marked 已结束.

@@ -12,11 +12,12 @@
 
 use std::sync::LazyLock;
 
+use atp_core::jobs::{Period, Salary};
 use atp_core::model::Extra;
 use atp_core::{Post, User, UserStats, Value, ValueExt, json};
 use regex::Regex;
 
-use super::{image, salary, sanitize, time};
+use super::{image, sanitize, time};
 use crate::refs;
 
 fn re(pattern: &str) -> Regex {
@@ -200,7 +201,7 @@ fn fill_job(post: &mut Post, html: &str, config: &Value, posting: &Value) {
     extra.insert("company".into(), json!(company.name));
   }
   let shown = capture(&SALARY, html);
-  match shown.as_deref().and_then(salary::parse) {
+  match shown.as_deref().and_then(Salary::parse) {
     Some(pay) => pay.fill(extra),
     None => posting_pay(extra, posting),
   }
@@ -237,22 +238,23 @@ fn fill_job(post: &mut Post, html: &str, config: &Value, posting: &Value) {
   page_company(extra, html);
 }
 
-/// The pay of the `JobPosting` when the page shows none: monthly only.
+/// The pay of the `JobPosting` when the page shows none, by the period
+/// of its `unitText` (weekly pay is left out).
 fn posting_pay(extra: &mut Extra, posting: &Value) {
   let pay = posting.at("baseSalary");
-  if pay.str("value.unitText").as_deref() != Some("MONTH") {
-    return;
+  let period = match pay.str("value.unitText").as_deref() {
+    Some("HOUR") => Period::Hour,
+    Some("DAY") => Period::Day,
+    Some("MONTH") => Period::Month,
+    Some("YEAR") => Period::Year,
+    _ => return,
+  };
+  let figure = |path: &str| pay.f64(path).filter(|n| *n > 0.0);
+  let mut salary = Salary::new(figure("value.minValue"), figure("value.maxValue"), period);
+  if let Some(currency) = pay.str("currency") {
+    salary.currency = currency;
   }
-  for (key, path) in [
-    ("salary_min", "value.minValue"),
-    ("salary_max", "value.maxValue"),
-  ] {
-    if let Some(n) = pay.f64(path).filter(|n| *n > 0.0) {
-      extra.insert(key.into(), json!(n.round() as u64));
-    }
-  }
-  let currency = pay.str("currency").unwrap_or_else(|| "CNY".into());
-  extra.insert("salary_currency".into(), json!(currency));
+  salary.fill(extra);
 }
 
 /// The line under the title: 招N人, 学生可投, 实习, the time updated.
