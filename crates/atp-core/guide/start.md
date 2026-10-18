@@ -28,7 +28,7 @@ one of them.
 - Developer communities: `so` (Stack Overflow and every Stack Exchange
   site), `hn` (Hacker News), `lobsters`, `v2ex`, `juejin` (Juejin 掘金).
 - Jobs and careers: `eleduck` (Eleduck 电鸭社区, remote and part-time
-  work).
+  work), `liepin` (Liepin 猎聘).
 
 Chat apps share `chats`, `messages`, `send`, `members`, `react`, `edit` and
 `listen` (see `atp guide interact`); `edit` also changes published posts

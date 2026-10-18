@@ -402,6 +402,7 @@ dependencies = [
  "atp-kook",
  "atp-kuaishou",
  "atp-lemmy",
+ "atp-liepin",
  "atp-line",
  "atp-lobsters",
  "atp-mastodon",
@@ -876,6 +877,20 @@ dependencies = [
  "atp-core",
  "clap",
  "jiff",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "atp-liepin"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "base64 0.22.1",
+ "clap",
+ "jiff",
+ "rand 0.9.5",
+ "regex",
  "serde_json",
  "url",
 ]

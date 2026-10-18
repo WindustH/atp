@@ -65,6 +65,7 @@ fn main() -> ExitCode {
   .platform::<atp_v2ex::V2ex>()
   .platform::<atp_juejin::Juejin>()
   .platform::<atp_eleduck::Eleduck>()
+  .platform::<atp_liepin::Liepin>()
   .platform::<atp_bangumi::Bangumi>()
   .platform::<atp_douban::Douban>()
   .platform::<atp_weread::WeRead>()

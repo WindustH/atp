@@ -94,6 +94,8 @@ pub use atp_kook as kook;
 pub use atp_kuaishou as kuaishou;
 #[cfg(feature = "lemmy")]
 pub use atp_lemmy as lemmy;
+#[cfg(feature = "liepin")]
+pub use atp_liepin as liepin;
 #[cfg(feature = "line")]
 pub use atp_line as line;
 #[cfg(feature = "lobsters")]
