@@ -113,6 +113,13 @@ middle of an upstream page.
 `metrics`: `views`, `likes`, `comments`, `shares`, `favorites`, plus platform
 counters such as `coins`, `danmaku`, `quotes`.
 
+Job posts (job platforms) carry the job in `extra`: `company`, `salary`
+(the pay as shown), `salary_min` / `salary_max` per `salary_period`
+(`hour`, `day`, `month` or `year`; `month` when absent), `salary_currency`,
+`salary_months`, `city`, `remote`, `job_type`, `experience`, `degree` and
+`deadline`. Tables show their company, pay and city; listings that date
+posts only by their last change show that time.
+
 `media`: `kind` (`image`, `video`, `audio`, `gif`), `url`, `audio_url` (separate
 audio track), `width`, `height`, `duration` (seconds), `alt`, `size` /
 `audio_size` (bytes) and `range_param` (the URL parameter a host takes byte

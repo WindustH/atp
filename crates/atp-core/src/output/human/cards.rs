@@ -110,8 +110,10 @@ pub(super) fn post_card(p: &Post) {
   if let Some(a) = &p.author {
     meta.push(user_label(a));
   }
-  if let Some(t) = p.created_at {
-    meta.push(fmt_time(t));
+  match (p.created_at, p.updated_at) {
+    (Some(t), _) => meta.push(fmt_time(t)),
+    (None, Some(t)) => meta.push(format!("updated {}", fmt_time(t))),
+    (None, None) => {}
   }
   meta.push(format!("id {}", p.id));
   println!(
@@ -129,6 +131,9 @@ pub(super) fn post_card(p: &Post) {
   }
   if let Some(price) = &p.price {
     price_line(price);
+  }
+  if is_job(p) {
+    job_line(p);
   }
   if let Some(url) = &p.url {
     println!("{}", url.if_supports_color(Stream::Stdout, |t| t.cyan()));
@@ -167,6 +172,51 @@ fn price_line(price: &Price) {
     line.push_str(&format!(" · {label}"));
   }
   println!("{}", line.if_supports_color(Stream::Stdout, |t| t.bold()));
+}
+
+/// What a job post says about the job: pay, employer (unless it is the
+/// author shown above), city, what it asks for, the kind of job.
+fn job_line(p: &Post) {
+  let author = p.author.as_ref().map(|a| a.name.as_str());
+  let mut parts: Vec<String> = Vec::new();
+  parts.extend(
+    extra_str(p, "salary")
+      .map(str::to_owned)
+      .or_else(|| pay_figures(p)),
+  );
+  parts.extend(
+    extra_str(p, "company")
+      .filter(|c| Some(*c) != author)
+      .map(str::to_owned),
+  );
+  for key in ["city", "experience", "degree", "job_type"] {
+    parts.extend(extra_str(p, key).map(str::to_owned));
+  }
+  if p.extra.get("remote").and_then(|v| v.as_bool()) == Some(true) {
+    parts.push("remote".into());
+  }
+  if let Some(deadline) = extra_str(p, "deadline") {
+    parts.push(format!("until {deadline}"));
+  }
+  if !parts.is_empty() {
+    let line = parts.join(" · ");
+    println!("{}", line.if_supports_color(Stream::Stdout, |t| t.bold()));
+  }
+}
+
+/// `15000-25000 CNY/month` from the figures, for pay given without text.
+fn pay_figures(p: &Post) -> Option<String> {
+  let figure = |key: &str| p.extra.get(key).and_then(|v| v.as_f64());
+  let range = match (figure("salary_min"), figure("salary_max")) {
+    (Some(min), Some(max)) if min == max => format!("{min}"),
+    (Some(min), Some(max)) => format!("{min}-{max}"),
+    (Some(min), None) => format!("{min}+"),
+    (None, Some(max)) => format!("up to {max}"),
+    (None, None) => return None,
+  };
+  let currency = extra_str(p, "salary_currency").unwrap_or("CNY");
+  let period = extra_str(p, "salary_period").unwrap_or("month");
+  Some(format!("{range} {currency}/{period}"))
 }
 
 fn media_lines(p: &Post) {

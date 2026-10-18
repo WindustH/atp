@@ -122,6 +122,21 @@ fn user_label(u: &User) -> String {
   }
 }
 
+/// A text field of `extra`, when it is set and not empty.
+fn extra_str<'a>(p: &'a Post, key: &str) -> Option<&'a str> {
+  p.extra
+    .get(key)
+    .and_then(|v| v.as_str())
+    .filter(|s| !s.trim().is_empty())
+}
+
+/// A job post: one carrying the job keys of `Post.extra`.
+fn is_job(p: &Post) -> bool {
+  ["company", "salary", "salary_min", "salary_max", "job_type"]
+    .iter()
+    .any(|key| p.extra.contains_key(*key))
+}
+
 fn headline(p: &Post) -> String {
   let title = p.title.as_deref().map(one_line).unwrap_or_default();
   let text = p.text.as_deref().map(one_line).unwrap_or_default();

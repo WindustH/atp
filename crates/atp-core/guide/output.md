@@ -56,6 +56,11 @@ Every platform maps its data onto the same shapes:
   `metrics` (`views`, `likes`, `comments`, `shares`, `favorites`, plus
   platform counters such as `coins`, `danmaku`, `quotes`, `crossposts`),
   `media`, `tags`, `quoted`, `extra`.
+- Job posts (job platforms): `extra` carries `company`, `salary` (the pay
+  as shown), `salary_min` / `salary_max` per `salary_period` (`hour`,
+  `day`, `month` or `year`; `month` when absent), `salary_currency`,
+  `salary_months`, `city`, `remote`, `job_type`, `experience`, `degree`
+  and `deadline`; tables show the company, pay and city.
 - **User**: `id`, `name`, `handle`, `url`, `avatar`, `bio`, `verified`,
   `location`, `stats` (`followers`, `following`, `posts`, `likes` ...), `followed`;
   on your own `following` / `followers` also `extra.mutual`,

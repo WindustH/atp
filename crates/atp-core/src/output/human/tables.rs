@@ -11,50 +11,54 @@ pub(super) fn post_table(posts: &[Post]) {
   let comments = posts.iter().any(|p| p.metrics.comments.is_some());
   let views = posts.iter().any(|p| p.metrics.views.is_some());
   let prices = posts.iter().any(|p| p.price.is_some());
-  let mut header = vec!["#", "Content", "Author"];
-  if prices {
-    header.push("Price");
-  }
-  if likes {
-    header.push("Likes");
-  }
-  if comments {
-    header.push("Cmts");
-  }
-  if views {
-    header.push("Views");
-  }
+  // Job posts: the employer where they name one, the pay and the city.
+  let companies = posts.iter().any(|p| extra_str(p, "company").is_some());
+  let job_key = |key| {
+    posts
+      .iter()
+      .any(|p| is_job(p) && extra_str(p, key).is_some())
+  };
+  let (salaries, cities) = (job_key("salary"), job_key("city"));
+  let mut header = vec!["#", "Content", if companies { "Company" } else { "Author" }];
+  header.extend(salaries.then_some("Salary"));
+  header.extend(cities.then_some("City"));
+  header.extend(prices.then_some("Price"));
+  header.extend(likes.then_some("Likes"));
+  header.extend(comments.then_some("Cmts"));
+  header.extend(views.then_some("Views"));
   header.extend(["Time", "ID"]);
   let mut t = table(&header);
   for (i, p) in posts.iter().enumerate() {
     let mut row = vec![
       index(i),
       Cell::new(headline(p)),
-      Cell::new(
-        p.author
-          .as_ref()
-          .map(|a| truncate(&a.name, 16))
-          .unwrap_or_default(),
-      ),
+      Cell::new(truncate(byline(p, companies), 16)),
     ];
-    if prices {
+    let cell = |key, width| Cell::new(truncate(extra_str(p, key).unwrap_or_default(), width));
+    row.extend(salaries.then(|| cell("salary", 16)));
+    row.extend(cities.then(|| cell("city", 12)));
+    row.extend(prices.then(|| {
       let price = p.price.as_ref().map(Price::display).unwrap_or_default();
-      row.push(Cell::new(price).set_alignment(CellAlignment::Right));
-    }
-    if likes {
-      row.push(num(p.metrics.likes));
-    }
-    if comments {
-      row.push(num(p.metrics.comments));
-    }
-    if views {
-      row.push(num(p.metrics.views));
-    }
-    row.push(Cell::new(p.created_at.map(fmt_time).unwrap_or_default()));
+      Cell::new(price).set_alignment(CellAlignment::Right)
+    }));
+    row.extend(likes.then(|| num(p.metrics.likes)));
+    row.extend(comments.then(|| num(p.metrics.comments)));
+    row.extend(views.then(|| num(p.metrics.views)));
+    // Listings that date posts only by their last change show that.
+    let time = p.created_at.or(p.updated_at);
+    row.push(Cell::new(time.map(fmt_time).unwrap_or_default()));
     row.push(Cell::new(&p.id).add_attribute(Attribute::Dim));
     t.add_row(row);
   }
   println!("{t}");
+}
+
+/// Who a row names: the company of a job post where the posts name one,
+/// else the author.
+fn byline(p: &Post, companies: bool) -> &str {
+  let company = extra_str(p, "company").filter(|_| companies);
+  let author = p.author.as_ref().map(|a| a.name.as_str());
+  company.or(author).unwrap_or_default()
 }
 
 pub(super) fn user_table(users: &[User]) {
