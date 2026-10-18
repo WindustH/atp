@@ -150,6 +150,16 @@ pub struct Post {
   /// Quoted / reposted / parent content.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub quoted: Option<Box<Post>>,
+  /// Platform fields. Job posts use these keys for the job, where the
+  /// platform tells it: `company` (the employer's name; a company with a
+  /// page of its own is a `User`), `salary` (the pay as the platform
+  /// shows it, `15-25K·14薪`), `salary_min` and `salary_max` (numbers per
+  /// month, in units of `salary_currency`), `salary_currency` (ISO code,
+  /// `CNY` unless the platform says otherwise), `salary_months` (months
+  /// paid a year: 14 for `·14薪`), `city`, `remote` (bool: the work is
+  /// done remotely), `job_type` (`full-time`, `part-time`, `intern`,
+  /// `contract` or `freelance`), `experience` and `degree` (what the job
+  /// asks for, as shown) and `deadline` (when applications close).
   #[serde(skip_serializing_if = "Extra::is_empty")]
   pub extra: Extra,
   #[serde(skip_serializing_if = "Option::is_none")]
