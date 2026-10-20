@@ -92,8 +92,10 @@ async fn send(
   };
   let replaced = file.as_ref().map(|f| (part, f));
   let body = body(view, new, cover, replaced, &api.csrf()?);
+  // The page's query: the time, then `csrf` (not signed).
   api
     .post(EDIT)
+    .query("t", jiff::Timestamp::now().as_millisecond())
     .json(body)
     .header("referer", referer)
     .header("origin", MEMBER)

@@ -289,5 +289,15 @@ pub async fn cover(api: &Api, path: &Path, referer: &str) -> Result<String> {
     .send()
     .await?;
   v.str("url")
+    .map(|url| https(&url))
     .ok_or_else(|| Error::upstream("the cover upload returned no address"))
+}
+
+/// An address as the creator center's pages pass it on: their client
+/// turns every `http://` it loads into `https://`.
+pub fn https(url: &str) -> String {
+  match url.strip_prefix("http://") {
+    Some(rest) => format!("https://{rest}"),
+    None => url.to_owned(),
+  }
 }

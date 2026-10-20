@@ -1,15 +1,20 @@
-//! The record `vu/web/edit` takes: the whole archive as the creator
-//! center loaded it, with the fields an edit changes.
+//! The record `vu/web/edit` takes: the archive as the creator center
+//! loaded it, with the fields an edit changes. The edit page also sends
+//! every setting of the upload page; Bilibili answered such records from
+//! ATP 21001, so the settings at their defaults stay out, and those the
+//! video changed from the defaults go back as loaded, so that an edit
+//! keeps them.
 
 use atp_core::{Value, ValueExt, json};
 
-use crate::uploads::Uploaded;
+use crate::uploads::{Uploaded, https};
 
-/// `web_os` of the browser ATP's User-Agent names (macOS): 1 Windows,
-/// 2 macOS, 3 others.
-const WEB_OS: u8 = 2;
 /// `copyright` of a reposted (转载) video.
 const REPRINT: i64 = 2;
+/// `creation_statement` of a video that needs no mark (内容无需标注), and
+/// the one the page derives for a reposted video.
+const NO_MARK: i64 = -1;
+const REPRINT_MARK: i64 = -2;
 
 /// What an edit may change on a video.
 #[derive(Debug, Clone)]
@@ -32,76 +37,40 @@ pub(super) fn body(
   csrf: &str,
 ) -> Value {
   let a = view.at("archive");
-  let watermark = if a.i64("copyright") == Some(REPRINT) {
-    0
-  } else {
-    view.i64("watermark.state").unwrap_or(0)
-  };
-  // 1 hides the video from the space, 2 (the default) shows it.
-  let space_hidden = view
-    .i64("space_hidden")
-    .or_else(|| a.i64("space_hidden"))
-    .filter(|s| *s != 0)
-    .unwrap_or(2);
+  let new_cover = cover.is_some();
+  let cover = cover.unwrap_or_else(|| https(&a.str("cover").unwrap_or_default()));
   let mut body = json!({
     "aid": a.at("aid"),
+    "cover": cover,
     "title": new.title,
     "copyright": a.at("copyright"),
+    "creation_statement": { "id": statement(a) },
     "tid": a.at("tid"),
     "tag": new.tags.join(","),
-    "mission_id": a.i64("mission_id").unwrap_or(0),
-    "desc_format_id": a.i64("desc_format_id").unwrap_or(0),
     "desc": new.text,
-    "dynamic": a.str("dynamic").unwrap_or_default(),
     "recreate": recreate(a),
     "interactive": 0,
     "videos": videos(view, replaced),
     "new_web_edit": 1,
     "handle_staff": false,
     "topic_grey": 1,
-    "is_only_self": i32::from(new.private),
-    "space_hidden": space_hidden,
-    "watermark": { "state": watermark },
-    "no_reprint": a.i64("no_reprint").unwrap_or(0),
-    "is_360": i32::from(a.i64("is_360") == Some(1)),
-    "web_os": WEB_OS,
-    "csrf": csrf,
   });
-  covers(a, cover, &mut body);
-  optional(a, new, &mut body);
+  own(a, new, &mut body);
+  kept(view, new, new_cover, &mut body);
+  body["csrf"] = csrf.into();
   body
 }
 
-/// The covers: a new one replaces the 16:9 cover and clears the 4:3 crop
-/// (the edit page sends none where it has no 4:3 editor either).
-fn covers(a: &Value, cover: Option<String>, body: &mut Value) {
-  let tested = !a.list("ab_cover_info.ab_covers").is_empty();
-  body["is_ab_cover"] = tested.into();
-  body["ab_cover_info"] = a.at("ab_cover_info").clone();
-  match cover {
-    Some(url) => {
-      body["cover"] = url.into();
-      body["cover43"] = "".into();
-      body["ai_cover"] = false.into();
-    }
-    None => {
-      body["cover"] = a.str("cover").unwrap_or_default().into();
-      body["cover43"] = a.str("cover43").unwrap_or_default().into();
-      body["ai_cover"] = truthy(a.at("ai_cover")).into();
-    }
-  }
-}
-
-/// Fields the edit page sends only when the archive has them.
-fn optional(a: &Value, new: &Fields, body: &mut Value) {
+/// Fields of the archive the edit page sends when it has them.
+fn own(a: &Value, new: &Fields, body: &mut Value) {
   if a.i64("copyright") == Some(REPRINT) {
     body["source"] = a.str("source").unwrap_or_default().into();
   }
-  if let Some(id) = a.i64("creation_statement.id") {
-    body["creation_statement"] = json!({ "id": id });
-  }
   if !a.at("human_type2").is_null() {
     body["human_type2"] = a.at("human_type2").clone();
+  }
+  if let Some(mission) = a.i64("mission_id").filter(|m| *m != 0) {
+    body["mission_id"] = mission.into();
   }
   if let Some(topic) = a.u64("topic_id").filter(|t| *t != 0) {
     let mut detail = json!({ "from_topic_id": topic });
@@ -111,21 +80,73 @@ fn optional(a: &Value, new: &Fields, body: &mut Value) {
     body["topic_id"] = topic.into();
     body["topic_detail"] = detail;
   }
-  if let Some(dtime) = a.i64("dtime").filter(|d| *d > 0) {
-    body["dtime"] = dtime.into();
+  if let Some(format) = a.i64("desc_format_id").filter(|f| *f != 0) {
+    body["desc_format_id"] = format.into();
   }
   // With @-mentions the page sends the parts too; a new text has none.
   if a.str("desc").unwrap_or_default() == new.text && mentions(a.at("desc_v2")) {
     body["desc_v2"] = a.at("desc_v2").clone();
   }
-  if mentions(a.at("dynamic_v2")) {
-    body["dynamic_v2"] = a.at("dynamic_v2").clone();
+  if let Some(dtime) = a.i64("dtime").filter(|d| *d > 0) {
+    body["dtime"] = dtime.into();
+  }
+  if let Some(dynamic) = a.str("dynamic") {
+    body["dynamic"] = dynamic.into();
+    if mentions(a.at("dynamic_v2")) {
+      body["dynamic_v2"] = a.at("dynamic_v2").clone();
+    }
+  }
+  if let Some(no_reprint) = a.i64("no_reprint") {
+    body["no_reprint"] = no_reprint.into();
+  }
+}
+
+/// The settings the video changed from the defaults, as loaded; and the
+/// visibility when it is or becomes private.
+fn kept(view: &Value, new: &Fields, new_cover: bool, body: &mut Value) {
+  let a = view.at("archive");
+  // A new cover clears the 4:3 crop (the page has no 4:3 editor either).
+  if let Some(cover43) = a.str("cover43") {
+    body["cover43"] = if new_cover {
+      String::new()
+    } else {
+      https(&cover43)
+    }
+    .into();
+  }
+  if !a.list("ab_cover_info.ab_covers").is_empty() {
+    body["is_ab_cover"] = true.into();
+    body["ab_cover_info"] = a.at("ab_cover_info").clone();
+  }
+  if new.private || a.i64("is_only_self") == Some(1) {
+    body["is_only_self"] = i32::from(new.private).into();
+  }
+  // 1 hides the video from the space, 2 (the default) shows it.
+  if view.i64("space_hidden").or_else(|| a.i64("space_hidden")) == Some(1) {
+    body["space_hidden"] = 1.into();
+  }
+  if a.i64("copyright") != Some(REPRINT) && view.i64("watermark.state") == Some(1) {
+    body["watermark"] = json!({ "state": 1 });
+  }
+  if a.i64("is_360") == Some(1) {
+    body["is_360"] = 1.into();
   }
   if a.i64("is_dolby") == Some(1) {
     body["dolby"] = 1.into();
   }
   if a.i64("lossless_music") == Some(1) {
     body["lossless_music"] = 1.into();
+  }
+}
+
+/// The archive's creator's statement (创作声明), which the edit page
+/// cannot change; without one, none (-1), or the repost mark (-2) on a
+/// reposted video as the page derives it.
+fn statement(a: &Value) -> i64 {
+  match a.i64("creation_statement.id") {
+    Some(id) if id != 0 => id,
+    _ if a.i64("copyright") == Some(REPRINT) => REPRINT_MARK,
+    _ => NO_MARK,
   }
 }
 

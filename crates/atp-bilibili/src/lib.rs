@@ -122,6 +122,7 @@ impl Platform for Bilibili {
       Cap::PostVideo,
       Cap::PostVisibility,
       Cap::PostSchedule,
+      Cap::PostAiLabel,
       Cap::PostChapters,
       Cap::PostCategory,
       Cap::Delete,

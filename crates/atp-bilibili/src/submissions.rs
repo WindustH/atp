@@ -4,15 +4,16 @@
 //! cover through [`uploads`], chapters through the player editor's
 //! pre-submit ([`chapters`]), then the archive through `add/v3`. The
 //! account's settings come from `archive/pre`: which categories (分区) it
-//! picks from (the new kind, `type_mode` 2, or the classic `typelist`)
-//! and when a scheduled video may go out. Nothing goes out before the
-//! person has seen a summary and said yes; Bilibili reviews every video
-//! before it shows.
+//! picks from (the new kind, `type_mode` 2, or the classic `typelist`),
+//! the creator's statements (创作声明) it offers and when a scheduled
+//! video may go out. Nothing goes out before the person has seen a
+//! summary and said yes; Bilibili reviews every video before it shows.
 
 use std::path::Path;
 
 use atp_core::chapters::{self as core_chapters, Chapter};
 use atp_core::cli::confirm;
+use atp_core::http::Part;
 use atp_core::output::note;
 use atp_core::{Action, Collection, Draft, Error, Page, Result, Value, ValueExt, json};
 
@@ -22,15 +23,17 @@ use crate::{chapters, uploads};
 
 const PRE: &str = "https://member.bilibili.com/x/vupre/web/archive/pre";
 const HUMAN_TYPES: &str = "https://member.bilibili.com/x/vupre/web/archive/human/type2/list";
+const PREDICT: &str = "https://member.bilibili.com/x/vupre/web/archive/types/predict";
 const ADD: &str = "https://member.bilibili.com/x/vu/web/add/v3";
 const MEMBER: &str = "https://member.bilibili.com";
 const TITLE_MAX: usize = 80;
 const TEXT_MAX: usize = 2000;
 const TAGS_MAX: usize = 10;
-/// `tid` the page sends with the new kind of categories.
-const NEW_KIND_TID: i64 = 21;
-/// `web_os` of the browser ATP's User-Agent names (macOS).
-const WEB_OS: u8 = 2;
+/// The `tid` the page falls back to when Bilibili predicts none; `add/v3`
+/// refuses it next to a category of the new kind (21001).
+const FALLBACK_TID: i64 = 21;
+/// `creation_statement` of a video that needs no mark (内容无需标注).
+const NO_MARK: i64 = -1;
 
 /// What `archive/pre` tells about the account.
 struct Pre {
@@ -40,7 +43,8 @@ struct Pre {
   categories: Vec<(String, String, String)>,
   /// When a scheduled video may go out, Unix seconds.
   window: Option<(i64, i64)>,
-  subtitle: bool,
+  /// The creator's statements (`neutral_mark.mark_list`): id and text.
+  marks: Vec<(i64, String)>,
 }
 
 /// What a draft becomes, checked.
@@ -50,6 +54,10 @@ struct Plan<'a> {
   title: String,
   tags: Vec<String>,
   category: (String, String),
+  /// The classic sub-category (`tid`) and its name.
+  tid: (i64, String),
+  /// The creator's statement (`creation_statement`) and its text.
+  statement: (i64, String),
   chapters: Option<(&'a [Chapter], u32)>,
 }
 
@@ -76,6 +84,7 @@ pub async fn publish(api: &Api, draft: &Draft) -> Result<Action> {
   api.require_login()?;
   let pre = pre(api).await?;
   let category = category(&pre, draft.category.as_deref().unwrap_or_default())?;
+  let statement = statement(&pre, draft.ai_generated)?;
   if let (Some(when), Some((from, to))) = (draft.schedule, pre.window) {
     let at = when.as_second();
     if !(from..=to).contains(&at) {
@@ -86,8 +95,11 @@ pub async fn publish(api: &Api, draft: &Draft) -> Result<Action> {
       )));
     }
   }
+  let tid = tid(api, &pre, &category, &partial.title).await?;
   let plan = Plan {
     category,
+    tid,
+    statement,
     ..partial
   };
   ask(draft, &plan)?;
@@ -97,11 +109,13 @@ pub async fn publish(api: &Api, draft: &Draft) -> Result<Action> {
     chapters::submit_new(api, file.cid, list, duration).await?;
   }
   let body = body(draft, &plan, &pre, &file, &cover, &api.csrf()?);
+  // `csrf` joins the query too, and is signed with the rest.
   let data = api
     .post(ADD)
     .query("web_location", "333.1024")
     .query("t", jiff::Timestamp::now().as_millisecond())
     .json(body)
+    .wbi()
     .header("referer", uploads::PAGE)
     .header("origin", MEMBER)
     .send()
@@ -159,6 +173,8 @@ fn check(draft: &Draft) -> Result<Plan<'_>> {
     title,
     tags,
     category: Default::default(),
+    tid: Default::default(),
+    statement: Default::default(),
     chapters: video_chapters(&draft.chapters, video)?,
   })
 }
@@ -201,11 +217,16 @@ async fn pre(api: &Api) -> Result<Pre> {
     .i64("myinfo.deftime")
     .zip(v.i64("myinfo.deftime_end"))
     .filter(|(from, to)| *from > 0 && to > from);
+  let marks = v
+    .list("neutral_mark.mark_list")
+    .iter()
+    .filter_map(|m| Some((m.i64("id")?, m.str("content").unwrap_or_default())))
+    .collect();
   Ok(Pre {
     new_kind,
     categories,
     window,
-    subtitle: v.bool("myinfo.subtitle") == Some(true) || v.i64("myinfo.subtitle") == Some(1),
+    marks,
   })
 }
 
@@ -237,6 +258,71 @@ fn category(pre: &Pre, id: &str) -> Result<(String, String)> {
   }
 }
 
+/// The classic sub-category (`tid`) the video goes in. With the classic
+/// categories it is the one given. With the new kind the page shows none
+/// and sends what Bilibili predicts for the video (`types/predict`, the
+/// first one); ATP asks with the title and takes the first prediction
+/// in the category given, else the first other than 21: the page's
+/// fallback, which `add/v3` refuses next to a category of the new kind.
+async fn tid(
+  api: &Api,
+  pre: &Pre,
+  (id, name): &(String, String),
+  title: &str,
+) -> Result<(i64, String)> {
+  let id: i64 = id
+    .parse()
+    .map_err(|_| Error::input(format!("a Bilibili category is a number, not {id}")))?;
+  if !pre.new_kind {
+    return Ok((id, name.clone()));
+  }
+  let predicted = api
+    .post(PREDICT)
+    .query("t", jiff::Timestamp::now().as_millisecond())
+    .multipart(vec![Part::text("title", title), Part::text("filename", "")])
+    .header("referer", uploads::PAGE)
+    .header("origin", MEMBER)
+    .send()
+    .await?;
+  predicted_tid(&predicted, id).ok_or_else(|| {
+    Error::upstream(
+      "Bilibili predicted no sub-category for the title, which a video in the new categories needs; try a more telling --title",
+    )
+  })
+}
+
+/// The prediction to take for category `id`, with its name.
+fn predicted_tid(predicted: &Value, id: i64) -> Option<(i64, String)> {
+  let first = |same: bool| {
+    predicted.list("").iter().find_map(|t| {
+      let tid = t.i64("id").filter(|t| *t > 0 && *t != FALLBACK_TID)?;
+      (!same || t.i64("human_type.id") == Some(id)).then_some((tid, t))
+    })
+  };
+  let (tid, t) = first(true).or_else(|| first(false))?;
+  let name = [t.str("parent_name"), t.str("name")]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
+    .join(" · ");
+  Some((tid, name))
+}
+
+/// The creator's statement (创作声明): with `--ai` the account's mark for
+/// AI-generated content (含AI生成内容), otherwise none (-1), as the page
+/// sends when nothing is picked.
+fn statement(pre: &Pre, ai: bool) -> Result<(i64, String)> {
+  if !ai {
+    return Ok((NO_MARK, String::new()));
+  }
+  match pre.marks.iter().find(|(_, text)| text.contains("AI")) {
+    Some((id, text)) => Ok((*id, text.clone())),
+    None => Err(Error::unsupported(
+      "post --ai (Bilibili offers this account no statement for AI-generated content)",
+    )),
+  }
+}
+
 /// Show what goes out and ask (or take `--yes`).
 fn ask(draft: &Draft, plan: &Plan) -> Result<()> {
   let mut lines = vec!["Bilibili video:".to_owned()];
@@ -248,6 +334,13 @@ fn ask(draft: &Draft, plan: &Plan) -> Result<()> {
   line("tags", plan.tags.join(", "));
   let (id, name) = &plan.category;
   line("category", format!("{id} {name}").trim().to_owned());
+  let (tid, sub) = &plan.tid;
+  if tid.to_string() != *id {
+    line("subcategory", format!("{tid} {sub}").trim().to_owned());
+  }
+  if plan.statement.0 != NO_MARK {
+    line("statement", plan.statement.1.clone());
+  }
   line(
     "visibility",
     draft.visibility.clone().unwrap_or_else(|| "public".into()),
@@ -269,7 +362,12 @@ fn ask(draft: &Draft, plan: &Plan) -> Result<()> {
   confirm(draft.yes, "publish this on Bilibili")
 }
 
-/// The record `add/v3` takes, as the upload page builds it for one file.
+/// The record `add/v3` takes for one file: what the upload page always
+/// sends for an original video, and the rest only when asked for. The
+/// page's other settings at their defaults (4:3 cover, AI cover, dynamic
+/// text, 二创, reservation, push, space, watermark, subtitles, `web_os`)
+/// stay out: Bilibili answered records with them 21001, and takes the
+/// video without them.
 fn body(
   draft: &Draft,
   plan: &Plan,
@@ -278,48 +376,34 @@ fn body(
   cover: &str,
   csrf: &str,
 ) -> Value {
-  let category: i64 = plan.category.0.parse().unwrap_or(0);
-  let (tid, human_type2) = if pre.new_kind {
-    (NEW_KIND_TID, category)
-  } else {
-    (category, 0)
-  };
   let mut body = json!({
     "cover": cover,
-    "cover43": "",
-    "ai_cover": false,
     "title": plan.title,
     "copyright": 1,
-    "human_type2": human_type2,
-    "tid": tid,
-    "tag": plan.tags.join(","),
-    "desc": draft.text,
-    "dynamic": "",
-    "recreate": 0,
-    "interactive": 0,
-    "videos": [{ "filename": file.filename, "title": plan.title, "desc": "", "cid": file.cid }],
-    "act_reserve_create": 0,
-    "act_reserve_create_title": "",
-    "no_disturbance": 0,
-    "is_only_self": i32::from(draft.visibility.as_deref() == Some("private")),
-    "space_hidden": 2,
-    "watermark": { "state": 0 },
-    "no_reprint": 1,
-    "web_os": WEB_OS,
-    "csrf": csrf,
+    "creation_statement": { "id": plan.statement.0 },
   });
+  if pre.new_kind {
+    body["human_type2"] = plan.category.0.parse::<i64>().unwrap_or(0).into();
+  }
+  body["tid"] = plan.tid.0.into();
+  body["tag"] = plan.tags.join(",").into();
   if !pre.new_kind {
     body["desc_format_id"] = 0.into();
+  }
+  body["desc"] = draft.text.clone().into();
+  body["videos"] =
+    json!([{ "filename": file.filename, "title": plan.title, "desc": "", "cid": file.cid }]);
+  body["no_reprint"] = 1.into();
+  if plan.chapters.is_some() {
+    body["has_chapter"] = true.into();
+  }
+  if draft.visibility.as_deref() == Some("private") {
+    body["is_only_self"] = 1.into();
   }
   if let Some(when) = draft.schedule {
     body["dtime"] = when.as_second().into();
   }
-  if pre.subtitle {
-    body["subtitle"] = json!({ "open": 0, "lan": "" });
-  }
-  if plan.chapters.is_some() {
-    body["has_chapter"] = true.into();
-  }
+  body["csrf"] = csrf.into();
   body
 }
 

@@ -71,7 +71,7 @@ What `post` publishes, per platform:
 | Zhihu | a pin (想法) | text or image | — | `ask`, `article` commands |
 | Xiaohongshu | an image note | `--title`, `-i` | hashtags | `#tags` in the text too |
 | Twitter / X | a tweet (4 images max) | text or image | hashtags | `--reply-to`, `--quote` |
-| Bilibili | a dynamic, or a video (投稿) with `--video` | text or image; a video `--title`, `--cover`, `--category`, `--topic` | a topic id; a video's tags | `--quote` reposts; videos: `--visibility`, `--schedule`, `--chapters`; asks first |
+| Bilibili | a dynamic, or a video (投稿) with `--video` | text or image; a video `--title`, `--cover`, `--category`, `--topic` | a topic id; a video's tags | `--quote` reposts; videos: `--ai`, `--visibility`, `--schedule`, `--chapters`; asks first |
 | Reddit | a text, link, image or gallery post | `--title`, `--topic r/sub` or `u/you` | subreddit | a single URL makes a link post; `--quote` crossposts |
 | Douyin | a video, an image post (图文) or an article (文章) | `--video`, `-i` or `--article` | hashtags | `--ai`, `--visibility`, `--schedule`, `--collection`, `--music`, `--chapters`; asks first |
 | YouTube | — | | | uploads are not supported |

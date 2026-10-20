@@ -177,7 +177,13 @@ scripts); Bilibili reviews every video before it shows.
   required; TEXT is the description (简介, at most 2000 characters).
 - `--category` is a category (分区) id from `atp bili categories`, which
   lists the ones the account picks from: the new kind most accounts
-  have now, or the classic sub-categories.
+  have now, or the classic sub-categories. A video in the new kind also
+  goes in a classic sub-category, which the upload page does not show:
+  as there, Bilibili suggests it for the title, and the summary names
+  it (`subcategory`).
+- `--ai` declares the video AI-generated: the creator's statement
+  (创作声明) Bilibili offers the account for AI-generated content (含AI生成
+  内容). Without it the video carries none (内容无需标注).
 - `--visibility public|private` (仅自己可见); `friends` is refused.
 - `--schedule WHEN` publishes later, within the window Bilibili gives
   the account (checked before anything is uploaded).
@@ -230,7 +236,10 @@ changes them:
   Chapters alone do not send the video to review again; they cannot go
   with `--video` in one edit (set them once the new file is reviewed).
 - The edit page sends the whole record back, so every other field is
-  copied from what was loaded. Joint submissions (联合投稿), videos for
+  copied from what was loaded (the creator's statement, category,
+  topic, activity, schedule, and the settings the video changed from
+  their defaults; those at their defaults are left out). Joint
+  submissions (联合投稿), videos for
   chargers (充电专属), interactive videos and videos with a commercial
   order are refused, and so is a new cover while a cover test runs.
 - Bilibili reviews a changed video again. While a video is reviewed, or

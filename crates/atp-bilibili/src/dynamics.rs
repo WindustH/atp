@@ -209,6 +209,7 @@ pub fn check_options(draft: &Draft) -> Result<()> {
     (draft.cover.is_some(), "--cover"),
     (draft.visibility.is_some(), "--visibility"),
     (draft.schedule.is_some(), "--schedule"),
+    (draft.ai_generated, "--ai"),
     (!draft.chapters.is_empty(), "--chapters"),
     (draft.category.is_some(), "--category"),
   ];
