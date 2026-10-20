@@ -9,7 +9,8 @@
 //! ...). `listen` follows
 //! live rooms over the webcast websocket. Publishing, editing and deleting
 //! go through the creator platform ([`creator`]), as its web pages do; so
-//! do the works' numbers, drafts and what the publish form offers a post.
+//! do the works' numbers, drafts, your collections (合集, [`mixes`]) and
+//! what the publish form offers a post.
 
 mod api;
 mod comments;
@@ -24,6 +25,7 @@ mod items;
 mod library;
 mod live;
 mod login;
+mod mixes;
 mod notifications;
 mod parse;
 mod places;

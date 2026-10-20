@@ -36,8 +36,9 @@ logins has not been confirmed; without it, these writes fail with
 The web client sends the other writes without the key, and so does ATP:
 `remove-follower`, `block` / `unblock`, `unfavorite` and `save --undo` /
 `save-drama --undo` with several at once, watch later (`later-add`,
-`later-remove`, `later-clear`) and `history-clear`. They need a logged-in
-session of any kind, `--browser` and `--cookie` included.
+`later-remove`, `later-clear`), `history-clear` and the collection
+commands (`mix-create` … `mix-sort`). They need a logged-in session of
+any kind, `--browser` and `--cookie` included.
 
 ### Browser or cookie
 
@@ -519,8 +520,81 @@ or `#N`), after asking (`-y` in scripts).
 ### mixes
 
 Your collections (合集) on the creator platform, with their episode
-counts; `post --collection` takes a name or an id from here. Creating a
-collection is not offered.
+counts, as the publish form lists them (待发布 and 已发布; not those in
+review or shown to you only); `post --collection` takes a name or an id
+from here. `mix-create` and the commands below make and change them.
+
+### mix-create, mix-edit, mix-delete, mix-add, mix-remove, mix-sort
+
+Your collections (合集) as the creator platform's 合集管理 pages keep
+them, through those pages' own calls. Each loads what it changes, prints
+the change and asks (`-y` in scripts). MIX is a collection's id, its
+douyin.com/collection/… link, its exact title (one in review or shown
+to you only is found too) or `#N` after `mixes`; WORK is one of your
+works: its aweme id, a link, or `#N` after `works`.
+
+- `mix-create TITLE [WORK…]` creates one with the works it starts with,
+  as its episodes in the order given, in one call (`mix/create/` with
+  `item_ids`), as the page's 创建合集 form sends its 添加作品 list. The
+  title takes 2 to 20 characters and no emoji (合集标题不允许输入emoji);
+  `--desc` 5 to 200 (line breaks go, as in the page's box). `--cover`
+  is a JPG or PNG of 5 MB at most and 100×100 at least; the page crops
+  it square (1080×1080 shows best), ATP sends it uncropped and says when
+  it is far from square. Without `--cover` the collection takes its last
+  work's cover, as the page fills it in.
+- `mix-edit MIX` changes the title (`--title`), description (`--desc`)
+  or cover (`--cover`) through `mix/update/`, which carries all three:
+  what is not given stays. Douyin reviews the change before it shows.
+- `mix-delete MIX` deletes the collection (`mix/destroy/`); its works
+  stay on your account (删除合集时不会删除合集里的视频).
+- `mix-add MIX WORK…` adds works after the last episode, in the order
+  given; `mix-remove MIX WORK…` takes works out (they stay on your
+  account); `mix-sort MIX WORK…` puts the works given first, in that
+  order, and the others after them as they were (the page's dragging,
+  置顶 and 修改作品集数). All three load the collection's works
+  (`mix/item/list/`) and send the whole new list in one call
+  (`mix/item/editlist/`: `item_ids` in order, with `add_item_ids` and
+  `del_item_ids` against the old list), as the page's 保存 does.
+- None of these uses one of a work's 5 edits (每个作品最多修改5次): they
+  are the 合集 pages' calls, while the edits are counted on the edit page
+  (`update/desc/`), whose form has no 合集 field (the publish form hides
+  it when editing). A published work joins a collection without an
+  edit, and the summary says so.
+- Douyin's rules, as the page holds works to them: a work is in one
+  collection at most (已加入其它合集: take it out there first); only
+  public works join (private and friends-only ones do not:
+  `edit WORK --visibility public` first, which uses no edit); works in
+  review or not passed, live replays, daily posts (日常), others'
+  co-created works and product image posts (商品图文) do not; image
+  posts and videos both do. One change adds 100 works at most. A
+  collection of fewer than 2 works shows to you only (others see it from
+  2), and one with none is 待发布. ATP checks visibility and another
+  collection itself (from `item/info`, as `edit` loads a work), Douyin
+  the rest.
+- Douyin reviews a collection's title, cover and description; while
+  one is in review (审核中) the page lets nothing in it change, and ATP
+  refuses too (`permission_denied`). Paid collections (付费合集), those
+  for members (会员合集), short dramas and live replays are not offered.
+
+Putting three published 操作系统 episodes into a new collection, in
+episode order, in one step (uses no edits):
+
+```
+atp douyin works -n 20                 # find the episodes' ids
+atp douyin mix-create 操作系统 7697000000000000001 7697000000000000002 7697000000000000003
+```
+
+Or create it first and add them after; if Douyin has the new collection
+in review by then, `mix-add` is refused until the review is over, which
+the step above avoids:
+
+```
+atp douyin mix-create 操作系统 --cover os.jpg --desc '从硬件到进程的操作系统课'
+atp douyin mix-add 操作系统 7697000000000000001 7697000000000000002 7697000000000000003
+atp douyin mix-sort 操作系统 7697000000000000003     # move the third to episode 1
+```
+
+Untested: built from the 合集 pages' bundles, not run against an account.
 
 ### musics
 
@@ -643,6 +717,13 @@ post (with live-photo clips) and its music; `--audio-only` saves the music.
   as a draft (the web saves articles only, see drafts), co-creators,
   paid content, choosing a video's music (Douyin picks it), editing or
   cropping a cover in the page's editor, and pictures inside articles.
+- Collections (`mix-create` … `mix-sort`) are built from the 合集管理
+  pages' bundles and untested too. Not confirmed: whether `item/info`
+  names the collection a work is in (`mix_info`; when it does not,
+  Douyin's own refusal shows), whether `mix/create/` answers with the new
+  collection's id (ATP looks for `mix_id`), whether a new collection goes
+  into review at once, and whether Douyin takes a work it would refuse
+  silently: `mix MIX` shows the collection's posts once it is public.
 - `--location` and `--activity` are built from the publish form's
   bundles and untested too. Not confirmed: whether the location box
   answers a search for a place's id (ATP keeps searched places for
