@@ -122,7 +122,9 @@ posts only by their last change show that time.
 
 Videos with chapters carry them in `extra.chapters`: a list of `title`,
 `start` and `end` (seconds from the start; `end` left out when unknown),
-in order. YouTube adds `chapters_auto: true` when it made them itself.
+in order. `chapters_auto: true` marks chapters the platform made itself:
+YouTube's automatic chapters, Douyin's smart chapters (shown when the
+video has none of its own).
 
 `media`: `kind` (`image`, `video`, `audio`, `gif`), `url`, `audio_url` (separate
 audio track), `width`, `height`, `duration` (seconds), `alt`, `size` /
