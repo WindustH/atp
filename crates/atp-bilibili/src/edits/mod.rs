@@ -4,6 +4,7 @@
 //! ask before anything goes out. Articles are not edited.
 
 mod dynamic;
+mod record;
 mod video;
 
 pub use self::dynamic::edit as dynamic;

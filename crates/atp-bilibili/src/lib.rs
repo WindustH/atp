@@ -8,6 +8,7 @@
 mod api;
 mod articles;
 mod bangumi;
+mod chapters;
 mod comments;
 mod device;
 mod discover;
@@ -33,6 +34,8 @@ mod relations;
 mod rooms;
 mod search;
 mod sign;
+mod submissions;
+mod uploads;
 mod users;
 mod videos;
 
@@ -116,12 +119,19 @@ impl Platform for Bilibili {
       Cap::DeleteComment,
       Cap::Follow,
       Cap::Publish,
+      Cap::PostVideo,
+      Cap::PostVisibility,
+      Cap::PostSchedule,
+      Cap::PostChapters,
+      Cap::PostCategory,
       Cap::Delete,
       Cap::Edit,
       Cap::EditTitle,
       Cap::EditTopics,
       Cap::EditCover,
       Cap::EditVisibility,
+      Cap::EditChapters,
+      Cap::EditVideo,
       Cap::Download,
       Cap::AccountInsights,
       Cap::PostInsights,
@@ -446,7 +456,12 @@ impl Platform for Bilibili {
     history::clear(&self.api).await
   }
 
+  /// Videos through the creator center, dynamics through their editor.
   async fn publish(&self, draft: &Draft) -> Result<Action> {
+    if draft.video.is_some() {
+      return submissions::publish(&self.api, draft).await;
+    }
+    dynamics::check_options(draft)?;
     let quote = match draft.quote.as_deref() {
       None => None,
       Some(q) => match self.post(q).await? {

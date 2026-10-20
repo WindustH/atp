@@ -4,49 +4,41 @@
 //! The page loads the whole archive (`archive/view`) and sends the whole
 //! record back through `vu/web/edit`, not a difference: every field below
 //! is copied from what was loaded, and only the asked ones change. A new
-//! cover goes up through `cover/up` first. Bilibili reviews the video
-//! again after a change.
+//! cover goes up through `cover/up` first; a new file for a part (换源)
+//! through [`uploads`], and the part then names it (`filename`, `cid`).
+//! Bilibili reviews the video again after a change. Chapters are not in
+//! the archive: they go through the player editor ([`chapters`]), and a
+//! change of chapters alone is not reviewed again.
 
-use std::path::Path;
-
+use atp_core::chapters::summary;
 use atp_core::cli::Change;
-use atp_core::file::Image;
-use atp_core::http::Part;
-use atp_core::output::note;
-use atp_core::{Action, Edit, Error, ErrorCode, Result, Value, ValueExt, json};
-use base64::Engine as _;
+use atp_core::{Action, Edit, Error, ErrorCode, Result, Value, ValueExt};
 
+use super::record::{Fields, body, truthy};
 use crate::api::Api;
+use crate::chapters;
 use crate::refs::Video;
+use crate::uploads;
 
 const VIEW: &str = "https://member.bilibili.com/x/vupre/web/archive/view";
 const EDIT: &str = "https://member.bilibili.com/x/vu/web/edit";
-const COVER: &str = "https://member.bilibili.com/x/vu/web/cover/up";
 const MEMBER: &str = "https://member.bilibili.com";
 const PAGE: &str = "https://member.bilibili.com/platform/upload/video/frame";
 const TITLE_MAX: usize = 80;
 const TEXT_MAX: usize = 2000;
 const TAGS_MAX: usize = 10;
-/// `web_os` of the browser ATP's User-Agent names (macOS): 1 Windows,
-/// 2 macOS, 3 others.
-const WEB_OS: u8 = 2;
-/// `copyright` of a reposted (转载) video.
-const REPRINT: i64 = 2;
-
-/// What an edit may change on a video.
-#[derive(Debug, Clone)]
-struct Fields {
-  title: String,
-  /// The description (简介).
-  text: String,
-  tags: Vec<String>,
-  /// Only the uploader sees it (`is_only_self`).
-  private: bool,
-}
 
 /// Change one of the account's videos.
 pub async fn edit(api: &Api, v: &Video, edit: &Edit) -> Result<Action> {
   api.require_login()?;
+  if edit.video.is_some() && edit.chapters.is_some() {
+    return Err(Error::input(
+      "give --video and --chapters in two edits: the chapters go on the new file once Bilibili has reviewed it",
+    ));
+  }
+  if let Some(path) = &edit.video {
+    uploads::check_format(path)?;
+  }
   let referer = format!("{PAGE}?type=edit&bvid={}", v.bvid);
   let view = api
     .get(VIEW)
@@ -55,22 +47,25 @@ pub async fn edit(api: &Api, v: &Video, edit: &Edit) -> Result<Action> {
     .header("referer", referer.clone())
     .send()
     .await?;
-  refuse(&view, edit)?;
-  let old = fields(view.at("archive"));
-  let new = change(view.at("archive"), &old, edit)?;
-  ask(v, &old, &new, edit)?;
-  let cover = match &edit.cover {
-    Some(path) => Some(cover(api, path, &referer).await?),
+  let archive = changes_archive(edit);
+  refuse(&view, edit, archive)?;
+  let part = part(&view, v, edit)?;
+  let chapters = match &edit.chapters {
+    Some(list) => {
+      let at = &view.list("videos")[part];
+      Some(chapters::change(api, view.at("archive"), at, list).await?)
+    }
     None => None,
   };
-  let body = body(&view, &new, cover, &api.csrf()?);
-  api
-    .post(EDIT)
-    .json(body)
-    .header("referer", referer)
-    .header("origin", MEMBER)
-    .send()
-    .await?;
+  let old = fields(view.at("archive"));
+  let new = change(view.at("archive"), &old, edit)?;
+  ask(v, (&old, &new), edit, part, chapters.as_ref())?;
+  if archive {
+    send(api, (&view, &new), edit, part, referer).await?;
+  }
+  if let Some(change) = &chapters {
+    chapters::submit(api, change, &v.bvid).await?;
+  }
   Ok(
     Action::done("edit", &v.bvid)
       .with_id(&v.bvid)
@@ -78,14 +73,76 @@ pub async fn edit(api: &Api, v: &Video, edit: &Edit) -> Result<Action> {
   )
 }
 
+/// Upload what the edit brings (a file for `part`, a cover), then send
+/// the record.
+async fn send(
+  api: &Api,
+  (view, new): (&Value, &Fields),
+  edit: &Edit,
+  part: usize,
+  referer: String,
+) -> Result<()> {
+  let file = match &edit.video {
+    Some(path) => Some(uploads::video(api, path).await?),
+    None => None,
+  };
+  let cover = match &edit.cover {
+    Some(path) => Some(uploads::cover(api, path, &referer).await?),
+    None => None,
+  };
+  let replaced = file.as_ref().map(|f| (part, f));
+  let body = body(view, new, cover, replaced, &api.csrf()?);
+  api
+    .post(EDIT)
+    .json(body)
+    .header("referer", referer)
+    .header("origin", MEMBER)
+    .send()
+    .await?;
+  Ok(())
+}
+
+/// Whether the edit changes the archive itself (and so is reviewed
+/// again), not only chapters.
+fn changes_archive(edit: &Edit) -> bool {
+  edit.text.is_some()
+    || edit.title.is_some()
+    || edit.topics.is_some()
+    || edit.cover.is_some()
+    || edit.visibility.is_some()
+    || edit.video.is_some()
+}
+
+/// The part (counting from 0) that `--part`, or the link's `?p=`, names;
+/// a new file or chapters for a video in several parts need one.
+fn part(view: &Value, v: &Video, edit: &Edit) -> Result<usize> {
+  let count = view.list("videos").len();
+  let named = edit.part.or((v.page > 1).then_some(v.page));
+  let needed = edit.video.is_some() || edit.chapters.is_some();
+  match named {
+    Some(n) if (1..=count).contains(&n) => Ok(n - 1),
+    Some(n) => Err(Error::input(format!(
+      "the video has {count} parts, not {n}"
+    ))),
+    None if count > 1 && needed => Err(Error::input(format!(
+      "the video has {count} parts: say which one with --part N"
+    ))),
+    None => Ok(0),
+  }
+}
+
 /// Videos whose record holds what ATP does not send back (staff,
-/// charging, commercial orders ...), and edits Bilibili does not take now.
-fn refuse(view: &Value, edit: &Edit) -> Result<()> {
+/// charging, commercial orders ...), and edits Bilibili does not take now;
+/// only the first check when the archive itself does not change.
+fn refuse(view: &Value, edit: &Edit, archive: bool) -> Result<()> {
   let a = view.at("archive");
   if a.u64("aid").is_none() || view.list("videos").is_empty() {
     return Err(Error::not_found(
       "no such video among this account's uploads",
     ));
+  }
+  if !archive {
+    return Ok(());
   }
   let ordered =
     truthy(a.at("adorder_id")) || truthy(a.at("porder.id")) || truthy(a.at("porder.flow_id"));
@@ -199,7 +256,13 @@ fn change(a: &Value, old: &Fields, edit: &Edit) -> Result<Fields> {
 }
 
 /// Show the change and ask (or take `--yes`).
-fn ask(v: &Video, old: &Fields, new: &Fields, edit: &Edit) -> Result<()> {
+fn ask(
+  v: &Video,
+  (old, new): (&Fields, &Fields),
+  edit: &Edit,
+  part: usize,
+  chapters: Option<&chapters::Change>,
+) -> Result<()> {
   let visibility = |private: bool| if private { "private" } else { "public" };
   let mut change = Change::new(format!("Bilibili video {}:", v.bvid));
   change
@@ -214,171 +277,21 @@ fn ask(v: &Video, old: &Fields, new: &Fields, edit: &Edit) -> Result<()> {
   if let Some(path) = &edit.cover {
     change.row("cover", &path.display().to_string());
   }
-  change.row("review", "Bilibili reviews the video again");
+  if let Some(c) = chapters {
+    change.field("chapters", &summary(&c.old), &summary(&c.new));
+  }
+  if let Some(path) = &edit.video {
+    change.row(
+      "video",
+      &format!("{} replaces part {}", path.display(), part + 1),
+    );
+    change.row(
+      "resets",
+      "the part's chapters and player cards are to set again; its danmaku stay with the old file",
+    );
+  }
+  if changes_archive(edit) {
+    change.row("review", "Bilibili reviews the video again");
+  }
   change.confirm(edit.yes, "change this video on Bilibili")
-}
-
-/// Upload a new cover; its address.
-async fn cover(api: &Api, path: &Path, referer: &str) -> Result<String> {
-  let image = Image::read(path).await?;
-  if !matches!(image.mime, "image/jpeg" | "image/png") {
-    return Err(Error::input("a Bilibili cover is a JPEG or PNG image"));
-  }
-  let data = base64::engine::general_purpose::STANDARD.encode(&image.data);
-  let cover = format!("data:{};base64,{data}", image.mime);
-  note("uploading the cover");
-  let v = api
-    .post(COVER)
-    .multipart(vec![Part::text("cover", cover)])
-    .header("referer", referer.to_owned())
-    .header("origin", MEMBER)
-    .send()
-    .await?;
-  v.str("url")
-    .ok_or_else(|| Error::upstream("the cover upload returned no address"))
-}
-
-/// The record `vu/web/edit` takes: the archive as loaded, with the new
-/// fields.
-fn body(view: &Value, new: &Fields, cover: Option<String>, csrf: &str) -> Value {
-  let a = view.at("archive");
-  let watermark = if a.i64("copyright") == Some(REPRINT) {
-    0
-  } else {
-    view.i64("watermark.state").unwrap_or(0)
-  };
-  // 1 hides the video from the space, 2 (the default) shows it.
-  let space_hidden = view
-    .i64("space_hidden")
-    .or_else(|| a.i64("space_hidden"))
-    .filter(|s| *s != 0)
-    .unwrap_or(2);
-  let mut body = json!({
-    "aid": a.at("aid"),
-    "title": new.title,
-    "copyright": a.at("copyright"),
-    "tid": a.at("tid"),
-    "tag": new.tags.join(","),
-    "mission_id": a.i64("mission_id").unwrap_or(0),
-    "desc_format_id": a.i64("desc_format_id").unwrap_or(0),
-    "desc": new.text,
-    "dynamic": a.str("dynamic").unwrap_or_default(),
-    "recreate": recreate(a),
-    "interactive": 0,
-    "videos": videos(view),
-    "new_web_edit": 1,
-    "handle_staff": false,
-    "topic_grey": 1,
-    "is_only_self": i32::from(new.private),
-    "space_hidden": space_hidden,
-    "watermark": { "state": watermark },
-    "no_reprint": a.i64("no_reprint").unwrap_or(0),
-    "is_360": i32::from(a.i64("is_360") == Some(1)),
-    "web_os": WEB_OS,
-    "csrf": csrf,
-  });
-  covers(a, cover, &mut body);
-  optional(a, new, &mut body);
-  body
-}
-
-/// The covers: a new one replaces the 16:9 cover and clears the 4:3 crop
-/// (the edit page sends none where it has no 4:3 editor either).
-fn covers(a: &Value, cover: Option<String>, body: &mut Value) {
-  let tested = !a.list("ab_cover_info.ab_covers").is_empty();
-  body["is_ab_cover"] = tested.into();
-  body["ab_cover_info"] = a.at("ab_cover_info").clone();
-  match cover {
-    Some(url) => {
-      body["cover"] = url.into();
-      body["cover43"] = "".into();
-      body["ai_cover"] = false.into();
-    }
-    None => {
-      body["cover"] = a.str("cover").unwrap_or_default().into();
-      body["cover43"] = a.str("cover43").unwrap_or_default().into();
-      body["ai_cover"] = truthy(a.at("ai_cover")).into();
-    }
-  }
-}
-
-/// Fields the edit page sends only when the archive has them.
-fn optional(a: &Value, new: &Fields, body: &mut Value) {
-  if a.i64("copyright") == Some(REPRINT) {
-    body["source"] = a.str("source").unwrap_or_default().into();
-  }
-  if let Some(id) = a.i64("creation_statement.id") {
-    body["creation_statement"] = json!({ "id": id });
-  }
-  if !a.at("human_type2").is_null() {
-    body["human_type2"] = a.at("human_type2").clone();
-  }
-  if let Some(topic) = a.u64("topic_id").filter(|t| *t != 0) {
-    let mut detail = json!({ "from_topic_id": topic });
-    if let Some(from) = a.str("topic_from") {
-      detail["from_source"] = format!("arc.web.{from}").into();
-    }
-    body["topic_id"] = topic.into();
-    body["topic_detail"] = detail;
-  }
-  if let Some(dtime) = a.i64("dtime").filter(|d| *d > 0) {
-    body["dtime"] = dtime.into();
-  }
-  // With @-mentions the page sends the parts too; a new text has none.
-  if a.str("desc").unwrap_or_default() == new.text && mentions(a.at("desc_v2")) {
-    body["desc_v2"] = a.at("desc_v2").clone();
-  }
-  if mentions(a.at("dynamic_v2")) {
-    body["dynamic_v2"] = a.at("dynamic_v2").clone();
-  }
-  if a.i64("is_dolby") == Some(1) {
-    body["dolby"] = 1.into();
-  }
-  if a.i64("lossless_music") == Some(1) {
-    body["lossless_music"] = 1.into();
-  }
-}
-
-/// The parts (分P) as loaded, in their order.
-fn videos(view: &Value) -> Vec<Value> {
-  view
-    .list("videos")
-    .iter()
-    .map(|part| {
-      json!({
-        "filename": part.str("filename").unwrap_or_default(),
-        "title": part.str("title").unwrap_or_default(),
-        "desc": "",
-        "cid": part.u64("cid").unwrap_or(0),
-      })
-    })
-    .collect()
-}
-
-/// `recreate.switch` (or a plain `recreate`) 1 stays 1; anything else is -1.
-fn recreate(a: &Value) -> i64 {
-  match a.i64("recreate.switch").or_else(|| a.i64("recreate")) {
-    Some(1) => 1,
-    _ => -1,
-  }
-}
-
-/// Text parts (`desc_v2`, `dynamic_v2`) holding an @-mention (type 2).
-fn mentions(parts: &Value) -> bool {
-  parts
-    .as_array()
-    .is_some_and(|parts| parts.iter().any(|p| p.i64("type") == Some(2)))
-}
-
-/// A flag or id that is set: true, a number other than 0, a string other
-/// than "" and "0", a non-empty list or object.
-fn truthy(v: &Value) -> bool {
-  match v {
-    Value::Bool(b) => *b,
-    Value::Number(n) => n.as_f64().is_some_and(|n| n != 0.0),
-    Value::String(s) => !s.is_empty() && s != "0",
-    Value::Array(a) => !a.is_empty(),
-    Value::Object(o) => !o.is_empty(),
-    Value::Null => false,
-  }
 }

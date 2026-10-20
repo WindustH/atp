@@ -9,7 +9,7 @@ use atp_core::{Data, Result};
 
 use crate::api::Api;
 use crate::refs::{self, Video};
-use crate::{discover, dynamics, insights, media, users, videos};
+use crate::{discover, dynamics, insights, media, submissions, users, videos};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum Command {
@@ -81,6 +81,9 @@ pub enum Command {
   Library(library::LibraryCommand),
   #[command(flatten)]
   Interact(interact::InteractCommand),
+  /// The categories (分区) a video can go in: the ids `post --category` takes
+  #[command(visible_alias = "partitions")]
+  Categories,
   /// Dynamics of a user (yours when USER is omitted)
   #[command(visible_alias = "my-dynamics")]
   Dynamics {
@@ -161,6 +164,7 @@ pub async fn run(api: &Api, command: Command) -> Result<Data> {
       }
       Data::Posts(insights::compare(api, &refs, limit.into()).await?)
     }
+    E::Categories => Data::Collections(submissions::categories(api).await?),
     E::Dynamics { user, page } => {
       let mid = match user {
         Some(u) => users::mid(api, &api.ctx.user_ref(&u)?).await?,

@@ -203,6 +203,23 @@ async fn upload(api: &Api, path: &Path) -> Result<Value> {
 }
 
 /// A text dynamic, optionally with images and a topic (numeric topic id); `quote` reposts.
+/// The options of `post` that only videos take.
+pub fn check_options(draft: &Draft) -> Result<()> {
+  let video_only = [
+    (draft.cover.is_some(), "--cover"),
+    (draft.visibility.is_some(), "--visibility"),
+    (draft.schedule.is_some(), "--schedule"),
+    (!draft.chapters.is_empty(), "--chapters"),
+    (draft.category.is_some(), "--category"),
+  ];
+  match video_only.iter().find(|(given, _)| *given) {
+    Some((_, option)) => Err(Error::input(format!(
+      "{option} is for videos (--video); a dynamic takes text, images and topics"
+    ))),
+    None => Ok(()),
+  }
+}
+
 pub async fn publish(api: &Api, draft: &Draft, quote: Option<&str>) -> Result<Action> {
   if draft.reply_to.is_some() {
     return Err(Error::unsupported("post --reply-to (use `comment`)"));

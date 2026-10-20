@@ -58,6 +58,11 @@ pub async fn edit(api: &Api, id: &str, edit: &Edit) -> Result<Action> {
   if edit.visibility.is_some() {
     return Err(Error::unsupported("edit --visibility (dynamics)"));
   }
+  if edit.chapters.is_some() || edit.video.is_some() {
+    return Err(Error::unsupported(
+      "edit --chapters / --video (dynamics; they are for videos)",
+    ));
+  }
   api.require_login()?;
   let mut old = Dynamic::of(id, &detail(api, id).await?)?;
   let infos = infos(api, &mut old).await?;

@@ -6,7 +6,7 @@ use atp_core::{Action, Error, Page, PageReq, Post, Query, Result, User, Value, V
 use crate::api::Api;
 use crate::paging::Pn;
 use crate::refs::Video;
-use crate::{parse, users};
+use crate::{chapters, parse, users};
 
 const VIEW: &str = "https://api.bilibili.com/x/web-interface/view";
 const SEARCH: &str = "https://api.bilibili.com/x/web-interface/wbi/search/type";
@@ -78,7 +78,13 @@ pub async fn view(api: &Api, v: &Video) -> Result<Value> {
 }
 
 pub async fn read(api: &Api, v: &Video) -> Result<Post> {
-  let mut post = parse::video(&view(api, v).await?);
+  let view = view(api, v).await?;
+  let mut post = parse::video(&view);
+  if let Ok(cid) = cid(&view, v.page)
+    && let Some(list) = chapters::read(api, v.aid, cid).await
+  {
+    post.extra.insert("chapters".into(), list);
+  }
   if api.ctx.http.has_cookie("SESSDATA")
     && let Ok(r) = api
       .get(RELATION)

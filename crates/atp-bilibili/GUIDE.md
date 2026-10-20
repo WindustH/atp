@@ -104,7 +104,9 @@ of `hot --category`), `topic TOPIC [--sort hot|new]`.
 ### read
 
 Adds your own relation to a video under `extra.mine` (liked, coins,
-favorited, following).
+favorited, following), and its chapters (分段章节) under `extra.chapters`
+(`title`, `start`, `end` in seconds) when the part read has them; a
+part is chosen with `?p=N` in the link.
 
 ### user
 
@@ -160,9 +162,41 @@ holds audio tracks (`kind: audio`, id `au…`) and collections of videos
 
 ### post
 
-Publishes a dynamic: text and images, one topic id with `--topic`, `--quote
-DYNAMIC` to repost (a repost cannot carry images). Replies go through
-`comment`.
+Without `--video`, publishes a dynamic: text and images, one topic id
+with `--topic`, `--quote DYNAMIC` to repost (a repost cannot carry
+images). Replies go through `comment`.
+
+With `--video FILE`, submits a video (投稿) the way the creator center's
+upload page does: the file goes up in 10 MB parts (a stopped upload
+continues where it was when run again within the hour), then the cover,
+then the archive. It prints what goes out and asks first (`-y` in
+scripts); Bilibili reviews every video before it shows.
+
+- `--title` (at most 80 characters), `--cover IMAGE` (JPEG or PNG),
+  `--category ID` and at least one `--topic` (the tags, 10 at most) are
+  required; TEXT is the description (简介, at most 2000 characters).
+- `--category` is a category (分区) id from `atp bili categories`, which
+  lists the ones the account picks from: the new kind most accounts
+  have now, or the classic sub-categories.
+- `--visibility public|private` (仅自己可见); `friends` is refused.
+- `--schedule WHEN` publishes later, within the window Bilibili gives
+  the account (checked before anything is uploaded).
+- `--chapters FILE` sets chapters before the archive goes out (the rules
+  under `edit`); ATP reads the video's length from MP4 and MOV files,
+  other formats take chapters with `edit` once published.
+- The video is original (自制); reposts (转载), several parts, a
+  collection (合集), dynamic text and the other upload settings are left
+  at their defaults. The video formats are those the page takes (mp4,
+  flv, mov, mkv, webm, avi ...).
+- An upload Bilibili finds too frequent is `rate_limited`; one it wants
+  a check for is `verification_required` with the upload page to pass
+  it in a browser (ATP does not open it itself).
+
+```
+atp bili categories
+atp bili post '简介' --video talk.mp4 --title '标题' --cover cover.jpg \
+  --topic 编程 --topic Rust --category 1015 --chapters chapters.txt
+```
 
 ### edit
 
@@ -181,6 +215,20 @@ changes them:
 - `--cover IMAGE` uploads a new cover (a 16:9 JPEG or PNG); the 4:3 crop
   is cleared.
 - `--visibility public|private`; `friends` is refused.
+- `--video FILE` replaces the file of the video (换源), uploaded as for
+  `post`; a video in several parts takes `--part N` (or a `?p=N` link).
+  The summary says what it resets: the part's chapters and player cards
+  (互动卡片) are to be set again, its danmaku stay with the old file
+  (the creator center offers to move them; ATP does not), and the new
+  file's statistics start the next day: the three effects the edit
+  page warns of. The video keeps its BV id and link.
+- `--chapters FILE` replaces the chapters of the video (of part N with
+  `--part N`) and `--no-chapters` removes them, through the player's
+  chapter editor. Bilibili's rules are checked first: a video over a
+  minute, 2 to 10 chapters, the first at 0:00, each at least 5 seconds,
+  titles of at most 16 characters; the last one ends with the part.
+  Chapters alone do not send the video to review again; they cannot go
+  with `--video` in one edit (set them once the new file is reviewed).
 - The edit page sends the whole record back, so every other field is
   copied from what was loaded. Joint submissions (联合投稿), videos for
   chargers (充电专属), interactive videos and videos with a commercial
@@ -196,7 +244,7 @@ Dynamics (`t.bilibili.com/ID`) change the way their editor changes them:
 - `--title` sets the title, an empty one removes it; reposts have none.
 - `--topic ID` sets the one topic (a numeric topic id, as on `post`);
   `--no-topics` removes it.
-- `--cover` and `--visibility` are refused.
+- `--cover`, `--visibility`, `--chapters` and `--video` are refused.
 - Only dynamics Bilibili offers to edit change: your own, not while they
   are reviewed, and not with a commercial card. The summary shows the
   edits left and Bilibili's warning when it gives them.
@@ -204,8 +252,23 @@ Dynamics (`t.bilibili.com/ID`) change the way their editor changes them:
 ```
 atp bili edit BV1xx411c7mD --title '新标题' --topic 编程 --topic Rust
 atp bili edit BV1xx411c7mD --visibility private
+atp bili edit BV1xx411c7mD --chapters chapters.txt
+atp bili edit BV1xx411c7mD --video new-cut.mp4 --part 2
 atp bili edit https://t.bilibili.com/1012345678901234567 '改过的文字'
 ```
+
+A chapters file:
+
+```
+0:00 开场
+0:45 安装
+3:10 常见问题
+```
+
+### categories
+
+The categories (分区) a video can go in, as the upload page offers them
+to the account (a login is needed): ids for `post --category`.
 
 ### delete
 
@@ -384,3 +447,8 @@ SECS [--color HEX] [--mode scroll|top|bottom]`.
   only.
 - How many users or items one batch call takes beyond what ATP sends (50
   users, 20 folder items) is not known.
+- Video uploads send one file in one part, original, with the upload
+  page's defaults; reposts (转载), several parts, collections, premieres,
+  charging and commercial settings are not set here.
+- Whether the chapter editor accepts every character in a title is not
+  known; it says titles take no special characters without naming them.
