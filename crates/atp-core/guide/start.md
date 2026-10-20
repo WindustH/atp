@@ -23,7 +23,9 @@ one of them.
   `feishu`, `dingtalk`, `wecom`, `slack`, `mattermost`, `rocketchat`,
   `matrix`, `kook`, `vocechat`, `line`, `satori`.
 - Shopping: `taobao`, `xianyu`, `jd`, `pdd`, `dewu`, `steam` (the
-  Steam store: games, prices in any storefront, reviews).
+  Steam store: games, prices in any storefront, reviews), `smzdm` (SMZDM
+  什么值得买: deals, articles and their comments, read-only; the search
+  reads through a browser tab).
 - Maps, local life and travel: `amap`, `meituan`, `dianping`, `ctrip`.
 - Cloud drives: `quark`, `baidupan`. Music and podcasts: `ncm` (NetEase
   Cloud Music), `qqmusic` (QQ Music), `spotify`, `podcast` (Apple's

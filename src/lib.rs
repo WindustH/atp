@@ -161,6 +161,8 @@ pub use atp_satori as satori;
 pub use atp_shixiseng as shixiseng;
 #[cfg(feature = "slack")]
 pub use atp_slack as slack;
+#[cfg(feature = "smzdm")]
+pub use atp_smzdm as smzdm;
 #[cfg(feature = "spotify")]
 pub use atp_spotify as spotify;
 #[cfg(feature = "stackexchange")]

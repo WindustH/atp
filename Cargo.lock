@@ -434,6 +434,7 @@ dependencies = [
  "atp-satori",
  "atp-shixiseng",
  "atp-slack",
+ "atp-smzdm",
  "atp-spotify",
  "atp-stackexchange",
  "atp-steam",
@@ -1353,6 +1354,17 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "url",
+]
+
+[[package]]
+name = "atp-smzdm"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "jiff",
+ "regex",
+ "serde_json",
  "url",
 ]
 

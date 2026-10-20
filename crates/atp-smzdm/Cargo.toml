@@ -1,0 +1,13 @@
+[package]
+name = "atp-smzdm"
+description = "SMZDM (什么值得买) support for all-the-platforms, read-only: the front page's picks, the search (through a browser), deals and articles with their prices, malls and 值 / 不值 votes, and their comments"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+jiff.workspace = true
+regex.workspace = true
+serde_json.workspace = true
+url.workspace = true

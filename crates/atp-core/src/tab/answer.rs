@@ -20,6 +20,11 @@ const CHECKS: &[(&str, &str)] = &[
   ("TEOCaptchaWidget", "Tencent EdgeOne"),
   ("EO_Bot_Ssid", "Tencent EdgeOne"),
   ("__jsl_clearance", "Jiasule"),
+  // An empty page whose script (`/<path>/probe.js?v=…`) sets a cookie and
+  // reloads; the pages it guards load `probev3.js` instead.
+  ("/probe.js?v=", "a script check"),
+  // A page made of Tencent's captcha alone, started as it loads.
+  ("new TencentCaptcha(", "Tencent's captcha"),
 ];
 /// Words in the titles of check pages.
 const CHECK_TITLES: &[&str] = &[

@@ -116,6 +116,7 @@ atp-proginn = { path = "crates/atp-proginn" }
 atp-steam = { path = "crates/atp-steam" }
 atp-forem = { path = "crates/atp-forem" }
 atp-hupu = { path = "crates/atp-hupu" }
+atp-smzdm = { path = "crates/atp-smzdm" }
 
 aes = "0.8"
 base64 = "0.22"
@@ -224,6 +225,7 @@ all = [
   "steam",
   "forem",
   "hupu",
+  "smzdm",
 ]
 zhihu = ["dep:atp-zhihu"]
 xhs = ["dep:atp-xhs"]
@@ -308,6 +310,7 @@ proginn = ["dep:atp-proginn"]
 steam = ["dep:atp-steam"]
 forem = ["dep:atp-forem"]
 hupu = ["dep:atp-hupu"]
+smzdm = ["dep:atp-smzdm"]
 
 [dependencies]
 atp-core.workspace = true
@@ -394,6 +397,7 @@ atp-proginn = { workspace = true, optional = true }
 atp-steam = { workspace = true, optional = true }
 atp-forem = { workspace = true, optional = true }
 atp-hupu = { workspace = true, optional = true }
+atp-smzdm = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio.workspace = true
