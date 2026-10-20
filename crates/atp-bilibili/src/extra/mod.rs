@@ -3,6 +3,7 @@
 mod explore;
 mod interact;
 mod library;
+mod seasons;
 
 use atp_core::cli::PageArgs;
 use atp_core::{Data, Result};
@@ -81,6 +82,8 @@ pub enum Command {
   Library(library::LibraryCommand),
   #[command(flatten)]
   Interact(interact::InteractCommand),
+  #[command(flatten)]
+  Seasons(seasons::SeasonCommand),
   /// The categories (分区) a video can go in: the ids `post --category` takes
   #[command(visible_alias = "partitions")]
   Categories,
@@ -157,6 +160,7 @@ pub async fn run(api: &Api, command: Command) -> Result<Data> {
     E::Explore(c) => explore::run(api, c).await?,
     E::Library(c) => library::run(api, c).await?,
     E::Interact(c) => interact::run(api, c).await?,
+    E::Seasons(c) => seasons::run(api, c).await?,
     E::VideoStats { videos, limit } => {
       let mut refs = Vec::new();
       for v in &videos {

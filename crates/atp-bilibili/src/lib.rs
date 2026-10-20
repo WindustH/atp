@@ -33,6 +33,7 @@ mod refs;
 mod relations;
 mod rooms;
 mod search;
+mod seasons;
 mod sign;
 mod submissions;
 mod uploads;
@@ -213,6 +214,8 @@ impl Platform for Bilibili {
     "shared-following",
     "categories",
     "dynamics",
+    "seasons",
+    "season",
   ];
 
   fn new(ctx: Ctx) -> Result<Self> {

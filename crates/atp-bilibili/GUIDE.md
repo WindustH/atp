@@ -73,7 +73,8 @@ run `atp bili login` again.
 - Live rooms: the room number, `live:ROOM` or a `live.bilibili.com/…` link;
   `live` also takes a user (`uid:MID`, `@name`).
 - Collections (合集 / 系列): their space link, `MID/ID` (a 合集) or
-  `MID/series/ID`.
+  `MID/series/ID`. Your own 合集 (`season`, `season-add` ...) also take
+  the bare id or `#N` after `seasons`.
 - Favorites folders: the folder id, a `…/favlist?fid=<id>` link or `#N`
   after `collections`.
 - What a favorites folder holds (`folder-remove`, `folder-move`): videos,
@@ -199,7 +200,8 @@ scripts); Bilibili reviews every video before it shows.
   other formats take chapters with `edit` once published.
 - The video is original (自制); reposts (转载), several parts, a
   collection (合集), dynamic text and the other upload settings are left
-  at their defaults. The video formats are those the page takes (mp4,
+  at their defaults. To put the video in a 合集, publish it, then
+  `season-add`. The video formats are those the page takes (mp4,
   flv, mov, mkv, webm, avi ...).
 - An upload Bilibili finds too frequent is `rate_limited`; one it wants
   a check for is `verification_required` with the upload page to pass
@@ -353,6 +355,66 @@ counters), `timeline [--drama]` what airs this week, `my-bangumi [USER]
 `lists USER` shows a user's 合集 / 系列 and `list LIST` their videos;
 `articles USER`, `coined USER`, `liked USER` (when they make them public).
 
+### seasons, season, season-create, season-edit, season-delete, season-add, season-remove, season-sort
+
+Your own 合集 (collections of your videos), managed the way the creator
+center's 合集管理 page manages them. Untested: these commands follow the
+page's code and have not run against a logged-in account yet, so look at
+the first results on the web too. `lists` / `list` read anyone's 合集;
+favorites folders (`folder-*`) are something else.
+
+- `seasons` lists yours: id, title, number of videos and the review
+  state (`extra.state`: open, in review, rejected ...; a 合集 that is not
+  open shows it before its description). Drafts Bilibili suggests (草稿)
+  are among them. `season ID` lists the videos of one in order, after a
+  note naming its state and its sections (分组 / 小节); each row carries
+  `extra.position`, `extra.section`, `extra.section_id` and
+  `extra.episode_id`. ID is the id `seasons` prints, `#N` after it,
+  `MID/ID` or the 合集's space link.
+- `season-create TITLE [--cover IMAGE] [--desc TEXT]`: a title of at most
+  50 characters, a description of at most 500. The cover is 16:9 (JPEG or
+  PNG, sent uncropped, with a note when it is far from that shape);
+  without `--cover` the 合集 gets the upload page's default picture. The
+  result carries the new id. Bilibili reviews a new 合集 and caps how many
+  one account makes (`permission_denied` when the cap is reached).
+- `season-edit ID [--title T] [--desc TEXT] [--cover IMAGE]` changes those;
+  the rest is sent back as it was. Bilibili reviews the change.
+- `season-delete ID` deletes the 合集; its videos stay published.
+- `season-add ID VIDEO… [--section SECTION]` adds videos in the order
+  given, after the ones already there, each under its own title. Every
+  video is checked first, the way the page checks it
+  (`section/episode/verify`), and when one cannot go in the command names
+  each such video with Bilibili's reason and changes nothing. The page's
+  rules: only your own videos; each video in one 合集 only (take it out of
+  the other with `season-remove`); single-part videos, unless Bilibili
+  lets the account add more; no deleted or locked videos; no course
+  videos (课堂). A video still in review can go in: the upload page adds a
+  new video right after submitting it. In a 合集 with several sections
+  the videos go into the last one unless `--section` names another (the
+  note of `season` gives the ids). Up to 50 videos go per request.
+- `season-remove ID VIDEO…` takes videos out, one request each; they stay
+  published.
+- `season-sort ID VIDEO…` orders the videos of one section: those given
+  first, in that order, the others after them as they were. The summary
+  shows the whole new order.
+- Every write shows what changes and asks first (`-y` in scripts). Paid
+  合集 (付费合集) and activity 合集 (活动合集) are refused. When Bilibili
+  wants a captcha before a change (code 601), the command fails with
+  `verification_required`: make that change on the creator center's 合集
+  page instead.
+- `post` cannot put a new video in a 合集 (Bilibili's submission takes
+  only paid ones; the upload page adds the video after submitting it):
+  publish, then `season-add`.
+
+A 合集 "操作系统" with two published videos in order, checked at the end
+(1234567 stands for the id `season-create` prints):
+
+```
+atp bili season-create '操作系统' --cover os.jpg --desc '操作系统课程，按顺序观看'
+atp bili season-add 1234567 BV1xx411c7mD BV1yy411c7mE
+atp bili season 1234567
+```
+
 ### chats, messages, send
 
 - Private messages (私信): `chats` lists conversations (`dm:MID`; Bilibili
@@ -471,6 +533,11 @@ SECS [--color HEX] [--mode scroll|top|bottom]`.
   users, 20 folder items) is not known.
 - Video uploads send one file in one part, original, with the upload
   page's defaults; reposts (转载), several parts, collections, premieres,
-  charging and commercial settings are not set here.
+  charging and commercial settings are not set here (`season-add` puts a
+  published video in a 合集).
+- The 合集 commands (`seasons` … `season-sort`) are untested against a
+  logged-in account. Sections cannot be created, renamed or deleted here,
+  nor videos moved between sections or episode titles changed: the
+  creator center's 合集 page does those.
 - Whether the chapter editor accepts every character in a title is not
   known; it says titles take no special characters without naming them.
