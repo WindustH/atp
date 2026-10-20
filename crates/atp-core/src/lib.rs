@@ -19,6 +19,7 @@ mod chrome;
 pub mod cli;
 pub mod credentials;
 pub mod ctx;
+mod doctor;
 pub mod download;
 pub mod error;
 pub mod feed;

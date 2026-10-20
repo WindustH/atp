@@ -265,6 +265,7 @@ atp guide                 # topics: start, login, refs, output, analysis, downlo
 atp guide analysis        # creator insights, exports, snapshots
 atp guide bili            # one platform: commands, references, login, limits
 atp bili search --help    # a command's options, with examples
+atp doctor                # check sessions, ffmpeg, browser, proxy and clock
 ```
 
 ## Good to know

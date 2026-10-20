@@ -50,6 +50,35 @@ handy for separate accounts:
 
     ATP_HOME=~/media-work atp bili login
 
+## Checking the setup
+
+`atp doctor` checks what ATP depends on, in one go:
+
+- the version, the config folder (sessions and data files) and the cache
+  folder, and each saved session file: a warning when its group or other
+  users may read it (`chmod 600` fixes it);
+- every saved session, with the `status` check, one platform after
+  another at its own pace (only platforms with a saved session; human
+  checks are not opened);
+- ffmpeg on `PATH` (merging the video and audio of split videos,
+  `--audio-only`, `--split`) and a Chromium-family browser (human checks,
+  platforms read through a browser), found as they are when used;
+- the proxy in effect and where it comes from (`--proxy`, `ATP_PROXY`,
+  `ALL_PROXY`, `HTTPS_PROXY`; a password in it is masked), whether the
+  network answers through it, and how far the clock is from that answer's
+  `Date` (more than 30 s off is a warning: signatures and logins depend on
+  the clock). Network and clock take one request to a well-known server.
+
+`--offline` skips the session checks, the network and the clock. Output
+follows `-f`: a table, or `{version, healthy, config_dir, cache_dir,
+checks}` in JSON or YAML, each check with `check`, `platform` (for
+sessions), `status` (`ok`, `warn`, `fail`, `skip`) and `detail`; `jsonl`
+and `csv` give a row per check. The exit code is 0 when everything is
+fine and 1 when something needs attention (a `warn` or a `fail`).
+
+    atp doctor
+    atp doctor --offline --json
+
 ## Shorter commands
 
 Link the binary under a platform name to skip the platform word:
@@ -62,6 +91,6 @@ On Windows, a copy or a hard link named after the platform does the same:
 
 ## Exit codes
 
-0 success; 1 failure (and `status` when not logged in, and a command on
-several users, posts or folders when any of them failed); 2 invalid input;
-3 not logged in.
+0 success; 1 failure (and `status` when not logged in, a command on
+several users, posts or folders when any of them failed, and `doctor`
+when something needs attention); 2 invalid input; 3 not logged in.

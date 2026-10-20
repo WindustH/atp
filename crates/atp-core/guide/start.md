@@ -106,6 +106,7 @@ Zhihu questions, YouTube transcripts ...) are listed in `atp guide <platform>`.
     atp guide <platform>              # one platform, e.g. `atp guide bili`
     atp guide <platform> <command>    # one command, e.g. `atp guide bili search`
     atp guide login <platform>        # logging in, e.g. `atp guide login xhs`
+    atp doctor                        # check the setup (`atp guide config`)
 
 Guide topics print as plain Markdown when stdout is not a terminal, so
 scripts and AI agents can read them too.

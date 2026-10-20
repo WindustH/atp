@@ -254,6 +254,7 @@ atp guide                 # 主题列表：start、login、refs、output、analy
 atp guide analysis        # 创作者数据、导出、定时快照
 atp guide bili            # 单个平台：命令、引用格式、登录、限制
 atp bili search --help    # 单个命令的选项和示例
+atp doctor                # 检查会话、ffmpeg、浏览器、代理和系统时钟
 ```
 
 （内置文档为英文。）

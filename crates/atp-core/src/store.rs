@@ -56,22 +56,28 @@ pub struct Store {
   cache_dir: PathBuf,
 }
 
+/// The directories every platform's own lie in: config (sessions, data
+/// files) and cache, under `ATP_HOME` when it is set.
+pub fn roots() -> (PathBuf, PathBuf) {
+  match std::env::var_os("ATP_HOME") {
+    Some(home) => {
+      let home = PathBuf::from(home);
+      (home.join("config"), home.join("cache"))
+    }
+    None => (
+      dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("all-the-platforms"),
+      dirs::cache_dir()
+        .unwrap_or_else(std::env::temp_dir)
+        .join("all-the-platforms"),
+    ),
+  }
+}
+
 impl Store {
   pub fn new(platform: &str) -> Self {
-    let (config, cache) = match std::env::var_os("ATP_HOME") {
-      Some(home) => {
-        let home = PathBuf::from(home);
-        (home.join("config"), home.join("cache"))
-      }
-      None => (
-        dirs::config_dir()
-          .unwrap_or_else(|| PathBuf::from("."))
-          .join("all-the-platforms"),
-        dirs::cache_dir()
-          .unwrap_or_else(std::env::temp_dir)
-          .join("all-the-platforms"),
-      ),
-    };
+    let (config, cache) = roots();
     Self {
       config_dir: config.join(platform),
       cache_dir: cache.join(platform),
@@ -86,7 +92,8 @@ impl Store {
     &self.cache_dir
   }
 
-  fn session_path(&self) -> PathBuf {
+  /// Where the saved session is kept (it may not exist).
+  pub fn session_path(&self) -> PathBuf {
     self.config_dir.join("session.json")
   }
 

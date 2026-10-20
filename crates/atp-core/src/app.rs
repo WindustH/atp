@@ -129,6 +129,17 @@ impl App {
               .action(clap::ArgAction::SetTrue)
               .help("Offer only commands that read; no likes, posts, messages or downloads"),
           ),
+      )
+      .subcommand(
+        clap::Command::new("doctor")
+          .about("Check ATP's setup: files, saved sessions, ffmpeg, browser, proxy, clock")
+          .arg(
+            clap::Arg::new("offline")
+              .long("offline")
+              .action(clap::ArgAction::SetTrue)
+              .help("Stay on this machine: skip the session checks, the network and the clock"),
+          )
+          .after_long_help(EX_DOCTOR),
       );
     for e in &self.platforms {
       cmd = cmd.subcommand((e.command)());
@@ -180,6 +191,9 @@ impl App {
     };
     if name == "mcp" {
       return runtime.block_on(crate::mcp::serve(&self, sub.get_flag("read-only")));
+    }
+    if name == "doctor" {
+      return runtime.block_on(crate::doctor::run(&self, &global, sub.get_flag("offline")));
     }
     let Some(entry) = self.find(name) else {
       return ExitCode::FAILURE;
@@ -246,3 +260,17 @@ Examples:
   atp guide login xhs               # logging in to one platform
 
 Pages are Markdown: piped, they print as is.";
+
+const EX_DOCTOR: &str = "\
+Examples:
+  atp doctor                        # everything, one request per saved session
+  atp doctor --offline              # files, permissions, ffmpeg, browser, proxy
+  atp doctor --json                 # the same as data
+
+It shows the version, the config and cache folders, who may read each saved
+session, the `status` of every saved session (one platform after another),
+ffmpeg, a Chromium-family browser, the proxy, and the network and the clock
+(one request to a well-known server). The exit code is 1 when something needs
+attention.
+
+More: atp guide config";

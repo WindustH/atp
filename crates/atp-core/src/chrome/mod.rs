@@ -97,7 +97,7 @@ fn candidates() -> Vec<PathBuf> {
 }
 
 /// `name` resolved against `PATH` (with `.exe` on Windows).
-fn on_path(name: &str) -> Option<PathBuf> {
+pub(crate) fn on_path(name: &str) -> Option<PathBuf> {
   let file = if cfg!(windows) && !name.ends_with(".exe") {
     format!("{name}.exe")
   } else {

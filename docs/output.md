@@ -103,7 +103,7 @@ failure is `unknown`.
 | Exit code | Meaning |
 | --- | --- |
 | 0 | success |
-| 1 | any failure not listed below; also `status` when not logged in, and a command on several things when any of them failed |
+| 1 | any failure not listed below; also `status` when not logged in, a command on several things when any of them failed, and `doctor` when something needs attention |
 | 2 | invalid input (bad arguments, unknown id format ...) |
 | 3 | not authenticated |
 
