@@ -121,6 +121,10 @@ pub struct Edit {
   /// The person said yes ahead (`--yes`); platforms that show the change
   /// before sending it ask otherwise.
   pub yes: bool,
+  /// Show the change and the requests it would make, uploading and
+  /// sending nothing ([`Cap::EditDryRun`](super::Cap::EditDryRun)); with
+  /// nothing to change, the post's state.
+  pub dry_run: bool,
 }
 
 impl Edit {

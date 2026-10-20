@@ -156,6 +156,9 @@ pub struct EditArgs {
   /// Skip the confirmation question (needed in scripts)
   #[arg(short, long)]
   pub yes: bool,
+  /// Show the change and the requests it would make; upload and send nothing
+  #[arg(long)]
+  pub dry_run: bool,
 }
 
 impl EditArgs {
@@ -186,6 +189,7 @@ impl EditArgs {
       ),
       (self.video.is_some(), Cap::EditVideo, "edit --video"),
       (self.part.is_some(), Cap::EditVideo, "edit --part"),
+      (self.dry_run, Cap::EditDryRun, "edit --dry-run"),
     ];
     given
       .iter()
@@ -319,6 +323,7 @@ const EDIT_OPTIONS: &[(&str, &[Cap])] = &[
   ("no_chapters", &[Cap::EditChapters]),
   ("video", &[Cap::EditVideo]),
   ("part", &[Cap::EditVideo]),
+  ("dry_run", &[Cap::EditDryRun]),
 ];
 
 /// `post` without the options the platform does not offer.
@@ -513,8 +518,10 @@ async fn edit<P: Platform>(p: &P, args: EditArgs) -> Result<crate::model::Action
     video: args.video,
     part: args.part.map(|n| n as usize),
     yes: args.yes,
+    dry_run: args.dry_run,
   };
-  if edit.text.is_none() && !edit.others() {
+  // A dry run with nothing to change shows the post's state.
+  if edit.text.is_none() && !edit.others() && !edit.dry_run {
     return Err(Error::input(
       "nothing to change: give a new text, --title, --topic, --cover, --visibility, --chapters or --video",
     ));
@@ -595,9 +602,10 @@ Examples:
   atp douyin edit '#2' --title '新标题' --visibility private
   atp yt edit dQw4w9WgXcQ --chapters chapters.txt
   atp bili edit BV1xx411c7mD --video new-cut.mp4
+  atp douyin edit 7697611474302225714 --cover v.jpg --dry-run
 
 Options other than the text show where the platform can change them
 (edit-title, edit-topics, edit-cover, edit-cover-horizontal,
-edit-visibility, edit-chapters, edit-video in `atp platforms`). A
-chapters file holds one `0:00 Title` line per chapter.
+edit-visibility, edit-chapters, edit-video, edit-dry-run in `atp
+platforms`). A chapters file holds one `0:00 Title` line per chapter.
 More: atp guide edit";

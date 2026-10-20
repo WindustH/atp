@@ -99,6 +99,7 @@ impl Platform for Douyin {
       Cap::EditTopics,
       Cap::EditCover,
       Cap::EditCoverHorizontal,
+      Cap::EditDryRun,
       Cap::EditVisibility,
       Cap::EditChapters,
       Cap::EditVideo,

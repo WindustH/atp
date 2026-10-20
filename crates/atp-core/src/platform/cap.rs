@@ -81,6 +81,9 @@ pub enum Cap {
   EditVideo,
   /// `edit --cover-horizontal`: a new landscape (4:3) cover beside the main one.
   EditCoverHorizontal,
+  /// `edit --dry-run`: the change and the requests it would make, with
+  /// nothing uploaded or sent.
+  EditDryRun,
   Listen,
   /// A drive: `search`, `read` and `download` work on files and folders.
   Files,
@@ -182,6 +185,7 @@ impl Cap {
     Cap::EditChapters,
     Cap::EditVideo,
     Cap::EditCoverHorizontal,
+    Cap::EditDryRun,
     Cap::Listen,
     Cap::Files,
     Cap::FollowingSearch,
@@ -267,6 +271,7 @@ impl Cap {
       Cap::EditChapters => "edit-chapters",
       Cap::EditVideo => "edit-video",
       Cap::EditCoverHorizontal => "edit-cover-horizontal",
+      Cap::EditDryRun => "edit-dry-run",
       Cap::Listen => "listen",
       Cap::Files => "files",
       Cap::FollowingSearch => "following-search",

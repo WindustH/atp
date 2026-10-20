@@ -417,6 +417,15 @@ prints the change (each field as old → new) and asks (`-y` in scripts).
   and warns before the last one. With none left, or when Douyin says the
   work can no longer change, the edit fails with `permission_denied`
   before anything is uploaded. Changed works may be reviewed again.
+- `--dry-run` checks first without using an edit: it loads what an edit
+  loads (`item/info`, `update/desc/valid/v2`, the chapters), prints the
+  summary with the edits left, whether the work can be edited, whether
+  its video can be replaced and whether its chapters are locked or in
+  review, and what Douyin would refuse; then the exact forms it would
+  send (`update/desc/`, `chapter/upsert` or `chapter/delete/`,
+  `aweme/update/`), uploads shown as `<uri of FILE after upload>`. It
+  uploads and sends nothing. Without other options it shows the work's
+  state.
 - @-mentions and activities (活动) stay as the edit page keeps them. A
   mention (`text_extra` type 0 with its `user_id`, and `mentions`) goes
   back as loaded while the text stays; with a new TEXT or `--topic`,
@@ -433,6 +442,8 @@ prints the change (each field as old → new) and asks (`-y` in scripts).
 atp douyin edit 7697611474302225714 --topic 操作系统 --topic 计算机
 atp douyin edit https://www.douyin.com/video/7697611474302225714 --title '『操作系统 Ep.02』硬件视角'
 atp douyin edit '#1' --visibility private
+atp douyin edit 7697611474302225714 --dry-run
+atp douyin edit 7697611474302225714 --cover v.jpg --chapters chapters.txt --dry-run
 atp douyin edit 7697611474302225714 --chapters chapters.txt
 atp douyin edit 7697611474302225714 --no-chapters
 atp douyin edit 7697611474302225714 --video ep02-fixed.mp4

@@ -6,7 +6,8 @@
 //! manage page's permission form sets who can see it (`aweme/update/`)
 //! and its chapter editor (编辑章节) the chapters
 //! ([`chapters`](super::chapters)). Nothing goes out before the person
-//! has seen the change and said yes.
+//! has seen the change and said yes; a dry run shows the change, the
+//! work's state and the forms, and uploads and sends nothing.
 
 use std::time::Duration;
 
@@ -116,19 +117,19 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
   let words = edit.text.is_some() || edit.title.is_some() || edit.topics.is_some();
   let covers = edit.cover.is_some() || edit.cover_horizontal.is_some();
   let describes = words || covers || edit.video.is_some();
-  let visibility = edit.visibility.as_deref().map(visibility_code);
-  // The edits left show either way; only `update/desc/` needs one.
+  let visibility = edit
+    .visibility
+    .as_deref()
+    .map(visibility_code)
+    .filter(|code| *code != work.visibility);
+  // The edits left show either way; only `update/desc/` needs one, and a
+  // dry run, which shows them.
   let allowed = match editable(&creator, &id).await {
     Ok(allowed) => allowed,
-    Err(e) if describes => return Err(e),
+    Err(e) if describes || edit.dry_run => return Err(e),
     Err(_) => Editable::default(),
   };
-  if describes {
-    allowed.check_edits()?;
-  }
-  if edit.video.is_some() {
-    allowed.check_media()?;
-  }
+  let refused = refusal(&work, edit, &allowed, describes);
   let (title, editor, dropped) = change(&work, edit)?;
   let mut notes = match work.kind {
     Kind::Video { .. } => {
@@ -143,16 +144,46 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
       names.join(" ")
     ));
   }
-  ask(
+  let mut change = summary(
     &work,
     edit,
     (&title, &editor),
     (&allowed, describes),
     &notes,
-  )?;
+  );
+  if edit.dry_run {
+    for (label, value) in state(&work, &allowed) {
+      change.row(label, &value);
+    }
+    if let Err(e) = &refused {
+      change.row("refused", &e.message);
+    }
+    change.show();
+    if describes {
+      let uploads = Uploads::placeholders(edit).await;
+      let form = describe(&work, (&title, &editor), words, &uploads);
+      show_request(&format!("{UPDATE_DESC}?read_aid=2906"), &form);
+    }
+    if let Some(list) = &edit.chapters {
+      let (path, form) = chapters_request(&work, list);
+      show_request(path, &form);
+    }
+    if let Some(code) = visibility {
+      show_request(UPDATE_PERMISSION, &permission_request(&work, code));
+    }
+    return Ok(
+      Action::done("dry-run", &id)
+        .with_id(&id)
+        .with_url(work.url())
+        .with_message("edit --dry-run: nothing was uploaded or sent, no edit was used"),
+    );
+  }
+  refused?;
+  change.confirm(edit.yes, "change this work on Douyin")?;
 
   if describes {
-    let form = describe(api, &creator, &work, edit, &title, &editor, words).await?;
+    let uploads = Uploads::send(api, &creator, edit).await?;
+    let form = describe(&work, (&title, &editor), words, &uploads);
     pause(api).await;
     creator
       .post_form(UPDATE_DESC, &form)
@@ -163,33 +194,17 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
   }
   if let Some(list) = &edit.chapters {
     pause(api).await;
-    let form = if list.is_empty() {
-      vec![("item_id".to_owned(), id.clone())]
-    } else {
-      let c = &work.chapters;
-      items::chapters_upsert(&id, list, &c.summary, c.bar)
-    };
-    let path = if list.is_empty() {
-      CHAPTER_DELETE
-    } else {
-      CHAPTER_UPSERT
-    };
+    let (path, form) = chapters_request(&work, list);
     creator
       .post_form(path, &form)
       .referer(MANAGE_PAGE)
       .send()
       .await?;
   }
-  if let Some(code) = visibility.filter(|code| *code != work.visibility) {
+  if let Some(code) = visibility {
     pause(api).await;
-    let form = [
-      ("item_id", id.clone()),
-      ("download", work.download.to_string()),
-      ("visibility_type", code.to_string()),
-    ]
-    .map(|(k, v)| (k.to_owned(), v));
     creator
-      .post_form(UPDATE_PERMISSION, &form)
+      .post_form(UPDATE_PERMISSION, &permission_request(&work, code))
       .referer(MANAGE_PAGE)
       .send()
       .await?;
@@ -197,9 +212,80 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
   Ok(Action::done("edit", &id).with_id(&id).with_url(work.url()))
 }
 
+/// What Douyin refuses now, which a dry run shows instead: chapters it
+/// holds, an edit with none left or that it no longer takes, a new video
+/// it does not take.
+fn refusal(work: &Work, edit: &Edit, allowed: &Editable, describes: bool) -> Result<()> {
+  if let (Some(_), Some(reason)) = (&edit.chapters, &work.chapters.locked) {
+    return Err(Error::new(
+      ErrorCode::PermissionDenied,
+      format!("Douyin: {reason}"),
+    ));
+  }
+  if describes {
+    allowed.check_edits()?;
+  }
+  if edit.video.is_some() {
+    allowed.check_media()?;
+  }
+  Ok(())
+}
+
+/// A dry run's rows on what the work allows now: edits through the edit
+/// page, a new video, chapters.
+fn state(work: &Work, allowed: &Editable) -> Vec<(&'static str, String)> {
+  let mut rows = vec![(
+    "can edit",
+    allowed.refused.clone().unwrap_or_else(|| "yes".into()),
+  )];
+  if let Kind::Video { .. } = work.kind {
+    let video = match allowed.check_media() {
+      Ok(()) => "can be replaced (Douyin allows 3 replacements per work)".to_owned(),
+      Err(e) => e.message,
+    };
+    rows.push(("new video", video));
+    let chapters = match (&work.chapters.locked, &work.chapters.list) {
+      (Some(reason), _) => reason.clone(),
+      (None, Some(list)) => format!("can change; now {}", chapter_summary(list)),
+      (None, None) => "can change".into(),
+    };
+    rows.push(("chapters", chapters));
+  }
+  rows
+}
+
+/// A request a dry run would make: its path and form, one field a line.
+fn show_request(path: &str, form: &items::Form) {
+  let mut lines = vec![format!("would POST {path}:")];
+  lines.extend(form.iter().map(|(k, v)| format!("  {k} = {v}")));
+  note(&lines.join("\n"));
+}
+
+/// The chapter editor's request: `chapter/upsert` with the new list, or
+/// `chapter/delete/` for none.
+fn chapters_request(work: &Work, list: &[Chapter]) -> (&'static str, items::Form) {
+  if list.is_empty() {
+    return (CHAPTER_DELETE, vec![("item_id".into(), work.id.clone())]);
+  }
+  let c = &work.chapters;
+  let form = items::chapters_upsert(&work.id, list, &c.summary, c.bar);
+  (CHAPTER_UPSERT, form)
+}
+
+/// The permission form (`aweme/update/`) with a new visibility `code`.
+fn permission_request(work: &Work, code: i64) -> items::Form {
+  [
+    ("item_id", work.id.clone()),
+    ("download", work.download.to_string()),
+    ("visibility_type", code.to_string()),
+  ]
+  .map(|(k, v)| (k.to_owned(), v))
+  .to_vec()
+}
+
 /// What the work refuses before anything is asked: a new video or
-/// chapters on an image post, chapters against the chapter editor's rules
-/// or while Douyin holds them.
+/// chapters on an image post, chapters against the chapter editor's
+/// rules. Chapters Douyin holds are a [`refusal`].
 fn check_media(work: &Work, edit: &Edit) -> Result<()> {
   if matches!(work.kind, Kind::Images) && (edit.video.is_some() || edit.chapters.is_some()) {
     return Err(Error::input(
@@ -214,12 +300,6 @@ fn check_media(work: &Work, edit: &Edit) -> Result<()> {
   let Some(list) = &edit.chapters else {
     return Ok(());
   };
-  if let Some(reason) = &work.chapters.locked {
-    return Err(Error::new(
-      ErrorCode::PermissionDenied,
-      format!("Douyin: {reason}"),
-    ));
-  }
   if !list.is_empty() {
     return chapters::check(list, work.duration);
   }
@@ -229,49 +309,94 @@ fn check_media(work: &Work, edit: &Edit) -> Result<()> {
   Ok(())
 }
 
-/// The `update/desc/` form, after uploading the new video and covers.
-async fn describe(
-  api: &Api,
-  creator: &Creator<'_>,
+/// What the uploads give `update/desc/`: a new video's id and covers.
+#[derive(Default)]
+struct Uploads {
+  vid: Option<String>,
+  cover: Option<Picture>,
+  horizontal: Option<Picture>,
+}
+
+impl Uploads {
+  /// Upload the new video and covers.
+  async fn send(api: &Api, creator: &Creator<'_>, edit: &Edit) -> Result<Self> {
+    let mut out = Self::default();
+    let any = edit.video.is_some() || edit.cover.is_some() || edit.cover_horizontal.is_some();
+    if !any {
+      return Ok(out);
+    }
+    let up = Uploader::new(creator, &users::uid(api).await?).await?;
+    if let Some(path) = &edit.video {
+      note("uploading the video");
+      out.vid = Some(up.video(path).await?.vid);
+    }
+    if let Some(path) = &edit.cover {
+      note("uploading the cover");
+      out.cover = Some(picture(up.image(path).await?));
+    }
+    if let Some(path) = &edit.cover_horizontal {
+      note("uploading the 4:3 cover");
+      out.horizontal = Some(picture(up.image(path).await?));
+    }
+    Ok(out)
+  }
+
+  /// A dry run's stand-ins: `<uri of FILE after upload>` with the image's
+  /// own size, `<vid of FILE after upload>`.
+  async fn placeholders(edit: &Edit) -> Self {
+    let image = async |path: &std::path::Path| {
+      let (width, height) = match atp_core::file::Image::read(path).await {
+        Ok(image) => image.size(),
+        Err(_) => (0, 0),
+      };
+      Picture {
+        uri: format!("<uri of {} after upload>", path.display()),
+        width: width as u64,
+        height: height as u64,
+      }
+    };
+    let mut out = Self::default();
+    if let Some(path) = &edit.video {
+      out.vid = Some(format!("<vid of {} after upload>", path.display()));
+    }
+    if let Some(path) = &edit.cover {
+      out.cover = Some(image(path).await);
+    }
+    if let Some(path) = &edit.cover_horizontal {
+      out.horizontal = Some(image(path).await);
+    }
+    out
+  }
+}
+
+/// The `update/desc/` form with what the uploads gave.
+fn describe(
   work: &Work,
-  edit: &Edit,
-  title: &str,
-  editor: &Editor,
+  (title, editor): (&str, &Editor),
   words: bool,
-) -> Result<items::Form> {
-  let uploads = edit.video.is_some() || edit.cover.is_some() || edit.cover_horizontal.is_some();
-  let uploader = if uploads {
-    Some(Uploader::new(creator, &users::uid(api).await?).await?)
-  } else {
-    None
-  };
-  let mut new_vid = None;
-  if let (Some(up), Some(path)) = (&uploader, &edit.video) {
-    note("uploading the video");
-    new_vid = Some(up.video(path).await?.vid);
-  }
-  let mut cover = None;
-  if let (Some(up), Some(path)) = (&uploader, &edit.cover) {
-    note("uploading the cover");
-    cover = Some(picture(up.image(path).await?));
-  }
-  let mut horizontal = None;
-  if let (Some(up), Some(path)) = (&uploader, &edit.cover_horizontal) {
-    note("uploading the 4:3 cover");
-    horizontal = Some(picture(up.image(path).await?));
-  }
-  Ok(match &work.kind {
+  uploads: &Uploads,
+) -> items::Form {
+  let cover = uploads.cover.as_ref();
+  match &work.kind {
     Kind::Video { vid, covers } => {
-      let vid = new_vid.as_deref().unwrap_or(vid);
-      let (new, horizontal) = (cover.as_ref(), horizontal.as_ref());
+      let vid = uploads.vid.as_deref().unwrap_or(vid);
+      let horizontal = uploads.horizontal.as_ref();
       let ids = &work.challenge_ids;
-      items::video_modify(&work.id, vid, (title, editor), ids, covers, new, horizontal)
+      items::video_modify(
+        &work.id,
+        vid,
+        (title, editor),
+        ids,
+        covers,
+        cover,
+        horizontal,
+      )
     }
     Kind::Images => {
       let words = words.then_some((title, editor));
-      items::images_modify(&work.id, words, &work.challenge_ids, cover.as_ref())
+      items::images_modify(&work.id, words, &work.challenge_ids, cover)
     }
-  })
+  }
 }
 
 impl Editable {
@@ -554,15 +679,15 @@ impl Chapters {
   }
 }
 
-/// Show the change, with `notes` on it and the edits left, and ask (or
-/// take `--yes`).
-fn ask(
+/// The change, with `notes` on it and the edits left, to show before
+/// asking (or as a dry run).
+fn summary(
   work: &Work,
   edit: &Edit,
   (title, editor): (&str, &Editor),
   (allowed, describes): (&Editable, bool),
   notes: &[String],
-) -> Result<()> {
+) -> Change {
   let hashtags = |e: &Editor| {
     let names: Vec<String> = e.tags().iter().map(|t| format!("#{}", t.name)).collect();
     names.join(" ")
@@ -635,7 +760,7 @@ fn ask(
   for (label, value) in allowed.rows(describes) {
     change.row(label, &value);
   }
-  change.confirm(edit.yes, "change this work on Douyin")
+  change
 }
 
 /// A video's covers as the edit page fills them in: `Cover` (or `cover`),

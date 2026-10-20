@@ -9,6 +9,7 @@ cover and visibility.
     atp douyin edit '#2' --title '新标题' --visibility private
     atp yt edit dQw4w9WgXcQ --chapters chapters.txt
     atp bili edit BV1xx411c7mD --video new-cut.mp4
+    atp douyin edit 7697611474302225714 --cover v.jpg --dry-run
 
 - POST: `CHAT/MESSAGE`, an id, a link, or `#N` of the last message or
   post list; the `id` that `send` or `post` printed works too.
@@ -24,7 +25,10 @@ cover and visibility.
   (`edit-visibility`); `--chapters FILE` replaces a video's chapters and
   `--no-chapters` removes them (`edit-chapters`); `--video PATH` replaces
   a published video's file, `--part N` naming the part of a video in
-  several parts (`edit-video`). Elsewhere they are hidden and refused.
+  several parts (`edit-video`); `--dry-run` prints the change and the
+  requests it would make, uploading and sending nothing, and without
+  other options the post's state (`edit-dry-run`). Elsewhere they are
+  hidden and refused.
 - A chapters file holds one `0:00 Title` line per chapter (the format in
   `atp guide post`); `-` reads it from standard input unless TEXT is read
   from there. Each platform's guide gives its rules.

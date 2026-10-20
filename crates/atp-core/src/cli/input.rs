@@ -60,8 +60,13 @@ impl Change {
 
   /// Print the summary, then ask `what?` (or take `--yes`).
   pub fn confirm(&self, yes: bool, what: &str) -> Result<()> {
-    crate::output::note(&self.lines.join("\n"));
+    self.show();
     confirm(yes, what)
+  }
+
+  /// Print the summary without asking: an `edit --dry-run`.
+  pub fn show(&self) {
+    crate::output::note(&self.lines.join("\n"));
   }
 }
 
