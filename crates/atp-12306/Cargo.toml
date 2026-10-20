@@ -1,0 +1,13 @@
+[package]
+name = "atp-12306"
+description = "12306 (China Railway 中国铁路) support for all-the-platforms, read-only: stations, trains between two stations with tickets left, a train's stops and its fares"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+jiff.workspace = true
+regex.workspace = true
+serde_json.workspace = true

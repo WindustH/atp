@@ -55,6 +55,7 @@ fn main() -> ExitCode {
   .platform::<atp_dewu::Dewu>()
   .platform::<atp_steam::Steam>()
   .platform::<atp_ctrip::Ctrip>()
+  .platform::<atp_12306::Railway12306>()
   .platform::<atp_quark::Quark>()
   .platform::<atp_baidupan::Baidupan>()
   .platform::<atp_netease::Netease>()
