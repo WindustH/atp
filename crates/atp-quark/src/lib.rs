@@ -70,6 +70,7 @@ impl Platform for Quark {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["ls", "shares", "share-ls", "trash", "quota"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

@@ -94,6 +94,7 @@ impl Platform for Jike {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["topic"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

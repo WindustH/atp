@@ -75,6 +75,7 @@ impl Platform for Zsxq {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["groups", "group", "topics", "group-search"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

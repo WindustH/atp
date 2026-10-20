@@ -95,6 +95,24 @@ impl Platform for Facebook {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "pages",
+    "page-posts",
+    "group",
+    "group-posts",
+    "friends",
+    "ads me",
+    "ads accounts",
+    "ads account",
+    "ads campaigns",
+    "ads adsets",
+    "ads ads",
+    "ads creatives",
+    "ads audiences",
+    "ads pixels",
+    "ads get",
+    "ads insights",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

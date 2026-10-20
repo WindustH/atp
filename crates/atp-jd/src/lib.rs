@@ -68,6 +68,7 @@ impl Platform for Jd {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["suggest", "related", "rating"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

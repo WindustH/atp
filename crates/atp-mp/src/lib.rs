@@ -89,6 +89,14 @@ impl Platform for Mp {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "album",
+    "drafts",
+    "draft",
+    "latest-comments",
+    "material",
+    "accounts",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

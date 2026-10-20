@@ -148,6 +148,22 @@ impl Platform for Douyin {
   const FOLLOWING_SORT: &'static [&'static str] = users::SORTS;
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "mix",
+    "music",
+    "related",
+    "live",
+    "mixes",
+    "musics",
+    "saved-mixes",
+    "saved-dramas",
+    "saved-music",
+    "works",
+    "drafts",
+    "poi",
+    "hotspots",
+    "activities",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

@@ -2,6 +2,7 @@
 //! and `atp://guide/...` resources all come here.
 
 use crate::app::{App, Entry};
+use crate::cli::access;
 use crate::platform::PlatformInfo;
 
 use super::{command, index, login, platform, topic};
@@ -50,7 +51,10 @@ fn command_page(entry: &Entry, words: &[&str]) -> Result<String, String> {
   for name in &path {
     cmd = cmd.find_subcommand_mut(name).ok_or_else(missing)?;
   }
-  Ok(command::page(&info, cmd, &path))
+  // Groups have no access of their own; their commands each have one.
+  let words: Vec<&str> = path.iter().map(String::as_str).collect();
+  let access = (!cmd.has_subcommands()).then(|| access::access(&words, entry.extra_reads));
+  Ok(command::page(&info, cmd, &path, access))
 }
 
 /// The canonical names of the commands `words` name (aliases resolved).

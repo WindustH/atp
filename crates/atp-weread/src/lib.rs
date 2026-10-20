@@ -74,6 +74,17 @@ impl Platform for WeRead {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "notes",
+    "progress",
+    "stats",
+    "reading",
+    "category",
+    "related",
+    "chapters",
+    "outline",
+    "book-search",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

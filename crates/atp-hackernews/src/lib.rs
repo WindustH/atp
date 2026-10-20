@@ -65,6 +65,7 @@ impl Platform for HackerNews {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["threads"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

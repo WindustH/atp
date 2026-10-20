@@ -79,6 +79,7 @@ impl Platform for Matrix {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["rooms"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

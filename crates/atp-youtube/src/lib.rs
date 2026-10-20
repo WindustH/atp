@@ -129,6 +129,26 @@ impl Platform for YouTube {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "transcript",
+    "playlist",
+    "shorts",
+    "streams",
+    "community",
+    "related",
+    "hashtag",
+    "suggest",
+    "captions",
+    "chat",
+    "releases",
+    "podcasts",
+    "channel-search",
+    "rss",
+    "accounts",
+    "music search",
+    "music tracks",
+    "music lyrics",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

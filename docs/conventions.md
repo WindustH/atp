@@ -42,6 +42,14 @@ Every platform crate uses the same module names for the same roles:
 | feature modules | plural nouns for what they handle: `posts`, `comments`, `users`, `chats`, `messages`, `notifications`, `insights`, `uploads`, `library`, `search` ... |
 | `GUIDE.md` | the platform's part of `atp guide` (see [Documentation](#documentation)) |
 
+Platform-only commands that only read (lists, lookups, searches, stats,
+`--info` views) are named in `Platform::EXTRA_READS`, nested ones by
+their path (`playlist tracks`), so the MCP `read` tool runs them. Leave
+out anything that changes something on the platform or in ATP's files
+(a remembered default, a sync), saves files (downloads, map images) or
+spends a quota (billed or capped API calls such as map services); an
+unlisted command is a write.
+
 One name per role: `parse` (not `convert`), `users` (not `people` / `user`),
 `messages` (not `im`, `dm`, `pm`, `direct`), `live` (not `stream`,
 `listen`, `events`, `sync`).

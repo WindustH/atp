@@ -63,6 +63,7 @@ impl Platform for Xiaoyuzhou {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["transcript"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

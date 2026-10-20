@@ -102,6 +102,25 @@ impl Platform for Instagram {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "tag",
+    "location",
+    "stories",
+    "highlights",
+    "highlight",
+    "follow-requests",
+    "ads me",
+    "ads accounts",
+    "ads account",
+    "ads campaigns",
+    "ads adsets",
+    "ads ads",
+    "ads creatives",
+    "ads audiences",
+    "ads pixels",
+    "ads get",
+    "ads insights",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

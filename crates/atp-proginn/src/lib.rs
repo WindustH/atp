@@ -59,6 +59,7 @@ impl Platform for Proginn {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["jobs", "cities", "roles"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

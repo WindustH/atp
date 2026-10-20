@@ -65,6 +65,15 @@ impl Platform for Ncss {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "jobs",
+    "areas",
+    "categories",
+    "industries",
+    "fairs",
+    "fair",
+    "fair-companies",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

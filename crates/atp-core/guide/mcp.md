@@ -14,13 +14,17 @@ Other clients take the same command in their configuration:
 
 | Tool | What it does |
 | --- | --- |
-| `platforms` | every platform, its capabilities, its own commands and whether it reads through a browser (`browser_tab`; in a window: `tab_window`) |
+| `platforms` | every platform, its capabilities, its own commands (`extra_commands`; those that only read: `read_commands`) and whether it reads through a browser (`browser_tab`; in a window: `tab_window`) |
 | `help` | this guide: the index, a topic, `login [platform]`, a platform (`bili`) or a command (`bili search`, `ncm playlist create`) |
-| `read` | commands that only read: search, hot, read, comments, user, followers, notifications, chats, messages, whoami ... |
-| `run` | everything else: like, comment, follow, post, delete, send, download, `listen`, platform-only commands (left out with `--read-only`) |
+| `read` | commands that only read: search, hot, read, comments, user, followers, notifications, chats, messages, whoami ..., and each platform's own reads (`bili danmaku`, `ctrip trains`, `zhihu answers` ...) |
+| `run` | everything else: like, comment, follow, post, delete, send, download, `listen`, platform-only commands that may change something, keep files or spend a quota (left out with `--read-only`) |
+
+A command's page (`help` with `bili danmaku`) says its access: `read`
+(the `read` tool runs it) or `write`.
 
 `read` and `run` take a platform, a command and its further command-line
-words, e.g. `{"platform": "bili", "command": "search", "args": ["rust", "-n", "5"]}`,
+words, e.g. `{"platform": "bili", "command": "search", "args": ["rust", "-n", "5"]}`
+(a nested command as its words: `"command": "playlist tracks"`),
 and answer with the same envelope `--json` prints. `#3` refers to the third
 item of the last list, across calls. A change that failed without the
 platform refusing it carries `error.outcome`: `unknown` (it may have gone

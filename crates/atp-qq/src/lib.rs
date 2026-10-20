@@ -69,6 +69,7 @@ impl Platform for Qq {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["server", "roles", "pins"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

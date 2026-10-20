@@ -64,6 +64,7 @@ impl Platform for V2ex {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["node", "topics", "nodes", "token"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

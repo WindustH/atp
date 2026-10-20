@@ -53,6 +53,14 @@ impl Platform for Bangumi {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "characters",
+    "persons",
+    "relations",
+    "episodes",
+    "browse",
+    "library",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

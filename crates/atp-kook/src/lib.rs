@@ -65,6 +65,7 @@ impl Platform for Kook {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["server", "roles"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

@@ -75,6 +75,7 @@ impl Platform for Xianyu {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["ratings", "suggest"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

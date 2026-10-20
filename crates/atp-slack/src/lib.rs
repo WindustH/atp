@@ -82,6 +82,7 @@ impl Platform for Slack {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["workspace", "pins", "bookmarks"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

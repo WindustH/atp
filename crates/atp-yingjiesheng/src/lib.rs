@@ -49,6 +49,7 @@ impl Platform for Yingjiesheng {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["talks", "provinces", "industries", "schools"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

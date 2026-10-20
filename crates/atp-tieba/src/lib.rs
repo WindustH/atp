@@ -94,6 +94,13 @@ impl Platform for Tieba {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "forum",
+    "forum-info",
+    "forum-search",
+    "topic",
+    "user-replies",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

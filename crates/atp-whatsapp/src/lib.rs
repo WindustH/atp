@@ -93,6 +93,8 @@ impl Platform for WhatsApp {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] =
+    &["groups", "check", "profile", "numbers", "templates"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

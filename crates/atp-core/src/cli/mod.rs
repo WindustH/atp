@@ -198,6 +198,7 @@ pub fn command<P: Platform>() -> clap::Command {
   if let Some(help) = P::SITE {
     cmd = cmd.arg(site_arg(help));
   }
+  access::check_reads(&cmd, P::EXTRA_READS);
   cmd
 }
 
@@ -353,7 +354,7 @@ async fn execute<P: Platform>(
   global: &GlobalArgs,
   matches: &ArgMatches,
 ) -> Result<(Data, ExitCode)> {
-  let changes = access::changes(&access::path(matches));
+  let changes = access::changes(&access::path(matches), P::EXTRA_READS);
   verified::<P>(global, matches)
     .await
     .map_err(|e| access::settle(e, changes))

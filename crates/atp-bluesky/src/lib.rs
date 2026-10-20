@@ -97,6 +97,7 @@ impl Platform for Bluesky {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["reposted-by", "muted", "trends", "feedgen"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

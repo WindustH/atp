@@ -86,6 +86,7 @@ impl Platform for Juejin {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["pins"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

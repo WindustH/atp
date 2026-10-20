@@ -67,6 +67,7 @@ impl Platform for Rss {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["list", "hub"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

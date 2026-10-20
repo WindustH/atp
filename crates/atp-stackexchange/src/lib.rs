@@ -77,6 +77,7 @@ impl Platform for StackExchange {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["tags", "tag", "sites", "quota"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

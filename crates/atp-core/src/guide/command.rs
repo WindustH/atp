@@ -6,6 +6,7 @@ use clap::Subcommand;
 
 use super::{reference, sections};
 use crate::cli::CommonCommand;
+use crate::cli::access::Access;
 use crate::platform::PlatformInfo;
 
 /// What shared commands mean on every platform, one file per group.
@@ -128,11 +129,19 @@ fn shared(name: &str) -> Option<&'static str> {
 }
 
 /// The page of `cmd`, the command at `path` under the platform `info`, in
-/// a built `atp` command.
-pub fn page(info: &PlatformInfo, cmd: &mut clap::Command, path: &[String]) -> String {
+/// a built `atp` command; `access` for a command that is no group.
+pub fn page(
+  info: &PlatformInfo,
+  cmd: &mut clap::Command,
+  path: &[String],
+  access: Option<Access>,
+) -> String {
   let words = path.join(" ");
   let mut out = format!("# atp {} {words}\n\n", info.id);
   out.push_str(&reference::reference(cmd));
+  if let Some(access) = access {
+    out.push_str(&format!("\nAccess: {}.\n", access_line(access)));
+  }
   if let [name] = path
     && let Some(body) = shared(name)
   {
@@ -154,6 +163,17 @@ pub fn page(info: &PlatformInfo, cmd: &mut clap::Command, path: &[String]) -> St
   }
   out.push_str(".\n");
   out
+}
+
+/// What the access of a command means.
+fn access_line(access: Access) -> &'static str {
+  match access {
+    Access::Read => "read; it only reads (the MCP `read` tool runs it)",
+    Access::Write => {
+      "write; it may change something, keep files or spend a quota (the MCP `run` tool \
+       runs it)"
+    }
+  }
 }
 
 /// The platform's notes on the command: its `## Logging in` section for

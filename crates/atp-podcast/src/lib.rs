@@ -66,6 +66,7 @@ impl Platform for Podcast {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["episodes"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self {

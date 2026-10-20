@@ -118,6 +118,8 @@ impl Platform for Weibo {
   const FOLLOWING_SORT: &'static [&'static str] = follows::SORTS;
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] =
+    &["topic", "group", "following-filter", "special-follows"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

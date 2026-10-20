@@ -69,6 +69,8 @@ impl Platform for Careers {
   );
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] =
+    &["sites", "jobs", "batches", "cities", "categories"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

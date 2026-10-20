@@ -35,6 +35,7 @@ fn entry_value(e: &Entry) -> Value {
     "tab_window": e.tab_window,
     "capabilities": info.caps.iter().map(|c| c.name()).collect::<Vec<_>>(),
     "extra_commands": (e.extras)(),
+    "read_commands": e.extra_reads,
     "login": {
       "ways": info.login_words(),
       "token": (!info.token.is_empty()).then_some(info.token),

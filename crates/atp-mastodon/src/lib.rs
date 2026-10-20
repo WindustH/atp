@@ -96,6 +96,14 @@ impl Platform for Mastodon {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "trends",
+    "tag",
+    "instance",
+    "muted",
+    "follow-requests",
+    "followed-tags",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

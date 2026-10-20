@@ -71,6 +71,7 @@ impl Platform for Pinduoduo {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["categories", "category", "review-summary"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

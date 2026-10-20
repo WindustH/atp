@@ -75,6 +75,7 @@ impl Platform for OnePoint3Acres {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["boards", "board"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

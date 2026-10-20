@@ -63,6 +63,7 @@ impl Platform for Lobsters {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["tag", "tags"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

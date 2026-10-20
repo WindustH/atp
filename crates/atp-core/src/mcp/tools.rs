@@ -1,14 +1,15 @@
-//! The tools: `platforms`, `help`, `read` (commands that only read) and
-//! `run` (everything else, left out with `--read-only`).
+//! The tools: `platforms`, `help`, `read` (commands that only read: the
+//! shared reads and each platform's declared ones) and `run` (everything
+//! else, left out with `--read-only`).
 
 use std::time::Duration;
 
 use clap::FromArgMatches;
 use serde_json::{Value, json};
 
-use crate::app::App;
+use crate::app::{App, Entry};
 use crate::cli::GlobalArgs;
-use crate::cli::access::{self, SHARED_READS as READS};
+use crate::cli::access::{self, Access, SHARED_READS};
 use crate::error::{Error, Result};
 use crate::guide;
 use crate::json::ValueExt;
@@ -76,13 +77,15 @@ impl<'a> Tools<'a> {
       .iter()
       .map(|w| w.as_str().map_or_else(|| w.to_string(), str::to_owned))
       .collect();
-    check(&name, &words, read)?;
+    check(&name, &words)?;
     let entry = self
       .app
       .find(&platform)
       .ok_or_else(|| format!("unknown platform `{platform}`; see the platforms tool"))?;
-    let argv = ["atp", entry.info.id, name.as_str()]
+    // A nested command may come as one string (`playlist show`).
+    let argv = ["atp", entry.info.id]
       .into_iter()
+      .chain(name.split_whitespace())
       .map(str::to_owned)
       .chain(words);
     let matches = match self.app.command().try_get_matches_from(argv) {
@@ -95,12 +98,16 @@ impl<'a> Tools<'a> {
       .subcommand_matches(entry.info.id)
       .cloned()
       .unwrap_or_default();
+    let path = access::path(&sub);
+    if read && access::access(&path, entry.extra_reads) != Access::Read {
+      return Err(not_read(entry, &path));
+    }
     let wait = args.u64("wait_secs").unwrap_or(if name == "listen" {
       WAIT_LIVE
     } else {
       WAIT_DEFAULT
     });
-    let changes = access::changes(&access::path(&sub));
+    let changes = access::changes(&path, entry.extra_reads);
     let result = limited((entry.call)(global, sub), &name, wait.min(WAIT_MAX))
       .await
       .map_err(|e| access::settle(e, changes));
@@ -108,14 +115,28 @@ impl<'a> Tools<'a> {
   }
 }
 
-/// Refuse what cannot work over MCP, and writes on the `read` tool.
-fn check(name: &str, words: &[String], read: bool) -> std::result::Result<(), String> {
-  if read && !READS.contains(&name) {
-    return Err(format!(
-      "`{name}` is not a read-only command; the read tool runs {}",
-      READS.join(", ")
-    ));
-  }
+/// Why the `read` tool does not run the command at `path`, and what it runs.
+fn not_read(entry: &Entry, path: &[&str]) -> String {
+  let own = if entry.extra_reads.is_empty() {
+    format!("{} has none of its own", entry.info.name)
+  } else {
+    format!(
+      "{}'s own: {}",
+      entry.info.name,
+      entry.extra_reads.join(", ")
+    )
+  };
+  format!(
+    "`{}` does not only read (it may change something, keep files or spend a quota): use \
+     the run tool. The read tool runs the shared reads ({}) and the platform's own reads; \
+     {own}",
+    path.join(" "),
+    SHARED_READS.join(", ")
+  )
+}
+
+/// Refuse what cannot work over MCP.
+fn check(name: &str, words: &[String]) -> std::result::Result<(), String> {
   if words.iter().any(|w| w == "-") {
     return Err("`-` (standard input) is not available over MCP; pass the text itself".into());
   }
@@ -158,7 +179,7 @@ fn platforms_tool() -> Value {
   json!({
     "name": "platforms",
     "title": "List platforms",
-    "description": "Every platform ATP supports: id, name, aliases, kind, whether it reads through a browser tab (`browser_tab`: a Chromium-family browser must be installed; `tab_window`: in a small window by default), capabilities, its own extra commands and how to log in (ways, token form, cookies, environment variables, what works without an account).",
+    "description": "Every platform ATP supports: id, name, aliases, kind, whether it reads through a browser tab (`browser_tab`: a Chromium-family browser must be installed; `tab_window`: in a small window by default), capabilities, its own extra commands, those of them that only read (`read_commands`, which the read tool runs) and how to log in (ways, token form, cookies, environment variables, what works without an account).",
     "inputSchema": {"type": "object", "properties": {}},
     "annotations": {"readOnlyHint": true, "openWorldHint": false},
   })
@@ -211,14 +232,23 @@ fn command_schema(ids: &[&str], command: Value) -> Value {
 }
 
 fn read_tool(ids: &[&str]) -> Value {
-  let command =
-    json!({"type": "string", "enum": READS, "description": "A command that only reads"});
+  let command = json!({
+    "type": "string",
+    "description": format!(
+      "A command that only reads: a shared one ({}), or one of the platform's own reads \
+       (`read_commands` of the platforms tool; a nested one as its words: `playlist show`)",
+      SHARED_READS.join(", ")
+    ),
+  });
   json!({
     "name": "read",
     "title": "Read from a platform",
     "description": "Run a command that only reads: search, hot lists, feeds, posts, comments, users, \
-      followers, favorites, notifications, chats and messages, account status. \
-      Returns the JSON envelope {ok, data | error}. `help` with `<platform> <command>` shows the options.",
+      followers, favorites, notifications, chats and messages, account status, and each \
+      platform's own reads (rankings, danmaku, subtitles, timetables, answers ...: \
+      `read_commands` of the platforms tool; `help` with `<platform> <command>` shows a \
+      command's access). Returns the JSON envelope {ok, data | error}. `help` with \
+      `<platform> <command>` shows the options.",
     "inputSchema": command_schema(ids, command),
     "annotations": {"readOnlyHint": true, "openWorldHint": true},
   })
@@ -232,8 +262,11 @@ fn run_tool(ids: &[&str]) -> Value {
     "title": "Act on a platform",
     "description": "Run any command, including ones that change things: like, favorite, comment, follow, \
       post, delete, send, react, edit, download, login with --cookie / --token / --browser, logout, \
-      listen, and each platform's own commands (see `platforms`). Irreversible commands need `--yes` in args. \
-      Returns the JSON envelope {ok, data | error}.",
+      listen, and each platform's own commands (see `platforms`; those in its `read_commands` \
+      also run on the read tool). Irreversible commands need `--yes` in args. \
+      Returns the JSON envelope {ok, data | error}; a failed change that may have gone \
+      through has `error.outcome: unknown` (check before retrying), one never sent \
+      `not_sent`.",
     "inputSchema": command_schema(ids, command),
     "annotations": {"readOnlyHint": false, "destructiveHint": true, "openWorldHint": true},
   })

@@ -187,6 +187,33 @@ impl Platform for Bilibili {
   const FOLLOW_GROUP_SORT: &'static [&'static str] = &["recent", "visited"];
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "subtitle",
+    "summary",
+    "danmaku",
+    "related",
+    "rank",
+    "video-stats",
+    "trending",
+    "weekly",
+    "precious",
+    "topic",
+    "bangumi",
+    "my-bangumi",
+    "timeline",
+    "live",
+    "live-following",
+    "lists",
+    "list",
+    "articles",
+    "coined",
+    "liked",
+    "history-search",
+    "saved-folders",
+    "shared-following",
+    "categories",
+    "dynamics",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

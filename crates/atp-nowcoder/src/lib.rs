@@ -84,6 +84,14 @@ impl Platform for Nowcoder {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "jobs",
+    "careers",
+    "schedule",
+    "experience",
+    "referral",
+    "applied",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

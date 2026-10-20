@@ -101,6 +101,7 @@ impl Platform for Misskey {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["trends", "tag", "mentions", "instance"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

@@ -28,6 +28,8 @@ pub(crate) struct Entry {
   pub tab_window: bool,
   pub command: fn() -> clap::Command,
   pub extras: fn() -> Vec<String>,
+  /// The platform-only commands that only read ([`Platform::EXTRA_READS`]).
+  pub extra_reads: &'static [&'static str],
   run: fn(GlobalArgs, ArgMatches) -> RunFuture,
   /// Run without printing: the data or the error, for the MCP server.
   pub call: fn(GlobalArgs, ArgMatches) -> CallFuture,
@@ -65,6 +67,7 @@ impl App {
       tab_window: P::BROWSER_TAB && P::TAB_WINDOW,
       command: cli::command::<P>,
       extras: cli::extra_commands::<P>,
+      extra_reads: P::EXTRA_READS,
       run: run_boxed::<P>,
       call: call_boxed::<P>,
     });

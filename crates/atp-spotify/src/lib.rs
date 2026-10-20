@@ -81,6 +81,8 @@ impl Platform for Spotify {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] =
+    &["playlist tracks", "player status", "player devices"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

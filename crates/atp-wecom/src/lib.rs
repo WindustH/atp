@@ -68,6 +68,7 @@ impl Platform for WeCom {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["departments", "chat"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

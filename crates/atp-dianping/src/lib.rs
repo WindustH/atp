@@ -66,6 +66,7 @@ impl Platform for Dianping {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["cities", "locate"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

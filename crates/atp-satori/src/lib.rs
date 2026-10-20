@@ -71,6 +71,7 @@ impl Platform for Satori {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["logins", "friends"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

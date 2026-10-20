@@ -92,6 +92,8 @@ impl Platform for Kuaishou {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] =
+    &["related", "live", "rooms", "gifts", "replays", "works"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

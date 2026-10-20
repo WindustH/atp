@@ -70,7 +70,7 @@ one. Each platform crate re-exports its `Command` enum for `run_extra`.
 | `chrome` | Chromium-family browsers over DevTools: finding one (`ATP_BROWSER`), starting it on a throwaway profile or a platform's kept one (locked while in use, written out on exit), with or without a window, through ATP's proxy; `cdp`, the protocol: calls on the browser and on a page attached with `flatten`, events kept while calls wait, cookies in and out |
 | `tab` | a browser tab for platforms whose API answers a real browser only (`Platform::BROWSER_TAB`, `Ctx::tab`): `fetch` made by the site's own page, `capture` of a request the page makes itself (Network domain), `goto`, `eval`; `Answer::json` turns checks, login walls and pages where data was expected into errors (see [Browser tabs](#browser-tabs)) |
 | `verify` | human checks by hand: a browser window with the session cookies (on the platform's own profile for tab platforms), then one retry; skipped for checks a browser cannot clear (`Error::unclearable`, `Platform::BROWSER_CHECKS`) |
-| `mcp` | `atp mcp`: JSON-RPC over stdio; tools `platforms`, `help`, `read`, `run` calling commands without printing; the guide as resources (`atp://guide/…`) |
+| `mcp` | `atp mcp`: JSON-RPC over stdio; tools `platforms`, `help`, `read` (the shared reads and each platform's `EXTRA_READS`), `run` calling commands without printing; the guide as resources (`atp://guide/…`) |
 
 ### The Platform contract
 
@@ -104,7 +104,14 @@ A platform crate exports one type implementing `atp_core::Platform`:
   platform accepts its own ids and URLs (at least the `url` it puts in
   `Post.url` / `User.url`, because that is what `#N` resolves to).
 - `type Extra: clap::Subcommand` holds platform-only commands; `run_extra`
-  returns `Data` like everything else.
+  returns `Data` like everything else. `const EXTRA_READS` names those
+  that only read, by name or path (`playlist tracks`); every other one is
+  a write (it may change something, keep files or spend a quota).
+  `cli::access` tells reads from writes for the shared commands too: the
+  MCP `read` tool runs reads only, `atp guide <id> <command>` shows the
+  access, and the errors of commands that change something carry
+  `error.outcome`. Debug builds check that every declared read names a
+  command.
 - `const BROWSER_CHECKS: bool`: whether a `verification_required` error
   may be passed in the person's browser and retried with its cookies; by
   default platforms with session cookies (`cookie_domains`) and those

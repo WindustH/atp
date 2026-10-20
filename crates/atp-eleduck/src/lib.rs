@@ -81,6 +81,7 @@ impl Platform for Eleduck {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["jobs", "categories", "tags", "applications"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

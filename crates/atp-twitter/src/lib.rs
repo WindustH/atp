@@ -129,6 +129,30 @@ impl Platform for Twitter {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "retweeters",
+    "tab",
+    "verified-followers",
+    "followers-you-know",
+    "similar",
+    "edits",
+    "list",
+    "list-info",
+    "list-members",
+    "list-memberships",
+    "community",
+    "community-posts",
+    "community-members",
+    "communities",
+    "space",
+    "spaces",
+    "trends",
+    "trend-places",
+    "muted",
+    "follow-requests",
+    "scheduled",
+    "folders",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

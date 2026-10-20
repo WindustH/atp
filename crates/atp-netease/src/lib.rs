@@ -101,6 +101,14 @@ impl Platform for Netease {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "playlist tracks",
+    "lyrics",
+    "cloud ls",
+    "cloud quota",
+    "toplists",
+    "ranking",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

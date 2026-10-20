@@ -68,6 +68,7 @@ impl Platform for Hupu {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["boards", "board"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

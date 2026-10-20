@@ -88,6 +88,9 @@ impl Platform for Discord {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "server", "roles", "emojis", "pins", "invite", "invites", "friends",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self {

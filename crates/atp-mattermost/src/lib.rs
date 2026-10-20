@@ -79,6 +79,7 @@ impl Platform for Mattermost {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["teams", "channel", "pins"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

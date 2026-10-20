@@ -83,6 +83,8 @@ impl Platform for Lemmy {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] =
+    &["community", "community-info", "communities", "instance"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

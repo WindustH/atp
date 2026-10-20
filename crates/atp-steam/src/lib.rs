@@ -60,6 +60,7 @@ impl Platform for Steam {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["reviews", "prices", "games"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

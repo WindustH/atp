@@ -69,6 +69,7 @@ impl Platform for DingTalk {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["group"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

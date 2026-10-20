@@ -90,6 +90,7 @@ impl Platform for Discourse {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["top", "categories", "category", "tag", "about"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

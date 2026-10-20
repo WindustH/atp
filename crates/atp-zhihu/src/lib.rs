@@ -111,6 +111,24 @@ impl Platform for Zhihu {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "answers",
+    "topic",
+    "user-articles",
+    "user-pins",
+    "activities",
+    "user-questions",
+    "user-videos",
+    "user-columns",
+    "user-following",
+    "question-followers",
+    "topic-followers",
+    "column",
+    "hot-search",
+    "daily",
+    "creations",
+    "post-folders",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

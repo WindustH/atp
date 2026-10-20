@@ -71,6 +71,7 @@ impl Platform for Dewu {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["tabs", "tab", "prices", "sales"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

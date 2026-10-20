@@ -8,6 +8,16 @@ use clap::{ArgMatches, Subcommand};
 use super::CommonCommand;
 use crate::error::Error;
 
+/// What a command does on the platform.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Access {
+  /// It only reads: the MCP `read` tool runs it.
+  Read,
+  /// It may change something, keep files or spend a quota (likes, posts,
+  /// downloads, logins ...): the MCP `run` tool runs it.
+  Write,
+}
+
 /// Shared commands that only read.
 pub(crate) const SHARED_READS: &[&str] = &[
   "search",
@@ -40,9 +50,9 @@ pub(crate) const SHARED_READS: &[&str] = &[
   "status",
 ];
 
-/// Shared commands that change something on the platform. The others
-/// that do not only read (`login`, `logout`, `download`, `listen`) keep
-/// things on this machine or wait for events.
+/// Shared commands that change something on the platform. The other
+/// writes (`login`, `logout`, `download`, `listen`) keep things on this
+/// machine or wait for events.
 const SHARED_CHANGES: &[&str] = &[
   "like",
   "unlike",
@@ -90,12 +100,24 @@ pub(crate) fn path(matches: &ArgMatches) -> Vec<&str> {
   path
 }
 
+/// What the command at `path` does: a shared command as listed here, a
+/// platform-only one as the platform declares (`reads`,
+/// [`Platform::EXTRA_READS`](crate::Platform::EXTRA_READS)).
+pub fn access(path: &[&str], reads: &[&str]) -> Access {
+  let read = match path.first() {
+    Some(name) if CommonCommand::has_subcommand(name) => SHARED_READS.contains(name),
+    Some(_) => reads.contains(&path.join(" ").as_str()),
+    None => false,
+  };
+  if read { Access::Read } else { Access::Write }
+}
+
 /// Whether the command at `path` changes something on the platform: a
-/// shared command that does, or any platform-only command.
-pub(crate) fn changes(path: &[&str]) -> bool {
+/// shared command that does, or a platform-only one not declared a read.
+pub(crate) fn changes(path: &[&str], reads: &[&str]) -> bool {
   match path.first() {
     Some(name) if CommonCommand::has_subcommand(name) => SHARED_CHANGES.contains(name),
-    Some(_) => true,
+    Some(_) => access(path, reads) == Access::Write,
     None => false,
   }
 }
@@ -107,5 +129,25 @@ pub(crate) fn settle(error: Error, changes: bool) -> Error {
     error.of_change()
   } else {
     error.of_read()
+  }
+}
+
+/// Debug builds: every declared read names a platform-only command of
+/// `cmd` by its path, so a typo or a renamed command shows at once.
+pub(crate) fn check_reads(cmd: &clap::Command, reads: &[&str]) {
+  if !cfg!(debug_assertions) {
+    return;
+  }
+  for read in reads {
+    let words: Vec<&str> = read.split(' ').collect();
+    let mut at = Some(cmd);
+    for word in &words {
+      at = at.and_then(|c| c.get_subcommands().find(|s| s.get_name() == *word));
+    }
+    assert!(
+      at.is_some() && !CommonCommand::has_subcommand(words[0]),
+      "{}: EXTRA_READS names `{read}`, which is no platform-only command",
+      cmd.get_name()
+    );
   }
 }

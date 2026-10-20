@@ -70,6 +70,7 @@ impl Platform for Forem {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["tag", "tags", "drafts"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

@@ -67,6 +67,7 @@ impl Platform for Meituan {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["locate", "areas", "deals"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

@@ -93,6 +93,7 @@ impl Platform for Telegram {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["search-chat"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

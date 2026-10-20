@@ -80,6 +80,13 @@ pub trait Platform: Sized {
   /// Platform-only commands, merged next to the shared ones.
   type Extra: clap::Subcommand;
 
+  /// The platform-only commands that only read (lists, lookups, searches,
+  /// stats), by name; a nested one by its path (`playlist show`). Every
+  /// other one counts as a write: it may change something, keep files or
+  /// spend a quota. The MCP `read` tool runs only reads, and the errors of
+  /// writes say whether the change may have happened (`error.outcome`).
+  const EXTRA_READS: &'static [&'static str] = &[];
+
   fn new(ctx: Ctx) -> Result<Self>;
 
   fn ctx(&self) -> &Ctx;

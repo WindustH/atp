@@ -74,6 +74,20 @@ impl Platform for Ctrip {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "suggest",
+    "cities",
+    "sights",
+    "sight",
+    "rankings",
+    "ranking",
+    "hotels",
+    "hotel",
+    "rooms",
+    "trains",
+    "transfers",
+    "fares",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

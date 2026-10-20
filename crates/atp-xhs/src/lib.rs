@@ -128,6 +128,19 @@ impl Platform for Xhs {
   const FOLLOWING_SORT: &'static [&'static str] = relations::SORTS;
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "my-notes",
+    "note-stats",
+    "events",
+    "event",
+    "channels",
+    "trending",
+    "suggest",
+    "search-saved",
+    "invalid-follows",
+    "history-count",
+    "active-fans",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self {

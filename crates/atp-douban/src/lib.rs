@@ -67,6 +67,7 @@ impl Platform for Douban {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["reviews", "group", "list", "library"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

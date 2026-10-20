@@ -106,6 +106,23 @@ impl Platform for TikTok {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "tag",
+    "sound",
+    "playlist",
+    "playlists",
+    "related",
+    "studio",
+    "ads me",
+    "ads advertisers",
+    "ads advertiser",
+    "ads campaigns",
+    "ads adgroups",
+    "ads ads",
+    "ads audiences",
+    "ads pixels",
+    "ads report",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

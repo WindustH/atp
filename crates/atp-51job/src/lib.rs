@@ -59,6 +59,7 @@ impl Platform for FiftyOneJob {
   const BROWSER_TAB: bool = true;
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &["jobs", "cities"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })

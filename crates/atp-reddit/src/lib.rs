@@ -114,6 +114,25 @@ impl Platform for Reddit {
   };
 
   type Extra = Command;
+  const EXTRA_READS: &'static [&'static str] = &[
+    "sub",
+    "subreddit",
+    "subreddits",
+    "user-comments",
+    "search-in",
+    "domain",
+    "rules",
+    "mods",
+    "wiki",
+    "flairs",
+    "multis",
+    "multi",
+    "saved-comments",
+    "hidden",
+    "downvoted",
+    "trophies",
+    "moderated",
+  ];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self {
