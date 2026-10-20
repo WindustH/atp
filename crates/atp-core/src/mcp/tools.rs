@@ -236,7 +236,7 @@ fn read_tool(ids: &[&str]) -> Value {
     "type": "string",
     "description": format!(
       "A command that only reads: a shared one ({}), or one of the platform's own reads \
-       (`read_commands` of the platforms tool; a nested one as its words: `playlist show`)",
+       (`read_commands` of the platforms tool; a nested one as its words: `playlist tracks`)",
       SHARED_READS.join(", ")
     ),
   });
