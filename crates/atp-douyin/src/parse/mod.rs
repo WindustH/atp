@@ -13,10 +13,14 @@ use atp_core::{
 use crate::refs::{note_url, user_url, video_url};
 
 mod collections;
+mod publishing;
 mod relations;
+mod works;
 
 pub use self::collections::*;
+pub use self::publishing::*;
 pub use self::relations::*;
+pub use self::works::*;
 
 fn first_url(v: &Value, path: &str) -> Option<String> {
   v.str(&format!("{path}.url_list.0"))

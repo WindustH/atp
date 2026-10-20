@@ -1,0 +1,109 @@
+//! What a post can be put under on the creator platform, as its publish
+//! form offers them: the hashtags it suggests for a word
+//! (`challengesug`), hot spots (热点) to link a post to, and official
+//! activities (官方活动).
+
+use atp_core::{Collection, Page, Post, Query, Result, Value, ValueExt};
+
+use crate::api::Api;
+use crate::creator::Creator;
+use crate::parse;
+
+const SUGGEST: &str = "/aweme/v1/search/challengesug/";
+const HOTSPOTS: &str = "/aweme/v1/hotspot/recommend/";
+const HOTSPOT_SEARCH: &str = "/aweme/v1/hotspot/search/";
+const ACTIVITIES: &str = "/web/api/media/activity/get/";
+
+/// The hashtags Douyin suggests for a word (`sug_list`), as the publish
+/// form's hashtag box asks.
+pub async fn suggestions(creator: &Creator<'_>, word: &str) -> Result<Vec<Value>> {
+  let v = creator
+    .get(SUGGEST)
+    .arg("source", "challenge_create")
+    .arg("aid", "2906")
+    .arg("keyword", word)
+    .send()
+    .await?;
+  Ok(v.list("sug_list").to_vec())
+}
+
+/// `search -t topic`: the hashtags suggested for the query.
+pub async fn search(api: &Api, query: &Query) -> Result<Page<Collection>> {
+  let creator = Creator::open(api).await?;
+  let items = suggestions(&creator, query.keyword.trim())
+    .await?
+    .iter()
+    .filter_map(parse::hashtag)
+    .collect();
+  Ok(Page::last(items))
+}
+
+/// Hot spots a post can be linked to (关联热点): with `words` those
+/// matching them (`hotspot/search`), without them the ones Douyin
+/// recommends (`extra.recommended`) and then all (`hotspot/recommend`
+/// before a video is uploaded).
+pub async fn hotspots(api: &Api, words: Option<&str>) -> Result<Page<Post>> {
+  let creator = Creator::open(api).await?;
+  let posts = match words.map(str::trim).filter(|w| !w.is_empty()) {
+    Some(query) => {
+      let v = creator
+        .get(HOTSPOT_SEARCH)
+        .arg("query", query)
+        .arg("count", 50)
+        .send()
+        .await?;
+      sentences(v.list("sentences"), false)
+    }
+    None => {
+      let v = creator
+        .get(HOTSPOTS)
+        .arg("zip_uri", "")
+        .arg("aid", 1128)
+        .arg("aweme_name", "aweme")
+        .send()
+        .await?;
+      let mut posts = sentences(v.list("rec_sentences"), true);
+      for post in sentences(v.list("all_sentences"), false) {
+        if !posts.iter().any(|p| p.id == post.id) {
+          posts.push(post);
+        }
+      }
+      posts
+    }
+  };
+  Ok(Page::last(posts))
+}
+
+/// Hot spots as the hot boards' words, ranked in their list.
+fn sentences(list: &[Value], recommended: bool) -> Vec<Post> {
+  list
+    .iter()
+    .enumerate()
+    .filter_map(|(i, s)| parse::hot_word(s, i + 1))
+    .map(|mut post| {
+      if recommended {
+        post.extra.insert("recommended".into(), true.into());
+      }
+      post
+    })
+    .collect()
+}
+
+/// The official activities (官方活动) the publish form's activity picker
+/// lists for the account.
+pub async fn activities(api: &Api) -> Result<Page<Collection>> {
+  let creator = Creator::open(api).await?;
+  let v = creator
+    .get(ACTIVITIES)
+    .arg("page", 1)
+    .arg("size", 9999)
+    .arg("need_challenge", 1)
+    .send()
+    .await?;
+  let items = v
+    .list("activity_list")
+    .iter()
+    .filter_map(parse::activity)
+    .collect();
+  Ok(Page::last(items))
+}

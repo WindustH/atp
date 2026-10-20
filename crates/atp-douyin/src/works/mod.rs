@@ -23,11 +23,10 @@ use crate::creator::Creator;
 use crate::items::{self, Picture, Settings, Tag, Words};
 use crate::sign::guard::Guard;
 use crate::uploads::{self, Uploader};
-use crate::{library, refs, users};
+use crate::{library, refs, topics, users};
 
 const CREATE: &str = "/web/api/media/aweme/create_v2/";
 const DELETE: &str = "/web/api/media/aweme/delete/";
-const TAG_SUGGEST: &str = "/aweme/v1/search/challengesug/";
 const MUSIC_DETAIL: &str = "/aweme/v1/web/music/detail/";
 const POST_PAGE: &str = "https://creator.douyin.com/creator-micro/content/post";
 const MANAGE_PAGE: &str = "https://creator.douyin.com/creator-micro/content/manage";
@@ -236,14 +235,8 @@ async fn tags(creator: &Creator<'_>, draft: &Draft, kind: &Kind<'_>) -> Result<V
 
 /// The id of the topic Douyin suggests under exactly this name.
 async fn topic_id(creator: &Creator<'_>, name: &str) -> Result<u64> {
-  let v = creator
-    .get(TAG_SUGGEST)
-    .arg("source", "challenge_create")
-    .arg("aid", "2906")
-    .arg("keyword", name)
-    .send()
-    .await?;
-  v.list("sug_list")
+  topics::suggestions(creator, name)
+    .await?
     .iter()
     .find(|s| s.str("cha_name").as_deref() == Some(name))
     .and_then(|s| s.u64("cid"))

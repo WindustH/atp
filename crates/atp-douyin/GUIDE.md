@@ -67,7 +67,9 @@ without it Douyin answers "Uifid Not Found" and ATP reports
 `not_authenticated`. Search, the following and friends feeds, followers,
 following, `@douyin_id` lookups and the account's own lists
 (`collections`, `favorites`, `history`, `notifications`, your `likes`)
-need a login, and writes need ATP's own login (above).
+need a login, and writes need ATP's own login (above). So do the creator
+platform's reads (`insights`, `works`, `drafts`, `poi`, `hotspots`,
+`activities`, `search -t topic`), with a login of any kind.
 
 ### When the session ends
 
@@ -129,7 +131,10 @@ log in again.
 (`day`, `week`, `half-year`), a type (`video`, `images`), a length
 (`short`, `medium`, `long`) or a range (`unseen`, `following`). Without a
 login Douyin usually returns nothing, reported as `verification_required`.
-`search -t user QUERY` finds users.
+`search -t user QUERY` finds users. `search -t topic WORDS` lists the
+hashtags the creator platform's publish form suggests for the words
+(`challengesug`), each with its id and views; it needs a login and is
+untested.
 
 ### hot
 
@@ -491,6 +496,82 @@ categories (`TYPE:ID`), with one the songs of that category, each with
 its id and length in seconds. Searching the library is not offered (the
 page searches through a separately signed service).
 
+### insights
+
+`insights POST` gives the numbers of one of your works as the creator
+platform's works list (`creator/item/list`, read by its manage and data
+pages) has them, all untested:
+
+- plays (`views`), `likes`, `comments`, `shares`, saves (`favorites`),
+  `danmaku`, `new_followers` (吸粉量) and `cover_impressions` (封面展示);
+- `cover_ctr` (封面点击率), `completion_rate` (完播率),
+  `five_second_completion_rate`, `two_second_bounce_rate` (2 秒跳出率),
+  `avg_watch_seconds` (人均播放时长) and `avg_watch_ratio` (平均播放占比);
+- for image posts `text_expand_rate` (文案展开率) and `avg_images_viewed`;
+  for articles `detail_open_rate` (详情页进入率) and
+  `read_completion_rate`.
+
+Rates are fractions from 0 to 1 (a value above 1 is read as a
+percentage, as the page reads it).
+Numbers ATP does not know, such as the split between followers and other
+viewers, keep Douyin's own names and values. `extra` holds the work's
+`type`, `review` state and `visibility` (see `works`). The work is looked
+up among your latest 1000 works; the numbers are its totals so far
+(`totals_period: lifetime`), without trends or breakdowns, and `--days`
+is not used. `insights` without POST (the whole account, 数据中心) is not
+offered. Any login works, `--browser` and `--cookie` sessions included.
+
+### works
+
+`works` lists your works, latest first, with the numbers of `insights`:
+plays, likes, comments, shares and saves in `metrics` (with `danmaku`,
+`new_followers` and `cover_impressions`), the rates and averages in
+`extra`, and
+
+- `extra.review`: `reviewing`, `passed`, `self_only` (passed, shown to
+  you alone), `rejected`, `advice` or `friends_only`;
+- `extra.visibility`: `public`, `friends` or `private`.
+
+These names come from the enums of the creator platform's item service
+in its page bundles, which do not explain `advice` and `friends_only`;
+an unknown code shows as `code N`. `-f csv` gives one row per work (run
+it from cron for a series over time); `--raw` shows a row as Douyin sent
+it. Untested.
+
+### drafts
+
+`drafts` lists your drafts (草稿) on the creator platform, with their
+text and times; they have no link. Saving a post as a draft (`post
+--draft`) is not offered: the publish form's draft calls (`aweme/draft`
+with request types 0 to 4) are not clear enough from its bundles.
+Untested.
+
+### poi
+
+`poi KEYWORD` finds locations (POI, 位置) as the publish form's location
+box does on its domestic tab (国内): name, address (`description`),
+`extra.city` and the id. Tagging a post with one is not offered yet: the
+form sends it as the item's `anchor` (`poi_id`, `poi_name`), and `post`
+has no option for it. Untested.
+
+### hotspots
+
+`hotspots` lists the hot spots (热点) the publish form offers to link a
+post to (关联热点): those Douyin recommends (`extra.recommended`), then
+all, each with its heat (`metrics.heat`); `hotspots WORDS` searches them.
+Linking a post to one is not offered. Untested.
+
+### activities
+
+`activities` lists the official activities (官方活动) the publish form's
+activity picker shows your account: name, dates and hashtags
+(`description`), `extra.heat`, `extra.topics` and their ids
+(`extra.topic_ids`), `extra.end_time`, and Douyin's codes for the kind,
+reward and category. The form joins a post to an activity by inserting
+one of its hashtags as an activity hashtag with its id; `post --topic`
+adds a typed hashtag without one, and whether that joins the activity is
+not known. Joining is not offered. Untested.
+
 ### download
 
 Videos at the highest bitrate without watermark, every image of an image
@@ -521,10 +602,11 @@ post (with live-photo clips) and its music; `--audio-only` saves the music.
   drama (短剧), which needs a playlet qualification and its own series.
   Daily posts (日常) and text-only posts are made in the app; the web
   uploader has neither.
-- Not offered when publishing: mentions (@), locations and other anchors,
-  hot topics, co-creators, paid content, choosing a video's music (Douyin
-  picks it), editing or cropping a cover in the page's editor, and
-  pictures inside articles.
+- Not offered when publishing: mentions (@), locations and other anchors
+  (`poi` finds locations), hot spots (`hotspots` lists them), official
+  activities (`activities` lists them), saving as a draft, co-creators,
+  paid content, choosing a video's music (Douyin picks it), editing or
+  cropping a cover in the page's editor, and pictures inside articles.
 - Writes are untested against the live site (see Risk control), and so
   are the following orders, `--search` and `--mutual` (built from the web
   client's page bundles): how `oldest` and `smart` page on, and whether
@@ -533,4 +615,14 @@ post (with live-photo clips) and its music; `--audio-only` saves the music.
 - The web offers no follow groups, list of blocked accounts, way to set
   remarks or special follows, or folder covers, descriptions and order,
   so ATP has none of them either.
-- No creator analytics yet.
+- The creator platform's reads (`insights`, `works`, `drafts`, `poi`,
+  `hotspots`, `activities`, `search -t topic`) are built from its page
+  bundles and another client's calls, and have not been run against an
+  account. Not confirmed: the field groups `works` asks for
+  (`default,metrics,review,visibility`: `default`, which should carry the
+  title and time, is the data page's, the others another client's);
+  where a row keeps its review state and visibility, and which codes
+  they use; whether the drafts list answers a plain request (the page's
+  security SDK signs that path with the write key, ATP does not) and
+  whether it pages; and how the location box pages on. Account-wide
+  analytics (数据中心) are not offered.

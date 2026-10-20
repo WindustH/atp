@@ -1,5 +1,7 @@
-//! Douyin-only commands; those on your library are in [`library`].
+//! Douyin-only commands; those on your library are in [`library`], those
+//! of the creator platform in [`creator`].
 
+mod creator;
 mod library;
 
 use atp_core::cli::PageArgs;
@@ -57,6 +59,8 @@ pub enum Command {
   },
   #[command(flatten)]
   Library(library::LibraryCommand),
+  #[command(flatten)]
+  Creator(creator::CreatorCommand),
 }
 
 pub async fn run(api: &Api, command: Command) -> Result<Data> {
@@ -92,6 +96,7 @@ pub async fn run(api: &Api, command: Command) -> Result<Data> {
         .await?,
     ),
     Command::Library(c) => library::run(api, c).await?,
+    Command::Creator(c) => creator::run(api, c).await?,
   })
 }
 

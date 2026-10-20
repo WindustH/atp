@@ -8,27 +8,32 @@
 //! makes only the other writes (removing followers, blocks, watch later
 //! ...). `listen` follows
 //! live rooms over the webcast websocket. Publishing, editing and deleting
-//! go through the creator platform ([`creator`]), as its web pages do.
+//! go through the creator platform ([`creator`]), as its web pages do; so
+//! do the works' numbers, drafts and what the publish form offers a post.
 
 mod api;
 mod comments;
 mod creator;
 mod discover;
+mod drafts;
 mod extra;
 mod folders;
 mod history;
+mod insights;
 mod items;
 mod library;
 mod live;
 mod login;
 mod notifications;
 mod parse;
+mod places;
 mod posts;
 mod refs;
 mod relations;
 mod rooms;
 mod saves;
 mod sign;
+mod topics;
 mod uploads;
 mod users;
 mod works;
@@ -41,8 +46,8 @@ use std::time::Duration;
 use atp_core::output::Stream;
 use atp_core::{
   Action, Cap, Choices, Collection, Comment, Ctx, Data, Draft, Edit, FolderSpec, FollowQuery,
-  Media, Notification, Page, PageReq, Platform, PlatformInfo, PlatformKind, Post, QrStatus,
-  QrTicket, Query, Reply, Result, User,
+  Insights, Media, Notification, Page, PageReq, Platform, PlatformInfo, PlatformKind, Post,
+  QrStatus, QrTicket, Query, Reply, Result, User,
 };
 
 use crate::api::Api;
@@ -56,7 +61,7 @@ impl Platform for Douyin {
     id: "douyin",
     name: "Douyin",
     aliases: &["dy"],
-    about: "Douyin (抖音): videos, image posts, comments, users, favorites folders, hot boards, live danmaku and publishing",
+    about: "Douyin (抖音): videos, image posts, comments, users, favorites folders, hot boards, live danmaku, publishing and creator stats",
     home: "https://www.douyin.com",
     cookie_domains: &["douyin.com"],
     required_cookies: api::LOGIN_COOKIES,
@@ -64,6 +69,7 @@ impl Platform for Douyin {
       Cap::QrLogin,
       Cap::Search,
       Cap::SearchUsers,
+      Cap::SearchTopics,
       Cap::Hot,
       Cap::Feed,
       Cap::Read,
@@ -105,6 +111,7 @@ impl Platform for Douyin {
       Cap::EditVideo,
       Cap::Listen,
       Cap::Download,
+      Cap::PostInsights,
       Cap::FollowingSearch,
       Cap::FollowingMutual,
       Cap::RemoveFollower,
@@ -173,6 +180,11 @@ impl Platform for Douyin {
 
   async fn search_users(&self, query: &Query, page: &PageReq) -> Result<Page<User>> {
     discover::search_users(&self.api, query, page).await
+  }
+
+  /// Hashtags the creator platform suggests for the words (`challengesug`).
+  async fn search_topics(&self, query: &Query, _page: &PageReq) -> Result<Page<Collection>> {
+    topics::search(&self.api, query).await
   }
 
   async fn hot(&self, category: Option<&str>, page: &PageReq) -> Result<Page<Post>> {
@@ -357,6 +369,11 @@ impl Platform for Douyin {
 
   async fn media(&self, post: &str, audio_only: bool) -> Result<(Post, Vec<Media>)> {
     posts::media(&self.api, post, audio_only).await
+  }
+
+  /// One of your works, from the creator platform's works list.
+  async fn insights(&self, post: Option<&str>, _days: u32) -> Result<Insights> {
+    insights::insights(&self.api, post).await
   }
 
   async fn run_extra(&self, command: Self::Extra) -> Result<Data> {
