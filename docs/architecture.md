@@ -91,7 +91,8 @@ A platform crate exports one type implementing `atp_core::Platform`:
   the chat-style `edit(post, text)`. `Cap::Edit` shows the command;
   `EditTitle`, `EditTopics`, `EditCover`, `EditVisibility`, `EditChapters`
   and `EditVideo` show its options. `post --chapters` shows with
-  `PostChapters`; both read a file of `0:00 Title` lines (`chapters`).
+  `PostChapters` and `post --category` with `PostCategory`; chapters come
+  from a file of `0:00 Title` lines (`chapters`).
 - Listing methods return one `Page<T>` per call for a `PageReq { cursor, size }`;
   the core follows `next_cursor` until `--limit` is reached. Cursors are opaque
   strings owned by the platform (offset, page number, upstream cursor ...).

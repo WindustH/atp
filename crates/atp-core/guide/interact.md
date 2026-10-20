@@ -11,7 +11,8 @@ All of these need a login and act as your account.
                          [--reply-to POST] [--quote POST]
                          [--video FILE | --article FILE] [--cover IMAGE]
                          [--visibility V] [--ai] [--schedule WHEN]
-                         [--collection C] [--music ID] [--chapters FILE] [-y]
+                         [--collection C] [--music ID] [--chapters FILE]
+                         [--category ID] [-y]
     atp <platform> delete POST [-y]
 
 - `post -` and `comment POST -` read the text from stdin:
@@ -21,9 +22,10 @@ All of these need a login and act as your account.
 - `delete` and `delete-comment` ask for confirmation on a terminal; scripts
   pass `-y`. So does `post` on Douyin, before it uploads anything.
 - `--video`, `--article`, `--cover`, `--visibility`, `--ai`, `--schedule`,
-  `--collection`, `--music` and `--chapters` exist where the platform
-  offers them (`post-video`, `post-article`, `post-ai-label` ... in `atp
-  platforms`). A chapters file holds one `0:00 Title` line per chapter.
+  `--collection`, `--music`, `--chapters` and `--category` exist where
+  the platform offers them (`post-video`, `post-article`, `post-ai-label`
+  ... in `atp platforms`). A chapters file holds one `0:00 Title` line
+  per chapter.
 - `follow '#N'` takes from the last user list. Where following joins a
   chat, group or community it takes from that list instead (Telegram,
   WhatsApp and Matrix chats), or from whichever came last where it takes

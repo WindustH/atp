@@ -51,6 +51,8 @@ pub enum Cap {
   PostMusic,
   /// `post --chapters`.
   PostChapters,
+  /// `post --category`: the category (分区) a video goes in.
+  PostCategory,
   Delete,
   Download,
   AccountInsights,
@@ -157,6 +159,7 @@ impl Cap {
     Cap::PostCollection,
     Cap::PostMusic,
     Cap::PostChapters,
+    Cap::PostCategory,
     Cap::Delete,
     Cap::Download,
     Cap::AccountInsights,
@@ -239,6 +242,7 @@ impl Cap {
       Cap::PostCollection => "post-collection",
       Cap::PostMusic => "post-music",
       Cap::PostChapters => "post-chapters",
+      Cap::PostCategory => "post-category",
       Cap::Delete => "delete",
       Cap::Download => "download",
       Cap::AccountInsights => "insights",

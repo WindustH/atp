@@ -56,6 +56,9 @@ pub struct PublishArgs {
   /// Chapters of the video: a file of `0:00 Title` lines; `-` reads stdin
   #[arg(long, value_name = "FILE")]
   pub chapters: Option<PathBuf>,
+  /// Category (分区) of the video, by the id the platform's category list shows
+  #[arg(long, value_name = "ID")]
+  pub category: Option<String>,
   /// Skip the confirmation question (needed in scripts)
   #[arg(short, long)]
   pub yes: bool,
@@ -88,6 +91,11 @@ impl PublishArgs {
         self.chapters.is_some(),
         Cap::PostChapters,
         "post --chapters",
+      ),
+      (
+        self.category.is_some(),
+        Cap::PostCategory,
+        "post --category",
       ),
     ];
     if let Some((_, _, name)) = given
@@ -278,6 +286,7 @@ const POST_OPTIONS: &[(&str, &[Cap])] = &[
   ("collection", &[Cap::PostCollection]),
   ("music", &[Cap::PostMusic]),
   ("chapters", &[Cap::PostChapters]),
+  ("category", &[Cap::PostCategory]),
   ("yes", &[Cap::PostVideo, Cap::PostArticle]),
 ];
 
@@ -436,6 +445,7 @@ async fn publish<P: Platform>(p: &P, args: PublishArgs) -> Result<crate::model::
     collection: args.collection,
     music: args.music,
     chapters: chapters.unwrap_or_default(),
+    category: args.category,
     yes: args.yes,
   };
   let media = draft.video.is_some() || draft.article.is_some() || !draft.images.is_empty();
@@ -545,6 +555,7 @@ Examples:
   atp reddit post \"Body text\" --title Title --topic r/test
   atp douyin post --video clip.mp4 --title 标题 --visibility private
   atp douyin post --video talk.mp4 --title 标题 --chapters chapters.txt
+  atp bili post 简介 --video talk.mp4 --title 标题 --cover cover.jpg --topic 编程 --category 1015
   cat draft.md | atp bili post -
 
 What `post` creates differs per platform: see `atp guide interact`.";

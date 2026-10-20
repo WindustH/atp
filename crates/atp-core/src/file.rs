@@ -169,3 +169,56 @@ impl Upload {
       .map(|s| (s.width, s.height))
   }
 }
+
+/// How long an MP4 or MOV video lasts, in seconds, from its movie header
+/// (`moov/mvhd`), read without loading the file; `None` for other formats
+/// or a header it cannot find.
+pub fn video_duration(path: &Path) -> Option<f64> {
+  use std::io::{Read, Seek, SeekFrom};
+  let mut file = std::fs::File::open(path).ok()?;
+  let end = file.metadata().ok()?.len();
+  let moov = find_box(&mut file, 0, end, b"moov")?;
+  let (start, size) = find_box(&mut file, moov.0, moov.0 + moov.1, b"mvhd")?;
+  file.seek(SeekFrom::Start(start)).ok()?;
+  let mut head = vec![0u8; size.min(32) as usize];
+  file.read_exact(&mut head).ok()?;
+  let num = |at: usize, len: usize| -> Option<u64> {
+    let bytes = head.get(at..at + len)?;
+    Some(bytes.iter().fold(0u64, |n, b| (n << 8) | u64::from(*b)))
+  };
+  // Version 1 holds 64-bit times: created, modified, timescale, duration.
+  let (scale, duration) = match head.first()? {
+    1 => (num(20, 4)?, num(24, 8)?),
+    _ => (num(12, 4)?, num(16, 4)?),
+  };
+  (scale > 0).then(|| duration as f64 / scale as f64)
+}
+
+/// The content (offset, size) of the first box of `kind` between `from`
+/// and `to`.
+fn find_box(file: &mut std::fs::File, from: u64, to: u64, kind: &[u8; 4]) -> Option<(u64, u64)> {
+  use std::io::{Read, Seek, SeekFrom};
+  let mut at = from;
+  while at + 8 <= to {
+    file.seek(SeekFrom::Start(at)).ok()?;
+    let mut head = [0u8; 16];
+    file.read_exact(&mut head[..8]).ok()?;
+    let mut size = u64::from(u32::from_be_bytes(head[..4].try_into().ok()?));
+    let mut header = 8;
+    if size == 1 {
+      file.read_exact(&mut head[8..16]).ok()?;
+      size = u64::from_be_bytes(head[8..16].try_into().ok()?);
+      header = 16;
+    } else if size == 0 {
+      size = to - at;
+    }
+    if size < header {
+      return None;
+    }
+    if &head[4..8] == kind {
+      return Some((at + header, size - header));
+    }
+    at += size;
+  }
+  None
+}

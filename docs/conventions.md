@@ -85,7 +85,7 @@ Use these instead of writing another copy:
 | environment variables, `login --token` fields, saved credentials, keys shown masked, instance hosts | `credentials::{env, env_any, fields, expect, saved, save, mask, host}` |
 | access tokens that expire | `token::AccessToken` |
 | logins that come back through the browser to a local address | `oauth::{open_consent, port, listen, random, wait, redirect}` |
-| files to upload, MIME types, image sizes | `file::{Upload, Image, mime_for, sniff}`, `Upload::size` |
+| files to upload, MIME types, image sizes, the length of an MP4 video | `file::{Upload, Image, mime_for, sniff, video_duration}`, `Upload::size` |
 | `CHAT/MESSAGE` ids | `chat::{message_id, split_message_id, expect_message_id}` |
 | `listen` by polling (fixed or random interval), reconnect delays | `live::{poll, poll_between, Seen, Backoff}` |
 | websockets (default User-Agent included; `next_json_lenient` skips non-JSON frames) | `socket::Socket` via `Http::websocket` |

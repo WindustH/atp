@@ -27,7 +27,9 @@ platform: a tweet, a pin (想法), an image note, a dynamic, a Reddit post ...
   `2026-10-20 20:00` (local) or an RFC 3339 time (`post-schedule`);
   `--collection NAME|ID` (`post-collection`) and `--music ID`
   (`post-music`); `--chapters FILE` gives a video chapters
-  (`post-chapters`). Elsewhere they are hidden and refused.
+  (`post-chapters`); `--category ID` puts a video in one of the
+  platform's categories (分区, `post-category`). Elsewhere they are
+  hidden and refused.
 - A chapters file holds one chapter a line: its start (`M:SS` or
   `H:MM:SS`), then its title, optionally after ` - ` or ` | `:
 

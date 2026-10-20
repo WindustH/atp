@@ -83,6 +83,9 @@ pub struct Draft {
   /// Chapters of the video, in order; empty for none
   /// ([`Cap::PostChapters`](super::Cap::PostChapters)).
   pub chapters: Vec<Chapter>,
+  /// The category (分区) of a video, by the platform's id
+  /// ([`Cap::PostCategory`](super::Cap::PostCategory)).
+  pub category: Option<String>,
   /// The person said yes ahead (`--yes`); platforms that upload files ask first otherwise.
   pub yes: bool,
 }
