@@ -72,8 +72,13 @@ struct Chapters {
 /// What `update/desc/valid/v2` allows.
 #[derive(Default)]
 struct Editable {
-  /// `N of M used`, or empty.
-  edits: String,
+  /// The edits used and allowed (`edited_times`, `max_edit_times`: 5 a
+  /// work), when Douyin tells them. Each `update/desc/` uses one; the
+  /// manage page's chapter editor and permission form use none.
+  edits: Option<(u64, u64)>,
+  /// Why the text, title, covers and video cannot change now
+  /// (`can_edit` false, its `toast`).
+  refused: Option<String>,
   /// A new video: whether the page offers it, may send it, and why not.
   media_offered: bool,
   media_allowed: bool,
@@ -108,11 +113,15 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
   let covers = edit.cover.is_some() || edit.cover_horizontal.is_some();
   let describes = words || covers || edit.video.is_some();
   let visibility = edit.visibility.as_deref().map(visibility_code);
-  let allowed = if describes {
-    editable(&creator, &id).await?
-  } else {
-    Editable::default()
+  // The edits left show either way; only `update/desc/` needs one.
+  let allowed = match editable(&creator, &id).await {
+    Ok(allowed) => allowed,
+    Err(e) if describes => return Err(e),
+    Err(_) => Editable::default(),
   };
+  if describes {
+    allowed.check_edits()?;
+  }
   if edit.video.is_some() {
     allowed.check_media()?;
   }
@@ -123,7 +132,13 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
     }
     Kind::Images => Vec::new(),
   };
-  ask(&work, edit, &title, &editor, &allowed, &notes)?;
+  ask(
+    &work,
+    edit,
+    (&title, &editor),
+    (&allowed, describes),
+    &notes,
+  )?;
 
   if describes {
     let form = describe(api, &creator, &work, edit, &title, &editor, words).await?;
@@ -248,6 +263,53 @@ async fn describe(
 }
 
 impl Editable {
+  /// Fails when the work takes no more `update/desc/` edits: Douyin says
+  /// so (`can_edit`), or all of them are used.
+  fn check_edits(&self) -> Result<()> {
+    if let Some(reason) = &self.refused {
+      return Err(Error::new(
+        ErrorCode::PermissionDenied,
+        format!("Douyin: {reason}"),
+      ));
+    }
+    match self.edits {
+      Some((used, max)) if used >= max => Err(Error::new(
+        ErrorCode::PermissionDenied,
+        format!(
+          "Douyin: this work has used all {max} of its edits (每个作品最多修改{max}次); its text, \
+           title, hashtags, covers and video can no longer change. Chapters and visibility still can"
+        ),
+      )),
+      _ => Ok(()),
+    }
+  }
+
+  /// The summary's rows on the edits: those left, what this change uses,
+  /// and a warning before the last one.
+  fn rows(&self, describes: bool) -> Vec<(&'static str, String)> {
+    let Some((used, max)) = self.edits else {
+      return Vec::new();
+    };
+    let left = max.saturating_sub(used);
+    let mut rows = vec![("edits", format!("{left} of {max} left ({used} used)"))];
+    if !describes {
+      rows.push((
+        "",
+        "this change uses none: chapters and visibility go through the manage page".into(),
+      ));
+    } else if left == 1 {
+      rows.push((
+        "",
+        "this is the work's last edit: give the text, title, hashtags, covers and video \
+         together in it (chapters and visibility do not count)"
+          .into(),
+      ));
+    } else {
+      rows.push(("", "this change uses 1".into()));
+    }
+    rows
+  }
+
   /// Fails when Douyin takes no new video for this work now: the page
   /// offers 更换视频 only when `media_fields` shows the button, and sends
   /// one only when it allows it.
@@ -405,9 +467,10 @@ fn change(work: &Work, edit: &Edit) -> Result<(String, Editor)> {
 }
 
 /// Whether the work's text, title and cover may still change and how many
-/// edits are used (`basic_fields`), and whether its video may be replaced
-/// (`media_fields`; taken as allowed when the answer has none, leaving the
-/// verdict to `update/desc/`).
+/// edits are used (`basic_fields`, which the edit page's tip 每个作品最多修改
+/// 5次，目前已经使用N次修改机会 reads), and whether its video may be
+/// replaced (`media_fields`; taken as allowed when the answer has none,
+/// leaving the verdict to `update/desc/`).
 async fn editable(creator: &Creator<'_>, id: &str) -> Result<Editable> {
   let v = creator
     .get(EDITABLE)
@@ -416,22 +479,19 @@ async fn editable(creator: &Creator<'_>, id: &str) -> Result<Editable> {
     .send()
     .await?;
   let fields = v.at("basic_fields");
-  if fields.bool("can_edit") == Some(false) {
-    let reason = fields
+  let refused = (fields.bool("can_edit") == Some(false)).then(|| {
+    fields
       .str("toast")
-      .unwrap_or_else(|| "this work can no longer be edited".into());
-    return Err(Error::new(
-      ErrorCode::PermissionDenied,
-      format!("Douyin: {reason}"),
-    ));
-  }
+      .unwrap_or_else(|| "this work can no longer be edited".into())
+  });
   let media = v.at("media_fields");
   tracing::debug!("update/desc/valid/v2 media_fields: {media}");
   Ok(Editable {
     edits: match (fields.u64("edited_times"), fields.u64("max_edit_times")) {
-      (Some(used), Some(max)) if max > 0 => format!("{used} of {max} used"),
-      _ => String::new(),
+      (Some(used), Some(max)) if max > 0 => Some((used, max)),
+      _ => None,
     },
+    refused,
     media_offered: media.bool("show_button").unwrap_or(true),
     media_allowed: media.bool("can_edit").unwrap_or(true),
     media_reason: media.i64("cant_not_edit_reason").unwrap_or(0),
@@ -467,13 +527,13 @@ impl Chapters {
   }
 }
 
-/// Show the change, with `notes` on it, and ask (or take `--yes`).
+/// Show the change, with `notes` on it and the edits left, and ask (or
+/// take `--yes`).
 fn ask(
   work: &Work,
   edit: &Edit,
-  title: &str,
-  editor: &Editor,
-  allowed: &Editable,
+  (title, editor): (&str, &Editor),
+  (allowed, describes): (&Editable, bool),
   notes: &[String],
 ) -> Result<()> {
   let hashtags = |e: &Editor| {
@@ -527,8 +587,8 @@ fn ask(
       );
     }
   }
-  if !allowed.edits.is_empty() {
-    change.row("edits", &allowed.edits);
+  for (label, value) in allowed.rows(describes) {
+    change.row(label, &value);
   }
   change.confirm(edit.yes, "change this work on Douyin")
 }

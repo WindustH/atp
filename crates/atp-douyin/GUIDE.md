@@ -408,10 +408,15 @@ prints the change (each field as old → new) and asks (`-y` in scripts).
   `--video` and `--chapters` go in separate edits: set the chapters
   again once the new video has passed review. Douyin videos have one
   part, so `--part` is refused.
-- Douyin limits how often a work's text, title and cover may change; the
-  summary shows the edits used, and a work that can no longer change
-  fails with `permission_denied` and Douyin's reason. Changed works may be
-  reviewed again.
+- Douyin allows each work 5 edits (每个作品最多修改5次), so batch the
+  changes. Every edit that changes the text, title, hashtags, covers or
+  video uses one (the edit page's `update/desc/`); chapters and
+  visibility go through the manage page and use none. The summary shows
+  the edits left (from the edit page's `update/desc/valid/v2`:
+  `edited_times` of `max_edit_times`) and whether this change uses one,
+  and warns before the last one. With none left, or when Douyin says the
+  work can no longer change, the edit fails with `permission_denied`
+  before anything is uploaded. Changed works may be reviewed again.
 - Works whose text @-mentions people or joins an activity are refused
   (ATP cannot write those back), as are articles.
 
