@@ -62,6 +62,12 @@ pub struct PublishArgs {
   /// Category (分区) of the video, by the id the platform's category list shows
   #[arg(long, value_name = "ID")]
   pub category: Option<String>,
+  /// Attach a place (a POI id from the platform's place search)
+  #[arg(long, value_name = "ID")]
+  pub location: Option<String>,
+  /// Join an official activity (an id from the platform's activity list)
+  #[arg(long, value_name = "ID")]
+  pub activity: Option<String>,
   /// Skip the confirmation question (needed in scripts)
   #[arg(short, long)]
   pub yes: bool,
@@ -104,6 +110,16 @@ impl PublishArgs {
         self.cover_horizontal.is_some(),
         Cap::PostCoverHorizontal,
         "post --cover-horizontal",
+      ),
+      (
+        self.location.is_some(),
+        Cap::PostLocation,
+        "post --location",
+      ),
+      (
+        self.activity.is_some(),
+        Cap::PostActivity,
+        "post --activity",
       ),
     ];
     if let Some((_, _, name)) = given
@@ -308,6 +324,8 @@ const POST_OPTIONS: &[(&str, &[Cap])] = &[
   ("music", &[Cap::PostMusic]),
   ("chapters", &[Cap::PostChapters]),
   ("category", &[Cap::PostCategory]),
+  ("location", &[Cap::PostLocation]),
+  ("activity", &[Cap::PostActivity]),
   ("yes", &[Cap::PostVideo, Cap::PostArticle]),
 ];
 
@@ -470,6 +488,8 @@ async fn publish<P: Platform>(p: &P, args: PublishArgs) -> Result<crate::model::
     music: args.music,
     chapters: chapters.unwrap_or_default(),
     category: args.category,
+    location: args.location.map(|l| ctx.collection_ref(&l)).transpose()?,
+    activity: args.activity.map(|a| ctx.collection_ref(&a)).transpose()?,
     yes: args.yes,
   };
   let media = draft.video.is_some() || draft.article.is_some() || !draft.images.is_empty();

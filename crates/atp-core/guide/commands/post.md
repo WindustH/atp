@@ -30,8 +30,12 @@ platform: a tweet, a pin (想法), an image note, a dynamic, a Reddit post ...
   `--collection NAME|ID` (`post-collection`) and `--music ID`
   (`post-music`); `--chapters FILE` gives a video chapters
   (`post-chapters`); `--category ID` puts a video in one of the
-  platform's categories (分区, `post-category`). Elsewhere they are
-  hidden and refused.
+  platform's categories (分区, `post-category`); `--location ID` tags
+  the post with a place, by an id from the platform's place search
+  (`post-location`); `--activity ID` joins one of the platform's
+  official activities, by an id from its activity list
+  (`post-activity`). Both take `#N` from the last list. Elsewhere they
+  are hidden and refused.
 - A chapters file holds one chapter a line: its start (`M:SS` or
   `H:MM:SS`), then its title, optionally after ` - ` or ` | `:
 

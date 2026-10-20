@@ -89,6 +89,12 @@ pub struct Draft {
   /// The category (分区) of a video, by the platform's id
   /// ([`Cap::PostCategory`](super::Cap::PostCategory)).
   pub category: Option<String>,
+  /// A place (POI) to tag the post with, by the id the platform's place
+  /// search gives it ([`Cap::PostLocation`](super::Cap::PostLocation)).
+  pub location: Option<String>,
+  /// An official activity for the post to join, by the id the platform's
+  /// activity list gives it ([`Cap::PostActivity`](super::Cap::PostActivity)).
+  pub activity: Option<String>,
   /// The person said yes ahead (`--yes`); platforms that upload files ask first otherwise.
   pub yes: bool,
 }

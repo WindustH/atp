@@ -55,6 +55,10 @@ pub enum Cap {
   PostCategory,
   /// `post --cover-horizontal`: a landscape (4:3) cover beside the main one.
   PostCoverHorizontal,
+  /// `post --location`: a place (POI) from the platform's place search.
+  PostLocation,
+  /// `post --activity`: joining one of the platform's official activities.
+  PostActivity,
   Delete,
   Download,
   AccountInsights,
@@ -171,6 +175,8 @@ impl Cap {
     Cap::PostChapters,
     Cap::PostCategory,
     Cap::PostCoverHorizontal,
+    Cap::PostLocation,
+    Cap::PostActivity,
     Cap::Delete,
     Cap::Download,
     Cap::AccountInsights,
@@ -258,6 +264,8 @@ impl Cap {
       Cap::PostChapters => "post-chapters",
       Cap::PostCategory => "post-category",
       Cap::PostCoverHorizontal => "post-cover-horizontal",
+      Cap::PostLocation => "post-location",
+      Cap::PostActivity => "post-activity",
       Cap::Delete => "delete",
       Cap::Download => "download",
       Cap::AccountInsights => "insights",

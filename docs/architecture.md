@@ -95,9 +95,12 @@ A platform crate exports one type implementing `atp_core::Platform`:
   `EditCoverHorizontal`, `EditVisibility`, `EditChapters`, `EditVideo`,
   `EditPart` (the part of a video in several parts) and `EditDryRun`
   show its options. `post --chapters` shows with `PostChapters`, `post
-  --category` with `PostCategory` and `post --cover-horizontal` (a 4:3
-  cover beside the main one) with `PostCoverHorizontal`; chapters come
-  from a file of `0:00 Title` lines (`chapters`).
+  --category` with `PostCategory`, `post --cover-horizontal` (a 4:3
+  cover beside the main one) with `PostCoverHorizontal`, `post
+  --location` (a place id from the platform's place search, in
+  `Draft.location`) with `PostLocation` and `post --activity` (an
+  official activity's id, in `Draft.activity`) with `PostActivity`;
+  chapters come from a file of `0:00 Title` lines (`chapters`).
 - Listing methods return one `Page<T>` per call for a `PageReq { cursor, size }`;
   the core follows `next_cursor` until `--limit` is reached. Cursors are opaque
   strings owned by the platform (offset, page number, upstream cursor ...).
