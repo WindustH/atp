@@ -8,23 +8,23 @@ use super::video::{base, thumbnail};
 use super::{count, find, first, image, number_in, put, text, verified, when};
 use crate::refs::channel_url;
 
-/// Chapters of a watch page: `[{title, start}]` and whether YouTube made them.
-fn chapters(next: &Value) -> Option<(Value, bool)> {
+/// Chapters of a watch page: `(title, start)` pairs and whether YouTube
+/// made them.
+fn chapters(next: &Value) -> Option<(Vec<(String, f64)>, bool)> {
   let markers = next.list("playerOverlays.playerOverlayRenderer.decoratedPlayerBarRenderer.decoratedPlayerBarRenderer.playerBar.multiMarkersPlayerBarRenderer.markersMap");
   let map = markers
     .iter()
     .find(|m| m.str("key").is_some_and(|k| k.ends_with("CHAPTERS")))?;
-  let list: Vec<Value> = find(map, "chapterRenderer")
+  let list: Vec<(String, f64)> = find(map, "chapterRenderer")
     .iter()
     .map(|c| {
-      json!({
-        "title": text(c.at("title")),
-        "start": c.u64("timeRangeStartMillis").map(|ms| ms as f64 / 1000.0),
-      })
+      let title = text(c.at("title")).unwrap_or_default();
+      let start = c.u64("timeRangeStartMillis").unwrap_or(0) as f64 / 1000.0;
+      (title, start)
     })
     .collect();
   let auto = map.str("key").as_deref() == Some("AUTO_CHAPTERS");
-  (!list.is_empty()).then(|| (Value::from(list), auto))
+  (!list.is_empty()).then_some((list, auto))
 }
 
 /// The audience-retention heatmap of a watch page (`macroMarkersListEntity`
@@ -159,7 +159,8 @@ fn watch_extra(x: &mut Extra, details: &Value, micro: &Value, primary: &Value, n
     }
   }
   if let Some((list, auto)) = chapters(next) {
-    put(x, "chapters", list);
+    let duration = details.u64("lengthSeconds").map(|s| s as f64);
+    put(x, "chapters", atp_core::chapters::value(&list, duration));
     if auto {
       put(x, "chapters_auto", true);
     }

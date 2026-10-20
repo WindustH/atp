@@ -6,7 +6,7 @@
 //! back to the default), so the video's own `snippet` and `status`, as
 //! `videos.list` gives them to the owner, go back with the changes; only
 //! the parts that change are sent. The thumbnail goes through
-//! `thumbnails.set`.
+//! `thumbnails.set`. Chapters live in the description ([`chapters`]).
 
 use std::path::Path;
 
@@ -17,15 +17,17 @@ use atp_core::{Action, Edit, Error, ErrorCode, Result, Value, ValueExt, json};
 
 use crate::api::Api;
 use crate::oauth::{self, Credentials, DATA, SETUP_HINT};
-use crate::refs;
+use crate::{chapters, refs};
 
 const LABEL: &str = "YouTube Data API";
 const THUMBNAIL_URL: &str = "https://www.googleapis.com/upload/youtube/v3/thumbnails/set";
 /// The largest thumbnail YouTube takes.
 const THUMBNAIL_MAX: usize = 2 * 1024 * 1024;
+/// The longest description, in characters.
+const DESCRIPTION_MAX: usize = 5000;
 
-/// Change one of your videos: its title, description (TEXT), tags,
-/// privacy and thumbnail.
+/// Change one of your videos: its title, description (TEXT), chapters,
+/// tags, privacy and thumbnail.
 pub async fn edit(api: &Api, arg: &str, edit: &Edit) -> Result<Action> {
   let creds = Credentials::from_env().ok_or_else(|| {
     Error::auth("editing videos needs the OAuth grant of the YouTube Data API")
@@ -68,14 +70,14 @@ pub async fn edit(api: &Api, arg: &str, edit: &Edit) -> Result<Action> {
   )
 }
 
-/// The video's `snippet` and `status`, when it belongs to the channel of
-/// the grant.
+/// The video's `snippet`, `status` and `contentDetails`, when it belongs
+/// to the channel of the grant.
 async fn own_video(api: &Api, creds: &Credentials, id: &str) -> Result<Value> {
   let req = api
     .ctx
     .http
     .get(format!("{DATA}/videos"))
-    .query("part", "snippet,status")
+    .query("part", "snippet,status,contentDetails")
     .query("id", id);
   let v = creds.send(&api.ctx, req, LABEL).await?;
   let Some(video) = v.list("items").first() else {
@@ -112,9 +114,17 @@ fn merged(video: &Value, edit: &Edit, change: &mut Change) -> Result<(Vec<&'stat
     change.field("title", &title, new);
     snippet["title"] = json!(new);
   }
-  if let Some(text) = &edit.text {
-    let old = snippet.str("description").unwrap_or_default();
-    change.field("description", &old, text);
+  let old = snippet.str("description").unwrap_or_default();
+  if let Some(text) = description(video, &old, edit)? {
+    change.field("description", &old, &text);
+    if let Some(list) = &edit.chapters {
+      let shown = if list.is_empty() {
+        "(removed)".to_owned()
+      } else {
+        format!("{} · {}", list.len(), atp_core::chapters::summary(list))
+      };
+      change.row("chapters", &shown);
+    }
     snippet["description"] = json!(text);
   }
   if let Some(topics) = &edit.topics {
@@ -130,7 +140,8 @@ fn merged(video: &Value, edit: &Edit, change: &mut Change) -> Result<(Vec<&'stat
     change.field("tags", &old.join(", "), &new.join(", "));
     snippet["tags"] = json!(new);
   }
-  if edit.title.is_some() || edit.text.is_some() || edit.topics.is_some() {
+  let described = edit.text.is_some() || edit.chapters.is_some();
+  if edit.title.is_some() || described || edit.topics.is_some() {
     if snippet.str("categoryId").is_none() {
       return Err(Error::upstream(
         "YouTube sent the video without its category",
@@ -150,6 +161,28 @@ fn merged(video: &Value, edit: &Edit, change: &mut Change) -> Result<(Vec<&'stat
     body["status"] = status;
   }
   Ok((parts, body))
+}
+
+/// The new description: TEXT (or the video's own) with the new chapters
+/// in it; `None` when neither changes.
+fn description(video: &Value, old: &str, edit: &Edit) -> Result<Option<String>> {
+  let base = edit.text.as_deref().unwrap_or(old);
+  let text = match &edit.chapters {
+    Some(list) => {
+      let duration = video
+        .str("contentDetails.duration")
+        .and_then(|d| chapters::iso_seconds(&d));
+      chapters::apply(base, list, duration)?
+    }
+    None if edit.text.is_some() => base.to_owned(),
+    None => return Ok(None),
+  };
+  if text.chars().count() > DESCRIPTION_MAX {
+    return Err(Error::input(format!(
+      "a YouTube description takes at most {DESCRIPTION_MAX} characters"
+    )));
+  }
+  Ok(Some(text))
 }
 
 /// `public` or `private`; a scheduled publication (`publishAt`) stays

@@ -12,6 +12,7 @@ mod account;
 mod api;
 mod captions;
 mod channels;
+mod chapters;
 mod comments;
 mod edits;
 mod extra;
@@ -88,6 +89,7 @@ impl Platform for YouTube {
       Cap::EditTopics,
       Cap::EditCover,
       Cap::EditVisibility,
+      Cap::EditChapters,
       Cap::Download,
       Cap::AccountInsights,
       Cap::PostInsights,

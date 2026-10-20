@@ -102,8 +102,9 @@ your IP's region.
 ### read
 
 A video or a community post. Videos add duration, category, hashtags,
-chapters, the audience-retention `heatmap` (equal segments, intensity 0–1)
-and the `most_replayed` ranges when YouTube has them.
+`chapters` (`title`, `start`, `end` in seconds; `chapters_auto` when
+YouTube made them), the audience-retention `heatmap` (equal segments,
+intensity 0–1) and the `most_replayed` ranges when YouTube has them.
 
 ### comments, replies
 
@@ -302,7 +303,8 @@ The one-time grant for `insights` and `edit`; see Logging in.
 ### edit
 
 `edit VIDEO [TEXT] [--title TITLE] [--topic TAG ...] [--no-topics]
-[--cover IMAGE] [--visibility public|private]` changes one of your videos
+[--chapters FILE | --no-chapters] [--cover IMAGE] [--visibility
+public|private]` changes one of your videos
 through the YouTube Data API; it needs the OAuth setup (see Logging in),
 not the cookie session. It loads the video first, prints the change (each
 field as old → new) and asks (`-y` in scripts).
@@ -312,6 +314,18 @@ field as old → new) and asks (`-y` in scripts).
   in all). The rest of the video's details (category, languages,
   licence, embedding, made-for-kids) go back as they are, since the API
   deletes what an update leaves out.
+- `--chapters FILE` writes chapters into the description, as YouTube
+  reads them: a list of `0:00 Title` lines. The list already in the
+  description (lines starting with a time, the first at 0:00) is
+  replaced; without one the list is appended after a blank line. The
+  rest of the description stays as it is; with TEXT the chapters go into
+  that new text. `--no-chapters` takes the list out. YouTube's rules are
+  checked first: the first chapter at 0:00, at least three, each at
+  least 10 seconds long (the last one up to the video's end), in order,
+  no `<` or `>`. YouTube decides whether it shows the list, and its own
+  automatic chapters (`chapters_auto`) cannot be removed here.
+- A replaced video file is not possible on YouTube: upload a new video
+  instead (there is no `--video`).
 - `--visibility public|private`; `friends` does not exist on YouTube
   and is refused. Making a scheduled video public drops its schedule.
   An unlisted video shows as `unlisted` in the summary.
@@ -325,6 +339,16 @@ field as old → new) and asks (`-y` in scripts).
 atp yt edit dQw4w9WgXcQ --title 'Better title' --topic music --topic 1987
 atp yt edit https://youtu.be/dQw4w9WgXcQ - --visibility private -y < description.txt
 atp yt edit dQw4w9WgXcQ --cover thumb.jpg
+atp yt edit dQw4w9WgXcQ --chapters chapters.txt
+atp yt edit dQw4w9WgXcQ --no-chapters -y
+```
+
+A chapters file:
+
+```
+0:00 Intro
+1:02 Setting up
+12:30 Questions
 ```
 
 ### download
