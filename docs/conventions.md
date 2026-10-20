@@ -97,7 +97,7 @@ Use these instead of writing another copy:
 | prices of products, listings, deals, tickets | `Post.price` (`Price::cny`, `original`, `label`); never in `extra` |
 | map platforms: points in their system, places, routes, distances, static map sizes | `geo::{Coord, System, Place, Routes, Route, Step, Distance, Polyline, image_size, save_map}`; a place is `Post.place`, never `extra`; `Platform::COORD` for `--coord` |
 | times, counts, text | `text::{from_secs, from_millis, from_beijing, parse_count, html_to_text, encode_uri_component, decode_uri_component, emoji_shortcode …}` |
-| dates without a time of day (`Oct 12, 2021`, `3 weeks ago`) | `text::date_only`: shown as a date, never with a made-up clock time |
+| dates without a time of day (`Oct 12, 2021`, `3 weeks ago`) | `text::date_only`: marked as a day and shown as a date, never with a made-up clock time (a time at midnight UTC stays a time); data prints it as that midnight, and `text::plain_time` does the same for one written into `extra` |
 | listings | `cli::PageArgs`, `paging` (`paging::slice` for lists held in memory), `PageReq` |
 | commands on several users, posts or folders: one Action each, failures marked, the run stopped at login / check / rate-limit errors | `bulk::{each, batches}`; `Data::actions` |
 | lyrics and track lists of music platforms | `music::{Lyrics, with_tracks}` |

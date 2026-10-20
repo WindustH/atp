@@ -7,7 +7,7 @@
 mod html;
 mod social;
 
-use atp_core::text::{date_only, from_beijing};
+use atp_core::text::{date_only, from_beijing, plain_time};
 use atp_core::{Media, Metrics, Post, Value, ValueExt, json};
 use jiff::Timestamp;
 
@@ -195,7 +195,9 @@ pub fn ranked(v: &Value, rank: usize) -> Post {
 pub fn collected(v: &Value) -> Post {
   let mut post = subject(v.at("subject"));
   if let Some(date) = post.created_at.take() {
-    post.extra.insert("date".into(), json!(date.to_string()));
+    post
+      .extra
+      .insert("date".into(), json!(plain_time(date).to_string()));
   }
   post.created_at = time(v, "create_time");
   post.extra.insert("collection".into(), mark(v));

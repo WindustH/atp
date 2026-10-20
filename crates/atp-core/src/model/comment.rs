@@ -12,7 +12,7 @@ pub struct Comment {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub author: Option<User>,
   pub text: String,
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", serialize_with = "plain_time")]
   pub created_at: Option<Timestamp>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub likes: Option<u64>,

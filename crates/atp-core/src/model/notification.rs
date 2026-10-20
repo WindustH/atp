@@ -19,7 +19,7 @@ pub struct Notification {
   pub target: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub url: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", serialize_with = "plain_time")]
   pub created_at: Option<Timestamp>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub unread: Option<bool>,

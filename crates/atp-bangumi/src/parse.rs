@@ -3,7 +3,7 @@
 //! `anime`, `book`, `music`, `game`, `real`), users are users, and a
 //! user's collection entries are subjects with `extra.collection`.
 
-use atp_core::text::date_only;
+use atp_core::text::{date_only, plain_time};
 use atp_core::{Media, Metrics, Post, User, Value, ValueExt, json};
 use jiff::Timestamp;
 
@@ -311,7 +311,7 @@ pub fn collected(v: &Value) -> Post {
     post
       .extra
       .entry("date".into())
-      .or_insert(json!(date.to_string()));
+      .or_insert(json!(plain_time(date).to_string()));
   }
   post.created_at = updated;
   let tags: Vec<String> = v

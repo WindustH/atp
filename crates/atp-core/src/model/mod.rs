@@ -35,3 +35,12 @@ pub type Extra = BTreeMap<String, Value>;
 fn is_false(b: &bool) -> bool {
   !*b
 }
+
+/// Times as data prints them: a day without a time of day as midnight
+/// UTC, without the mark that tells it apart ([`crate::text::plain_time`]).
+fn plain_time<S: serde::Serializer>(
+  time: &Option<jiff::Timestamp>,
+  out: S,
+) -> Result<S::Ok, S::Error> {
+  serde::Serialize::serialize(&time.map(crate::text::plain_time), out)
+}

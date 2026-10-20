@@ -54,7 +54,7 @@ pub struct User {
   /// Whether the logged-in account follows this user, when known.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub followed: Option<bool>,
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", serialize_with = "plain_time")]
   pub created_at: Option<Timestamp>,
   /// Platform fields. Rows of the logged-in account's own `following` /
   /// `followers` use these keys for the relation, where the platform

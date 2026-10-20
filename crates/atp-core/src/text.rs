@@ -146,17 +146,38 @@ pub fn parse_time(s: &str) -> Option<Timestamp> {
   })
 }
 
+/// What marks a [`date_only`] time: one nanosecond past midnight UTC.
+/// Times platforms give come in seconds or milliseconds, so the mark tells
+/// a day from a time that falls on midnight UTC (a train leaving at 08:00
+/// in Beijing).
+const DATE_MARK: jiff::SignedDuration = jiff::SignedDuration::from_nanos(1);
+
 /// A day without a time of day, for platforms that give only a date
 /// (`Oct 12, 2021`) or an age in days and longer (`3 weeks ago`). It is
-/// kept as midnight UTC of that date, which [`fmt_time`] shows as the date
-/// alone, so no made-up clock time appears.
+/// kept as midnight UTC of that date, marked as a day, which [`fmt_time`]
+/// shows as the date alone, so no made-up clock time appears. JSON, YAML
+/// and rows print it as that midnight ([`plain_time`]).
 pub fn date_only(date: jiff::civil::Date) -> Option<Timestamp> {
-  date.to_zoned(TimeZone::UTC).ok().map(|z| z.timestamp())
+  let midnight = date.to_zoned(TimeZone::UTC).ok()?.timestamp();
+  midnight.checked_add(DATE_MARK).ok()
 }
 
-/// Whether `ts` is a [`date_only`] time: midnight UTC exactly.
+/// Whether `ts` was made by [`date_only`]: a day, not a point in time.
+/// Times at midnight UTC exactly are points in time.
 pub fn is_date_only(ts: Timestamp) -> bool {
-  ts.as_second().rem_euclid(86_400) == 0 && ts.subsec_nanosecond() == 0
+  ts.checked_sub(DATE_MARK).is_ok_and(|midnight| {
+    midnight.subsec_nanosecond() == 0 && midnight.as_second().rem_euclid(86_400) == 0
+  })
+}
+
+/// `ts` as it is printed in data: a [`date_only`] time without its mark
+/// (midnight UTC of its day), any other time as it is.
+pub fn plain_time(ts: Timestamp) -> Timestamp {
+  if is_date_only(ts) {
+    ts.checked_sub(DATE_MARK).unwrap_or(ts)
+  } else {
+    ts
+  }
 }
 
 /// Local, compact rendering for tables: `09-28 14:03`, or `2024-09-28` for

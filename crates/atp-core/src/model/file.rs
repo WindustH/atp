@@ -19,7 +19,7 @@ pub struct ShareLink {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub code: Option<String>,
   /// When the link stops working; none for links that never expire.
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", serialize_with = "plain_time")]
   pub expires_at: Option<Timestamp>,
 }
 
@@ -41,7 +41,7 @@ pub struct FileEntry {
   /// Bytes of a file.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub size: Option<u64>,
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(skip_serializing_if = "Option::is_none", serialize_with = "plain_time")]
   pub updated_at: Option<Timestamp>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub md5: Option<String>,
