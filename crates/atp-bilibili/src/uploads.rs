@@ -192,7 +192,8 @@ fn preupload_error(status: u16, v: &Value) -> Error {
     .with_url(PAGE)
     .unclearable(),
     _ if status == 401 || status == 403 => {
-      Error::auth(format!("Bilibili refused the upload: {message}")).with_hint("run `atp bili login`")
+      Error::auth(format!("Bilibili refused the upload: {message}"))
+        .with_hint("run `atp bili login`")
     }
     _ => Error::upstream(format!("Bilibili refused the upload: {message}")),
   }

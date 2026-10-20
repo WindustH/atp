@@ -261,7 +261,10 @@ fn ask(draft: &Draft, plan: &Plan) -> Result<()> {
   for path in [plan.video, plan.cover] {
     line("file", format!("{} ({})", path.display(), size_of(path)));
   }
-  line("review", "Bilibili reviews the video before it shows".into());
+  line(
+    "review",
+    "Bilibili reviews the video before it shows".into(),
+  );
   note(&lines.join("\n"));
   confirm(draft.yes, "publish this on Bilibili")
 }

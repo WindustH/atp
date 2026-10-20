@@ -19,7 +19,8 @@ const CARDS: &str = "https://member.bilibili.com/x/web/allcards";
 const SUBMIT: &str = "https://member.bilibili.com/x/web/card/submit";
 const PRE_SUBMIT: &str = "https://member.bilibili.com/x/web/card/pre/chapter/submit";
 /// The editor page that sends them (an iframe of the creator center).
-const EDITOR: &str = "https://www.bilibili.com/web/player/index.html?source_type=editor&scene=chapter";
+const EDITOR: &str =
+  "https://www.bilibili.com/web/player/index.html?source_type=editor&scene=chapter";
 /// The card type of chapters (`view_points` type too).
 const CHAPTERS: i64 = 2;
 
@@ -123,7 +124,12 @@ pub async fn read(api: &Api, aid: u64, cid: u64) -> Option<Value> {
 
 /// The chapters a part has now, as its uploader set them.
 pub async fn current(api: &Api, aid: u64, cid: u64) -> Result<Current> {
-  let data = api.get(CARDS).arg("aid", aid).arg("cid", cid).send().await?;
+  let data = api
+    .get(CARDS)
+    .arg("aid", aid)
+    .arg("cid", cid)
+    .send()
+    .await?;
   let Some(catalog) = data
     .list("catalog")
     .iter()

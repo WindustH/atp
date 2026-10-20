@@ -54,8 +54,15 @@ pub fn apply(description: &str, new: &[Chapter], duration: Option<u32>) -> Resul
     (Some((from, to)), true) => {
       let before = lines[..from].join("\n");
       let after = lines[to..].join("\n");
-      let (before, after) = (before.trim_end(), after.trim_start_matches(['\n', ' ', '\t']));
-      let sep = if before.is_empty() || after.is_empty() { "" } else { "\n\n" };
+      let (before, after) = (
+        before.trim_end(),
+        after.trim_start_matches(['\n', ' ', '\t']),
+      );
+      let sep = if before.is_empty() || after.is_empty() {
+        ""
+      } else {
+        "\n\n"
+      };
       format!("{before}{sep}{after}").trim_end().to_owned()
     }
   };
@@ -100,14 +107,15 @@ pub fn iso_seconds(s: &str) -> Option<u32> {
       unit => {
         let n: u64 = number.parse().ok()?;
         number.clear();
-        total += n * match (unit, time) {
-          ('D', false) => 86_400,
-          ('W', false) => 7 * 86_400,
-          ('H', true) => 3600,
-          ('M', true) => 60,
-          ('S', true) => 1,
-          _ => return None,
-        };
+        total += n
+          * match (unit, time) {
+            ('D', false) => 86_400,
+            ('W', false) => 7 * 86_400,
+            ('H', true) => 3600,
+            ('M', true) => 60,
+            ('S', true) => 1,
+            _ => return None,
+          };
       }
     }
   }

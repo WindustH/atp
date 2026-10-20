@@ -26,7 +26,8 @@ pub fn parse(text: &str) -> Result<Vec<Chapter>> {
     if line.is_empty() {
       continue;
     }
-    let chapter = parse_line(line).map_err(|e| Error::input(format!("chapters, line {}: {e}", i + 1)))?;
+    let chapter =
+      parse_line(line).map_err(|e| Error::input(format!("chapters, line {}: {e}", i + 1)))?;
     if let Some(last) = chapters.last()
       && chapter.start <= last.start
     {
@@ -49,13 +50,16 @@ pub fn parse(text: &str) -> Result<Vec<Chapter>> {
 
 fn parse_line(line: &str) -> std::result::Result<Chapter, String> {
   let (time, rest) = line.split_once(char::is_whitespace).unwrap_or((line, ""));
-  let start = parse_time(time).ok_or_else(|| {
-    format!("`{line}` does not start with a time (M:SS or H:MM:SS)")
-  })?;
+  let start = parse_time(time)
+    .ok_or_else(|| format!("`{line}` does not start with a time (M:SS or H:MM:SS)"))?;
   let rest = rest.trim_start();
   let title = ["-", "–", "—", "|", ":"]
     .iter()
-    .find_map(|sep| rest.strip_prefix(sep).filter(|t| t.starts_with(char::is_whitespace) || t.is_empty()))
+    .find_map(|sep| {
+      rest
+        .strip_prefix(sep)
+        .filter(|t| t.starts_with(char::is_whitespace) || t.is_empty())
+    })
     .unwrap_or(rest)
     .trim();
   if title.is_empty() {
@@ -77,7 +81,10 @@ pub fn parse_time(s: &str) -> Option<u32> {
   {
     return None;
   }
-  let numbers: Vec<u32> = parts.iter().map(|p| p.parse().ok()).collect::<Option<_>>()?;
+  let numbers: Vec<u32> = parts
+    .iter()
+    .map(|p| p.parse().ok())
+    .collect::<Option<_>>()?;
   let (h, m, s) = match numbers[..] {
     [m, s] => (0, m, s),
     [h, m, s] if m < 60 && parts[1].len() == 2 => (h, m, s),
