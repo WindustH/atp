@@ -9,7 +9,7 @@ use serde_json::Value;
 use wreq::header::{HeaderMap, HeaderName, HeaderValue};
 
 use super::{Http, Method, Resp, StatusCode};
-use crate::error::{Error, Result};
+use crate::error::{Error, Outcome, Result};
 
 #[derive(Clone)]
 enum Body {
@@ -283,16 +283,14 @@ impl<'a> Req<'a> {
         }
         Err(e) => {
           tracing::debug!("{} {} failed: {e}", self.method, redact(&url));
+          let outcome = self.http.outcome(&e);
           if attempt < self.retries {
             attempt += 1;
             backoff(attempt).await;
             continue;
           }
-          return Err(Error::network(format!(
-            "{} {}: {e}",
-            self.method,
-            redact(&url)
-          )));
+          let message = format!("{} {}: {e}", self.method, redact(&url));
+          return Err(Error::network(message).with_outcome(outcome));
         }
       }
     }
@@ -316,6 +314,7 @@ impl<'a> Req<'a> {
         Ok(resp) => resp,
         Err(e) => return Ok(Err(e)),
       };
+      self.http.contacted();
       tracing::debug!(
         "{} {} -> {} ({} ms)",
         hop.method,
@@ -333,10 +332,10 @@ impl<'a> Req<'a> {
         _ => return Ok(Ok(resp)),
       }
     }
-    Err(Error::network(format!(
-      "too many redirects from {}",
-      redact(url)
-    )))
+    Err(
+      Error::network(format!("too many redirects from {}", redact(url)))
+        .with_outcome(Outcome::Unknown),
+    )
   }
 
   pub async fn send(self) -> Result<Resp> {
@@ -347,7 +346,7 @@ impl<'a> Req<'a> {
     let body = resp
       .bytes()
       .await
-      .map_err(|e| Error::network(e.to_string()))?
+      .map_err(|e| Error::network(e.to_string()).with_outcome(Outcome::Unknown))?
       .to_vec();
     Ok(Resp {
       status,

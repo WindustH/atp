@@ -13,7 +13,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Outcome, Result};
 use rand::Rng;
 use wreq::header::{HeaderMap, HeaderName, HeaderValue};
 pub use wreq::{Method, StatusCode};
@@ -84,6 +84,10 @@ pub struct Http {
   jar: RefCell<Cookies>,
   dirty: Cell<bool>,
   last: Cell<Option<Instant>>,
+  /// Something may have reached a server: a request got past connecting,
+  /// or went another way (a browser tab, a websocket, a connection of the
+  /// platform's own). Until then a failed change was certainly not sent.
+  contacted: Cell<bool>,
   min_interval: Duration,
   proxy: Option<String>,
   cookie_domains: &'static [&'static str],
@@ -128,6 +132,7 @@ impl Http {
       jar: RefCell::new(cookies),
       dirty: Cell::new(false),
       last: Cell::new(None),
+      contacted: Cell::new(false),
       min_interval: cfg.min_interval,
       proxy: cfg.proxy.clone(),
       cookie_domains: cfg.cookie_domains,
@@ -213,6 +218,8 @@ impl Http {
   /// third-party websockets): `--proxy`, then `ATP_PROXY`, `ALL_PROXY`,
   /// `HTTPS_PROXY` (either case).
   pub fn proxy(&self) -> Option<String> {
+    // What goes over such a connection is out of this client's sight.
+    self.contacted.set(true);
     proxy_url(self.proxy.as_deref())
   }
 
@@ -286,6 +293,25 @@ impl Http {
   /// pacing.
   pub(crate) fn sent(&self) {
     self.last.set(Some(Instant::now()));
+    self.contacted.set(true);
+  }
+
+  /// Count a connection opened another way (a websocket) as something
+  /// that may have reached a server.
+  pub(crate) fn contacted(&self) {
+    self.contacted.set(true);
+  }
+
+  /// What became of a request that failed with `e`: not sent when no
+  /// connection could be made and nothing of this client reached a server
+  /// before, else unknown.
+  fn outcome(&self, e: &wreq::Error) -> Outcome {
+    let unsent = e.is_connect() || e.is_proxy_connect() || e.is_builder();
+    if unsent && !self.contacted.get() {
+      return Outcome::NotSent;
+    }
+    self.contacted.set(true);
+    Outcome::Unknown
   }
 
   fn absorb_cookies(&self, resp: &wreq::Response) {

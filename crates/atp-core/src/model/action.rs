@@ -4,7 +4,7 @@ use jiff::Timestamp;
 use serde::Serialize;
 
 use super::*;
-use crate::error::{Error, ErrorCode};
+use crate::error::{Error, ErrorCode, Outcome};
 
 /// Result of a write operation. Commands that act on several things give
 /// one per thing, in the order given ([`Data::Actions`]).
@@ -24,6 +24,10 @@ pub struct Action {
   /// Why it failed (`ok` false): the shared error code.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub error: Option<ErrorCode>,
+  /// Whether a change that failed may have happened anyway (`unknown`)
+  /// or was never sent (`not_sent`), as `error.outcome`.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub outcome: Option<Outcome>,
 }
 
 impl Action {
@@ -59,6 +63,7 @@ impl Action {
       ok: false,
       message: Some(error.message.clone()),
       error: Some(error.code),
+      outcome: error.change_outcome(),
       ..Self::default()
     }
   }

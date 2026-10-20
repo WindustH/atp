@@ -23,9 +23,19 @@ as midnight UTC of that date in structured output.
     fetched_at: 2026-09-30T02:00:00Z
     data: ...
 
-On failure `ok: false` and `error: {code, message, hint, url}` replace `data`
-(`url`: the page that clears the error, such as a captcha), and
-the exit code is non-zero: 2 for bad input, 3 when not logged in, 1 otherwise.
+On failure `ok: false` and `error: {code, message, hint, url, outcome}`
+replace `data` (`url`: the page that clears the error, such as a
+captcha), and the exit code is non-zero: 2 for bad input, 3 when not
+logged in, 1 otherwise.
+
+`outcome` comes with failed changes (posts, comments, likes, follows,
+messages, edits, deletions, platform commands that are not reads) that
+the platform did not refuse: `unknown` when the request may have reached
+it (a timeout, a lost connection, HTTP 502 / 504; the hint says to check
+whether it took effect before retrying, so nothing is posted twice),
+`not_sent` when nothing reached any server (no connection could be
+made), so a retry is safe. A command on several things puts it on each
+failed Action.
 
 Error codes: `not_authenticated`, `verification_required`, `ip_blocked`,
 `rate_limited`, `signature_error`, `invalid_input`, `not_found`,

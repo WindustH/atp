@@ -8,43 +8,12 @@ use serde_json::{Value, json};
 
 use crate::app::App;
 use crate::cli::GlobalArgs;
+use crate::cli::access::{self, SHARED_READS as READS};
 use crate::error::{Error, Result};
 use crate::guide;
 use crate::json::ValueExt;
 use crate::model::{Data, Page};
 use crate::output;
-
-/// Shared commands that only read.
-const READS: &[&str] = &[
-  "search",
-  "hot",
-  "feed",
-  "read",
-  "comments",
-  "replies",
-  "likers",
-  "reposts",
-  "insights",
-  "user",
-  "user-posts",
-  "followers",
-  "following",
-  "blocked",
-  "follow-groups",
-  "follow-group",
-  "collections",
-  "favorites",
-  "likes",
-  "history",
-  "watch-later",
-  "notifications",
-  "unread",
-  "chats",
-  "messages",
-  "members",
-  "whoami",
-  "status",
-];
 
 /// Seconds a command may run: `listen` and other live commands return
 /// the events seen when the time is up.
@@ -131,7 +100,10 @@ impl<'a> Tools<'a> {
     } else {
       WAIT_DEFAULT
     });
-    let result = limited((entry.call)(global, sub), &name, wait.min(WAIT_MAX)).await;
+    let changes = access::changes(&access::path(&sub));
+    let result = limited((entry.call)(global, sub), &name, wait.min(WAIT_MAX))
+      .await
+      .map_err(|e| access::settle(e, changes));
     Ok(output::envelope(Some(entry.info.id), &result).to_string())
   }
 }

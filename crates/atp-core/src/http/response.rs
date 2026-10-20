@@ -5,7 +5,7 @@ use serde_json::Value;
 use wreq::header::HeaderMap;
 
 use super::StatusCode;
-use crate::error::{Error, ErrorCode, Result};
+use crate::error::{Error, ErrorCode, Outcome, Result};
 
 /// What [`Req::append_to`] wrote.
 pub struct Fetched {
@@ -72,5 +72,11 @@ pub fn status_error(status: StatusCode, body: &str) -> Error {
     429 => ErrorCode::RateLimited,
     _ => ErrorCode::UpstreamError,
   };
-  Error::new(code, format!("HTTP {status}: {snippet}"))
+  let error = Error::new(code, format!("HTTP {status}: {snippet}"));
+  // A gateway that got no answer from the server behind it in time
+  // cannot tell whether a change went through.
+  match status.as_u16() {
+    502 | 504 => error.with_outcome(Outcome::Unknown),
+    _ => error,
+  }
 }

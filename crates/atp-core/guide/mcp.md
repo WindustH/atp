@@ -22,7 +22,9 @@ Other clients take the same command in their configuration:
 `read` and `run` take a platform, a command and its further command-line
 words, e.g. `{"platform": "bili", "command": "search", "args": ["rust", "-n", "5"]}`,
 and answer with the same envelope `--json` prints. `#3` refers to the third
-item of the last list, across calls.
+item of the last list, across calls. A change that failed without the
+platform refusing it carries `error.outcome`: `unknown` (it may have gone
+through: check before retrying) or `not_sent` (safe to retry).
 
 ## Resources
 

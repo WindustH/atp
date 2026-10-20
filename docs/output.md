@@ -71,6 +71,35 @@ error:
   hint: run `atp bili login` (QR code) or `atp bili login --cookie '...'`
 ```
 
+### Outcome of a failed change
+
+A command that changes something on the platform (`post`, `comment`,
+`edit`, `delete`, `like`, `follow`, `send`, `react`, `block`, the follow
+group, folder, history and watch-later changes, and every platform-only
+command not marked read) adds `outcome` to an error that does not tell
+whether the change happened:
+
+| `outcome` | Meaning |
+| --- | --- |
+| `unknown` | the request may have reached the platform: it timed out, the connection was lost after it was sent, or a gateway gave up waiting (HTTP 502 / 504). `hint` reads "check whether it took effect before retrying": look (`read`, `user-posts`, `messages` ...) before sending it again, or a comment or post may appear twice |
+| `not_sent` | nothing of the command reached any server: no connection could be made (DNS, a refused connection, the proxy) before anything was sent. Retrying is safe |
+
+```yaml
+error:
+  code: network_error
+  message: "POST https://api.bilibili.com/x/v2/reply/add: operation timed out"
+  hint: check whether it took effect before retrying
+  outcome: unknown
+```
+
+Refusals of the platform (`rate_limited`, `verification_required`,
+`permission_denied`, `invalid_input` ...) carry no `outcome`: the change
+did not happen. Neither do commands that only read, nor `login`,
+`logout`, `download` and `listen`. A command on several things puts
+`outcome` on each failed Action. `not_sent` is only claimed when no
+request of the command got past connecting; once one did, a later
+failure is `unknown`.
+
 | Exit code | Meaning |
 | --- | --- |
 | 0 | success |
@@ -91,7 +120,7 @@ error:
 | `not_found` | the post / user does not exist or is not visible |
 | `permission_denied` | the account may not do this |
 | `unsupported_operation` | the platform has no such feature |
-| `network_error` | connection problem; retry |
+| `network_error` | connection problem; retry, but after a change with `outcome: unknown` check first whether it took effect |
 | `upstream_error` | the platform answered something unexpected |
 | `internal_error` | local problem (files, ffmpeg, no Chromium-family browser for a platform read through one ...) |
 

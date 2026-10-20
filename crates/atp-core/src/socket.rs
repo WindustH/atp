@@ -30,6 +30,7 @@ impl Http {
     headers: &[(&str, &str)],
     cookies: bool,
   ) -> Result<Socket> {
+    self.contacted();
     let mut rb = self.client().websocket(url);
     let mut names = OrigHeaderMap::new();
     for name in [

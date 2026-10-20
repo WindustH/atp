@@ -52,6 +52,23 @@ impl ErrorCode {
   }
 }
 
+/// What became of a change that failed without the platform refusing it
+/// (`error.outcome`): shown on commands that change something.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Outcome {
+  /// The request may have reached the platform (a timeout, a lost
+  /// connection, a gateway that gave up waiting): the change may have
+  /// happened.
+  Unknown,
+  /// Nothing reached the platform (no connection could be made before
+  /// anything was sent): retrying is safe.
+  NotSent,
+}
+
+/// The hint of a change whose outcome is unknown.
+const CHECK_FIRST: &str = "check whether it took effect before retrying";
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Error {
   pub code: ErrorCode,
@@ -61,6 +78,10 @@ pub struct Error {
   /// A page that clears the error in a browser: a captcha, a risk check.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub url: Option<String>,
+  /// Whether the change a failed command asked for may have happened;
+  /// kept on commands that change something only ([`Error::of_change`]).
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub outcome: Option<Outcome>,
   /// A human check that passing it in the person's browser cannot clear
   /// (see [`Error::unclearable`]).
   #[serde(skip)]
@@ -74,6 +95,7 @@ impl Error {
       message: message.into(),
       hint: None,
       url: None,
+      outcome: None,
       unclearable: false,
     }
   }
@@ -85,6 +107,45 @@ impl Error {
 
   pub fn with_url(mut self, url: impl Into<String>) -> Self {
     self.url = Some(url.into());
+    self
+  }
+
+  /// Whether the request may have reached the platform; the HTTP client
+  /// sets it on the failures it meets.
+  pub fn with_outcome(mut self, outcome: Outcome) -> Self {
+    self.outcome = Some(outcome);
+    self
+  }
+
+  /// The error as a command that changes something reports it: a network
+  /// error keeps whether anything was sent (unknown unless the client
+  /// knows nothing was), and one that may have reached the platform says
+  /// to check before retrying. Refusals of the platform carry no outcome.
+  pub fn of_change(mut self) -> Self {
+    self.outcome = self.change_outcome();
+    match self.outcome {
+      Some(Outcome::Unknown) => self.hint = Some(CHECK_FIRST.into()),
+      Some(Outcome::NotSent) if self.hint.is_none() => {
+        self.hint = Some("nothing was sent; retrying is safe".into());
+      }
+      _ => {}
+    }
+    self
+  }
+
+  /// What became of the change a command that failed with this error
+  /// asked for: the outcome the client set, unknown for other network
+  /// errors, none for refusals.
+  pub fn change_outcome(&self) -> Option<Outcome> {
+    match self.code {
+      ErrorCode::NetworkError => Some(self.outcome.unwrap_or(Outcome::Unknown)),
+      _ => self.outcome,
+    }
+  }
+
+  /// The error as a command that only reads reports it: without an outcome.
+  pub fn of_read(mut self) -> Self {
+    self.outcome = None;
     self
   }
 

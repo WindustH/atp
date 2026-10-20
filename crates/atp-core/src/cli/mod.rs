@@ -5,6 +5,7 @@
 //! categories ...) are injected into the shared options from
 //! [`Choices`](crate::platform::Choices).
 
+pub(crate) mod access;
 mod account;
 mod args;
 mod chat;
@@ -349,6 +350,18 @@ pub async fn call<P: Platform>(global: GlobalArgs, matches: ArgMatches) -> Resul
 }
 
 async fn execute<P: Platform>(
+  global: &GlobalArgs,
+  matches: &ArgMatches,
+) -> Result<(Data, ExitCode)> {
+  let changes = access::changes(&access::path(matches));
+  verified::<P>(global, matches)
+    .await
+    .map_err(|e| access::settle(e, changes))
+}
+
+/// Run the command, and once more after a human check the person passed
+/// in a browser.
+async fn verified<P: Platform>(
   global: &GlobalArgs,
   matches: &ArgMatches,
 ) -> Result<(Data, ExitCode)> {
