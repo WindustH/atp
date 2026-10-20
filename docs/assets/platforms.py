@@ -51,6 +51,7 @@ GROUPS = [
         ("jike", "即刻", "Jike", "app:966129812", ""),
         ("hupu", "虎扑", "Hupu", "app:906632439", ""),
         ("zsxq", "知识星球", "ZSXQ", "app:1039749242", ""),
+        ("pixiv", "Pixiv", "Pixiv", "app:337248563@jp", ""),
         ("rss", "RSS", "RSSHub · Miniflux", "rss", "#FFA500"),
     ]),
     ("视频", "VIDEO", [

@@ -115,6 +115,7 @@ fn extension(url: &str, kind: MediaKind) -> &'static str {
     .unwrap_or_default();
   const KNOWN: &[&str] = &[
     "jpg", "jpeg", "png", "webp", "gif", "heic", "avif", "mp4", "m4a", "mp3", "flv", "webm", "mov",
+    "zip",
   ];
   match KNOWN.iter().find(|k| **k == ext) {
     Some(k) => k,

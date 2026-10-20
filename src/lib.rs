@@ -139,6 +139,8 @@ pub use atp_1point3acres as onepoint3acres;
 pub use atp_51job as fiftyonejob;
 #[cfg(feature = "pinduoduo")]
 pub use atp_pinduoduo as pinduoduo;
+#[cfg(feature = "pixiv")]
+pub use atp_pixiv as pixiv;
 #[cfg(feature = "podcast")]
 pub use atp_podcast as podcast;
 #[cfg(feature = "proginn")]

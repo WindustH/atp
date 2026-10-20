@@ -423,6 +423,7 @@ dependencies = [
  "atp-nowcoder",
  "atp-onebot",
  "atp-pinduoduo",
+ "atp-pixiv",
  "atp-podcast",
  "atp-proginn",
  "atp-qq",
@@ -1201,6 +1202,18 @@ dependencies = [
  "rand 0.9.5",
  "regex",
  "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "atp-pixiv"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "regex",
  "serde_json",
  "url",
 ]

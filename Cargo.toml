@@ -118,6 +118,7 @@ atp-forem = { path = "crates/atp-forem" }
 atp-hupu = { path = "crates/atp-hupu" }
 atp-smzdm = { path = "crates/atp-smzdm" }
 atp-zsxq = { path = "crates/atp-zsxq" }
+atp-pixiv = { path = "crates/atp-pixiv" }
 
 aes = "0.8"
 base64 = "0.22"
@@ -228,6 +229,7 @@ all = [
   "hupu",
   "smzdm",
   "zsxq",
+  "pixiv",
 ]
 zhihu = ["dep:atp-zhihu"]
 xhs = ["dep:atp-xhs"]
@@ -314,6 +316,7 @@ forem = ["dep:atp-forem"]
 hupu = ["dep:atp-hupu"]
 smzdm = ["dep:atp-smzdm"]
 zsxq = ["dep:atp-zsxq"]
+pixiv = ["dep:atp-pixiv"]
 
 [dependencies]
 atp-core.workspace = true
@@ -402,6 +405,7 @@ atp-forem = { workspace = true, optional = true }
 atp-hupu = { workspace = true, optional = true }
 atp-smzdm = { workspace = true, optional = true }
 atp-zsxq = { workspace = true, optional = true }
+atp-pixiv = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio.workspace = true

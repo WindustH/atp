@@ -1,0 +1,14 @@
+[package]
+name = "atp-pixiv"
+description = "Pixiv support for all-the-platforms: illustrations, manga, ugoira and novels, the search, the rankings, artists and their works, comments and original-size downloads; with a login your bookmarks, the works of the artists you follow, likes, bookmarks and follows"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+jiff.workspace = true
+regex.workspace = true
+serde_json.workspace = true
+url.workspace = true
