@@ -1,0 +1,14 @@
+[package]
+name = "atp-pinterest"
+description = "Pinterest support for all-the-platforms: the search of pins, boards and people, pins with their original image or video, profiles with their pins and boards, a board's pins; with a login saving pins, creating pins and boards"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+atp-core.workspace = true
+clap.workspace = true
+jiff.workspace = true
+regex.workspace = true
+serde_json.workspace = true
+url.workspace = true

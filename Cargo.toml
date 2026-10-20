@@ -119,6 +119,7 @@ atp-hupu = { path = "crates/atp-hupu" }
 atp-smzdm = { path = "crates/atp-smzdm" }
 atp-zsxq = { path = "crates/atp-zsxq" }
 atp-pixiv = { path = "crates/atp-pixiv" }
+atp-pinterest = { path = "crates/atp-pinterest" }
 
 aes = "0.8"
 base64 = "0.22"
@@ -230,6 +231,7 @@ all = [
   "smzdm",
   "zsxq",
   "pixiv",
+  "pinterest",
 ]
 zhihu = ["dep:atp-zhihu"]
 xhs = ["dep:atp-xhs"]
@@ -317,6 +319,7 @@ hupu = ["dep:atp-hupu"]
 smzdm = ["dep:atp-smzdm"]
 zsxq = ["dep:atp-zsxq"]
 pixiv = ["dep:atp-pixiv"]
+pinterest = ["dep:atp-pinterest"]
 
 [dependencies]
 atp-core.workspace = true
@@ -406,6 +409,7 @@ atp-hupu = { workspace = true, optional = true }
 atp-smzdm = { workspace = true, optional = true }
 atp-zsxq = { workspace = true, optional = true }
 atp-pixiv = { workspace = true, optional = true }
+atp-pinterest = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio.workspace = true

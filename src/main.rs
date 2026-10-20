@@ -87,6 +87,7 @@ fn main() -> ExitCode {
   .platform::<atp_hupu::Hupu>()
   .platform::<atp_zsxq::Zsxq>()
   .platform::<atp_pixiv::Pixiv>()
+  .platform::<atp_pinterest::Pinterest>()
   .platform::<atp_podcast::Podcast>()
   .platform::<atp_xiaoyuzhou::Xiaoyuzhou>()
   .platform::<atp_lemmy::Lemmy>()
