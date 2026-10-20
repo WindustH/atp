@@ -7,6 +7,7 @@
 
 mod text;
 
+use atp_core::chapters::Chapter;
 use atp_core::{Value, json};
 
 pub use self::text::{Editor, image_editor, video_editor};
@@ -32,6 +33,8 @@ pub struct Settings {
   pub mix: Option<(String, i64)>,
   /// A music and its length in milliseconds.
   pub music: Option<(String, i64)>,
+  /// A video's chapters, in order; none when empty.
+  pub chapters: Vec<Chapter>,
 }
 
 /// A hashtag with the id Douyin knows it by (0 when typed, not picked).
@@ -288,7 +291,10 @@ fn mix(s: &Settings, images: bool) -> Value {
   }
 }
 
-/// The chapters field of a video without chapters.
+/// The chapter field (`chapterV2` of the publish form): the chapters as
+/// its chapter editor saves them, shown on the progress bar
+/// (`chapter_type` 1, the editor's default), without a summary or smart
+/// chapters (`chapter_recommend_type` -2: none were generated).
 fn chapter(s: &Settings) -> String {
   let now = if s.timing > 0 {
     s.timing
@@ -297,7 +303,7 @@ fn chapter(s: &Settings) -> String {
   };
   json!({
     "chapter_abstract": "",
-    "chapter_details": [],
+    "chapter_details": chapter_list(&s.chapters, false),
     "chapter_type": 1,
     "chapter_tools_info": {
       "chapter_recommend_detail": [],
@@ -311,6 +317,39 @@ fn chapter(s: &Settings) -> String {
     },
   })
   .to_string()
+}
+
+/// Chapters as Douyin keeps them: the title (`desc`), the start in
+/// milliseconds and an introduction (`detail`), empty as when none is
+/// typed. The publish form puts `timestamp` before `detail`, the manage
+/// page's chapter editor (`upsert`) after it.
+fn chapter_list(chapters: &[Chapter], upsert: bool) -> Value {
+  let list: Vec<Value> = chapters
+    .iter()
+    .map(|c| {
+      let at = u64::from(c.start) * 1000;
+      if upsert {
+        json!({ "desc": c.title, "detail": "", "timestamp": at })
+      } else {
+        json!({ "desc": c.title, "timestamp": at, "detail": "" })
+      }
+    })
+    .collect();
+  Value::from(list)
+}
+
+/// The form of `chapter/upsert` (作品管理 → 编辑章节 → 确认): the list
+/// replaces the work's chapters, with the summary (`chapter_abstract`) and
+/// progress-bar setting (`chapter_type`) the work keeps.
+pub fn chapters_upsert(item_id: &str, chapters: &[Chapter], summary: &str, bar: i64) -> Form {
+  [
+    ("item_id", item_id.to_owned()),
+    ("chapter_list", chapter_list(chapters, true).to_string()),
+    ("chapter_abstract", summary.to_owned()),
+    ("chapter_type", bar.to_string()),
+  ]
+  .map(|(k, v)| (k.to_owned(), v))
+  .to_vec()
 }
 
 /// A video's cover: the first frame, or an uploaded image (`upload_poster`).

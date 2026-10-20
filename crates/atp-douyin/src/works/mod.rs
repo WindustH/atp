@@ -4,6 +4,7 @@
 //! `create_v2`; changes in [`edit`]. Nothing goes out before the person
 //! has seen a summary and said yes.
 
+mod chapters;
 mod draft;
 mod edit;
 
@@ -198,6 +199,7 @@ async fn settings(creator: &Creator<'_>, draft: &Draft) -> Result<Settings> {
     ai: draft.ai_generated,
     mix,
     music,
+    chapters: draft.chapters.clone(),
   })
 }
 

@@ -1,17 +1,21 @@
 //! Changing a published work as the creator platform does it: the edit
 //! page (作品管理 → 修改作品) loads the work (`item/info`) and whether it
 //! may still change (`update/desc/valid/v2`), then sends the text, title,
-//! hashtags and cover through `update/desc/`; the manage page's
-//! permission form sets who can see it (`aweme/update/`). Nothing goes out
-//! before the person has seen the change and said yes.
+//! hashtags, cover and a new video file (更换视频, the page's `video_id`
+//! once it changed) through `update/desc/`; the manage page's permission
+//! form sets who can see it (`aweme/update/`) and its chapter editor
+//! (编辑章节) the chapters ([`chapters`](super::chapters)). Nothing goes
+//! out before the person has seen the change and said yes.
 
 use std::time::Duration;
 
+use atp_core::chapters::Chapter;
 use atp_core::cli::Change;
 use atp_core::output::note;
 use atp_core::{Action, Edit, Error, ErrorCode, Result, Value, ValueExt};
 
-use super::draft::{IMAGE_TITLE_MAX, TEXT_MAX, VIDEO_TITLE_MAX, utf16};
+use super::chapters;
+use super::draft::{IMAGE_TITLE_MAX, TEXT_MAX, VIDEO_TITLE_MAX, chapter_summary, size_of, utf16};
 use super::{MANAGE_PAGE, picture};
 use crate::api::Api;
 use crate::creator::Creator;
@@ -23,7 +27,18 @@ const ITEM_INFO: &str = "/web/api/media/item/info/";
 const EDITABLE: &str = "/web/api/media/update/desc/valid/v2/";
 const UPDATE_DESC: &str = "/web/api/media/update/desc/";
 const UPDATE_PERMISSION: &str = "/web/api/media/aweme/update/";
+const CHAPTER_UPSERT: &str = "/aweme/v1/chapter/upsert";
+const CHAPTER_DELETE: &str = "/aweme/v1/chapter/delete/";
 const EDIT_PAGE: &str = "https://creator.douyin.com/creator-micro/content/post";
+
+/// Why `media_fields` holds a new video back (`cant_not_edit_reason`):
+/// the page asks before going on (bullet comments, chapters, hotspots) or
+/// stops (DOU+ delivery, a promotion task or activity still in review).
+const MEDIA_DOU_PLUS: i64 = 12;
+const MEDIA_DANMAKU: i64 = 13;
+const MEDIA_IN_REVIEW: i64 = 14;
+const MEDIA_CHAPTERS: i64 = 16;
+const MEDIA_HOTSPOTS: i64 = 17;
 
 /// A published work as the edit page sees it.
 struct Work {
@@ -34,6 +49,33 @@ struct Work {
   /// 0 public, 1 only me, 2 friends (`status.private_status`).
   visibility: i64,
   download: i64,
+  /// The video's length in seconds, when `item/info` tells it.
+  duration: Option<u32>,
+  chapters: Chapters,
+}
+
+/// A video's chapters as the manage page's chapter editor loads them.
+#[derive(Default)]
+struct Chapters {
+  /// `None` when `item/info` does not tell them.
+  list: Option<Vec<Chapter>>,
+  /// The summary (全文总结) and progress-bar setting kept on a change.
+  summary: String,
+  bar: i64,
+  /// Why they cannot change now, when Douyin says so.
+  locked: Option<String>,
+}
+
+/// What `update/desc/valid/v2` allows.
+#[derive(Default)]
+struct Editable {
+  /// `N of M used`, or empty.
+  edits: String,
+  /// A new video: whether the page offers it, may send it, and why not.
+  media_offered: bool,
+  media_allowed: bool,
+  media_reason: i64,
+  media_toast: Option<String>,
 }
 
 enum Kind {
@@ -43,44 +85,62 @@ enum Kind {
 
 /// Change one of the account's works.
 pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
+  if edit.part.is_some() {
+    return Err(Error::input(
+      "a Douyin video has one part; leave out --part",
+    ));
+  }
+  if edit.video.is_some() && edit.chapters.is_some() {
+    return Err(Error::input(
+      "change the chapters once the new video has passed review: Douyin asks for them \
+       to be confirmed again after a new video",
+    ));
+  }
   let id = refs::aweme(api, post).await?;
   let creator = Creator::open(api).await?;
   let info = creator.get(ITEM_INFO).arg("item_id", &id).send().await?;
   let work = Work::of(&id, info.at("aweme"))?;
+  check_media(&work, edit)?;
   let words = edit.text.is_some() || edit.title.is_some() || edit.topics.is_some();
-  let describes = words || edit.cover.is_some();
+  let describes = words || edit.cover.is_some() || edit.video.is_some();
   let visibility = edit.visibility.as_deref().map(visibility_code);
-  let edits = if describes {
-    Some(editable(&creator, &id).await?)
+  let allowed = if describes {
+    editable(&creator, &id).await?
   } else {
-    None
+    Editable::default()
   };
+  if edit.video.is_some() {
+    allowed.check_media()?;
+  }
   let (title, editor) = change(&work, edit)?;
-  ask(&work, edit, &title, &editor, edits.as_deref())?;
+  ask(&work, edit, &title, &editor, &allowed)?;
 
   if describes {
-    let cover = match &edit.cover {
-      Some(path) => {
-        let uploader = Uploader::new(&creator, &users::uid(api).await?).await?;
-        note("uploading the cover");
-        Some(picture(uploader.image(path).await?))
-      }
-      None => None,
-    };
-    let form = match &work.kind {
-      Kind::Video { vid, covers } => {
-        items::video_modify(&id, vid, &title, &editor, covers, cover.as_ref())
-      }
-      Kind::Images => {
-        let words = words.then_some((title.as_str(), &editor));
-        items::images_modify(&id, words, cover.as_ref())
-      }
-    };
+    let form = describe(api, &creator, &work, edit, &title, &editor, words).await?;
     pause(api).await;
     creator
       .post_form(UPDATE_DESC, &form)
       .arg("read_aid", 2906)
       .referer(&work.page())
+      .send()
+      .await?;
+  }
+  if let Some(list) = &edit.chapters {
+    pause(api).await;
+    let form = if list.is_empty() {
+      vec![("item_id".to_owned(), id.clone())]
+    } else {
+      let c = &work.chapters;
+      items::chapters_upsert(&id, list, &c.summary, c.bar)
+    };
+    let path = if list.is_empty() {
+      CHAPTER_DELETE
+    } else {
+      CHAPTER_UPSERT
+    };
+    creator
+      .post_form(path, &form)
+      .referer(MANAGE_PAGE)
       .send()
       .await?;
   }
@@ -99,6 +159,122 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
       .await?;
   }
   Ok(Action::done("edit", &id).with_id(&id).with_url(work.url()))
+}
+
+/// What the work refuses before anything is asked: a new video or
+/// chapters on an image post, chapters against the chapter editor's rules
+/// or while Douyin holds them.
+fn check_media(work: &Work, edit: &Edit) -> Result<()> {
+  if matches!(work.kind, Kind::Images) && (edit.video.is_some() || edit.chapters.is_some()) {
+    return Err(Error::input(
+      "an image post has no video or chapters to change",
+    ));
+  }
+  let Some(list) = &edit.chapters else {
+    return Ok(());
+  };
+  if let Some(reason) = &work.chapters.locked {
+    return Err(Error::new(
+      ErrorCode::PermissionDenied,
+      format!("Douyin: {reason}"),
+    ));
+  }
+  if !list.is_empty() {
+    return chapters::check(list, work.duration);
+  }
+  if work.chapters.list.as_ref().is_some_and(Vec::is_empty) {
+    return Err(Error::input("this video has no chapters to remove"));
+  }
+  Ok(())
+}
+
+/// The `update/desc/` form, after uploading the new video and cover.
+async fn describe(
+  api: &Api,
+  creator: &Creator<'_>,
+  work: &Work,
+  edit: &Edit,
+  title: &str,
+  editor: &Editor,
+  words: bool,
+) -> Result<items::Form> {
+  let uploader = if edit.video.is_some() || edit.cover.is_some() {
+    Some(Uploader::new(creator, &users::uid(api).await?).await?)
+  } else {
+    None
+  };
+  let mut new_vid = None;
+  if let (Some(up), Some(path)) = (&uploader, &edit.video) {
+    note("uploading the video");
+    new_vid = Some(up.video(path).await?.vid);
+  }
+  let mut cover = None;
+  if let (Some(up), Some(path)) = (&uploader, &edit.cover) {
+    note("uploading the cover");
+    cover = Some(picture(up.image(path).await?));
+  }
+  Ok(match &work.kind {
+    Kind::Video { vid, covers } => {
+      let vid = new_vid.as_deref().unwrap_or(vid);
+      items::video_modify(&work.id, vid, title, editor, covers, cover.as_ref())
+    }
+    Kind::Images => {
+      let words = words.then_some((title, editor));
+      items::images_modify(&work.id, words, cover.as_ref())
+    }
+  })
+}
+
+impl Editable {
+  /// Fails when Douyin takes no new video for this work now: the page
+  /// offers 更换视频 only when `media_fields` shows the button, and sends
+  /// one only when it allows it.
+  fn check_media(&self) -> Result<()> {
+    let refuse = |fallback: &str| {
+      let reason = self.media_toast.clone().unwrap_or_else(|| fallback.into());
+      Err(Error::new(
+        ErrorCode::PermissionDenied,
+        format!("Douyin: {reason}"),
+      ))
+    };
+    if !self.media_offered {
+      return refuse(
+        "this work's video cannot be replaced (the edit page offers no 更换视频 for it)",
+      );
+    }
+    if !self.media_allowed {
+      return refuse("this work's video cannot be replaced now");
+    }
+    match self.media_reason {
+      MEDIA_DOU_PLUS => Err(Error::new(
+        ErrorCode::PermissionDenied,
+        "Douyin: the work is in DOU+ delivery; stop or finish the DOU+ order before replacing its video",
+      )),
+      MEDIA_IN_REVIEW => Err(Error::new(
+        ErrorCode::PermissionDenied,
+        "Douyin: the work is still in review for a promotion task or activity; replace its video after that",
+      )),
+      _ => Ok(()),
+    }
+  }
+
+  /// What a new video brings along, as the page tells before sending one.
+  fn media_notes(&self) -> Vec<&'static str> {
+    let mut notes = vec![
+      "the new video is reviewed again; once it passes it replaces the old one and the likes, comments and other counts stay",
+      "Douyin allows 3 replacements per work, and the new video must not differ much from the old one",
+      "a music set on the old video gives way to the new file's own sound",
+    ];
+    match self.media_reason {
+      MEDIA_DANMAKU => notes.push("its bullet comments (弹幕) are cleared within 24 hours"),
+      MEDIA_CHAPTERS => {
+        notes.push("its chapters must be confirmed again: `edit --chapters FILE` once it passed")
+      }
+      MEDIA_HOTSPOTS => notes.push("its components (hotspots, labels) are reviewed again"),
+      _ => {}
+    }
+    notes
+  }
 }
 
 impl Work {
@@ -131,6 +307,11 @@ impl Work {
       editor,
       visibility: aweme.i64("status.private_status").unwrap_or(0),
       download: aweme.i64("video_control.allow_download").unwrap_or(1),
+      duration: ["video.duration", "duration"]
+        .iter()
+        .find_map(|p| aweme.u64(p).filter(|ms| *ms > 0))
+        .and_then(|ms| u32::try_from((ms + 500) / 1000).ok()),
+      chapters: Chapters::of(aweme),
     })
   }
 
@@ -201,9 +382,11 @@ fn change(work: &Work, edit: &Edit) -> Result<(String, Editor)> {
   Ok((title, editor))
 }
 
-/// Whether the work's text, title and cover may still change, and how
-/// many edits are used (`basic_fields`).
-async fn editable(creator: &Creator<'_>, id: &str) -> Result<String> {
+/// Whether the work's text, title and cover may still change and how many
+/// edits are used (`basic_fields`), and whether its video may be replaced
+/// (`media_fields`; taken as allowed when the answer has none, leaving the
+/// verdict to `update/desc/`).
+async fn editable(creator: &Creator<'_>, id: &str) -> Result<Editable> {
   let v = creator
     .get(EDITABLE)
     .arg("item_id", id)
@@ -220,16 +403,50 @@ async fn editable(creator: &Creator<'_>, id: &str) -> Result<String> {
       format!("Douyin: {reason}"),
     ));
   }
-  Ok(
-    match (fields.u64("edited_times"), fields.u64("max_edit_times")) {
+  let media = v.at("media_fields");
+  tracing::debug!("update/desc/valid/v2 media_fields: {media}");
+  Ok(Editable {
+    edits: match (fields.u64("edited_times"), fields.u64("max_edit_times")) {
       (Some(used), Some(max)) if max > 0 => format!("{used} of {max} used"),
       _ => String::new(),
     },
-  )
+    media_offered: media.bool("show_button").unwrap_or(true),
+    media_allowed: media.bool("can_edit").unwrap_or(true),
+    media_reason: media.i64("cant_not_edit_reason").unwrap_or(0),
+    media_toast: media.str("toast"),
+  })
+}
+
+impl Chapters {
+  /// What the manage page's chapter editor reads off a work: the list
+  /// (`chapter_list`), summary (`chapter_abstract`), progress-bar setting
+  /// (`chapter_type`, shown unless 0), and what keeps it closed (a lock in
+  /// `chapter_data`, chapters in review, smart chapters being made).
+  fn of(aweme: &Value) -> Self {
+    let list = aweme
+      .at("chapter_list")
+      .is_array()
+      .then(|| chapters::of_work(aweme));
+    let locked = if aweme.bool("chapter_data.disable_edit") == Some(true) {
+      Some("this video's chapters cannot be changed")
+    } else if aweme.i64("chapter_review_status") == Some(1) {
+      Some("the chapters last submitted are still in review (章节要点审核中); try later")
+    } else if aweme.i64("recommend_chapter_info.generation_status") == Some(0) {
+      Some("smart chapters are being made for this video; try later")
+    } else {
+      None
+    };
+    Self {
+      list,
+      summary: aweme.str("chapter_abstract").unwrap_or_default(),
+      bar: aweme.i64("chapter_type").map_or(1, |t| i64::from(t == 1)),
+      locked: locked.map(str::to_owned),
+    }
+  }
 }
 
 /// Show the change and ask (or take `--yes`).
-fn ask(work: &Work, edit: &Edit, title: &str, editor: &Editor, edits: Option<&str>) -> Result<()> {
+fn ask(work: &Work, edit: &Edit, title: &str, editor: &Editor, allowed: &Editable) -> Result<()> {
   let hashtags = |e: &Editor| {
     let names: Vec<String> = e.tags().iter().map(|t| format!("#{}", t.name)).collect();
     names.join(" ")
@@ -248,11 +465,35 @@ fn ask(work: &Work, edit: &Edit, title: &str, editor: &Editor, edits: Option<&st
       visibility_name(work.visibility),
       visibility_name(visibility),
     );
+  if let Some(new) = &edit.chapters {
+    let old = work
+      .chapters
+      .list
+      .as_deref()
+      .map_or_else(|| "(not shown)".into(), chapter_summary);
+    change.field("chapters", &old, &chapter_summary(new));
+    if !new.is_empty() {
+      change.row("", "chapters are reviewed before they show");
+    }
+  }
   if let Some(path) = &edit.cover {
     change.row("cover", &path.display().to_string());
   }
-  if let Some(edits) = edits.filter(|e| !e.is_empty()) {
-    change.row("edits", edits);
+  if let Some(path) = &edit.video {
+    let file = format!("{} ({})", path.display(), size_of(path));
+    change.row("video", &format!("{file}, replacing the video"));
+    for note in allowed.media_notes() {
+      change.row("", note);
+    }
+    if edit.cover.is_none() {
+      change.row(
+        "",
+        "the cover stays; give --cover for one from the new video",
+      );
+    }
+  }
+  if !allowed.edits.is_empty() {
+    change.row("edits", &allowed.edits);
   }
   change.confirm(edit.yes, "change this work on Douyin")
 }

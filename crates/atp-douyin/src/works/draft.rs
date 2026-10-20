@@ -3,6 +3,7 @@
 
 use std::path::Path;
 
+use atp_core::chapters::Chapter;
 use atp_core::cli::confirm;
 use atp_core::output::note;
 use atp_core::{Draft, Error, Result};
@@ -85,8 +86,23 @@ pub(super) fn check(draft: &Draft, kind: &Kind) -> Result<()> {
     }
     Kind::Article(_) if draft.cover.is_none() => fail("an article needs a cover (--cover)"),
     Kind::Article(_) if draft.ai_generated => fail("Douyin's article form has no AI declaration"),
+    Kind::Images | Kind::Article(_) if !draft.chapters.is_empty() => {
+      fail("chapters are for videos (--video)")
+    }
     _ if text > TEXT_MAX => fail("the text takes at most 1000 characters"),
-    _ => check_settings(draft),
+    _ => check_settings(draft).and_then(|()| check_chapters(draft, kind)),
+  }
+}
+
+/// A video's chapters against the chapter editor's rules and the file's
+/// length (MP4 and MOV files; others are checked once Douyin has them).
+fn check_chapters(draft: &Draft, kind: &Kind) -> Result<()> {
+  match kind {
+    Kind::Video(path) if !draft.chapters.is_empty() => {
+      let duration = atp_core::file::video_duration(path).map(|d| d.round() as u32);
+      super::chapters::check(&draft.chapters, duration)
+    }
+    _ => Ok(()),
   }
 }
 
@@ -156,6 +172,9 @@ pub(super) fn ask(draft: &Draft, kind: &Kind) -> Result<()> {
       line(label, value.clone());
     }
   }
+  if !draft.chapters.is_empty() {
+    line("chapters", chapter_summary(&draft.chapters));
+  }
   let files = [&draft.video, &draft.article, &draft.cover]
     .into_iter()
     .flatten();
@@ -166,7 +185,15 @@ pub(super) fn ask(draft: &Draft, kind: &Kind) -> Result<()> {
   confirm(draft.yes, "publish this on Douyin")
 }
 
-fn size_of(path: &Path) -> String {
+/// `3 · 0:00 Intro · 1:20 Setup · 4:05 Demo`, or `(none)`.
+pub(super) fn chapter_summary(list: &[Chapter]) -> String {
+  if list.is_empty() {
+    return "(none)".into();
+  }
+  format!("{} · {}", list.len(), atp_core::chapters::summary(list))
+}
+
+pub(super) fn size_of(path: &Path) -> String {
   let bytes = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
   if bytes >= 1 << 20 {
     format!("{:.1} MB", bytes as f64 / f64::from(1 << 20))

@@ -320,10 +320,39 @@ Options for all three:
 - `--collection NAME|ID` adds the post to one of your collections (合集)
   as its next episode (`atp douyin mixes` lists them).
 
+Videos also take `--chapters FILE` (视频章节): a file of one `0:00 Title`
+line per chapter (`-` reads standard input), shown on the video's
+progress bar as the publish page's chapter editor saves them. The
+editor's rules, checked before anything is uploaded:
+
+- videos of a minute or more (MP4 and MOV files are measured first);
+- 1 to 20 chapters, at least 5 s apart, none past the end of the video
+  (the last one at least 5 s before it);
+- titles of 12 at most, counted as the editor counts them: Latin
+  letters, digits, `+` and `-` count half, anything else one (`第一章
+  开场` is 6, `Setup and build` 9);
+- the first chapter may start after 0:00 (the player shows the part
+  before it untitled).
+
+The chapters go out with the "progress bar" setting on (`chapter_type`
+1, the editor's default; ATP has no option to turn it off), without a
+summary (全文总结) or chapter introductions, and are reviewed with the
+video.
+
 ```
 atp douyin post --video ep01.mp4 --cover ep01.jpg --title '『操作系统 Ep.01』绪论' --ai --visibility private
 atp douyin post -i a.jpg -i b.jpg -i c.jpg --title 测试 '正文' --topic 摄影
 atp douyin post --article notes.md --title 读书笔记 --cover head.jpg '一句话摘要'
+atp douyin post --video talk.mp4 --title 讲座 --chapters chapters.txt
+```
+
+where chapters.txt holds:
+
+```
+0:00 开场
+1:05 环境搭建
+4:30 Demo
+12:10 问答
 ```
 
 ### edit
@@ -342,6 +371,29 @@ prints the change (each field as old → new) and asks (`-y` in scripts).
 - `--cover IMAGE` uploads a new cover.
 - `--visibility public|friends|private` goes through the manage page's
   permission setting; it does not count as an edit.
+- `--chapters FILE` replaces a video's chapters, through the manage
+  page's chapter editor (作品管理 → 编辑章节, `chapter/upsert`), under the
+  rules of `post --chapters` checked against the video's length;
+  `--no-chapters` removes them (`chapter/delete/`). The new chapters are
+  reviewed before they show (确认成功，已提交审核); the work's summary
+  and progress-bar setting stay. Douyin refuses while chapters sent
+  earlier are still in review, and when it locks a video's chapters
+  (`permission_denied`).
+- `--video FILE` replaces the video (更换视频): the file is uploaded as
+  on `post` and the edit page's form carries its id. Douyin offers this
+  only on some works and says why not (`permission_denied` with its
+  reason): at most 3 replacements per work, none while the work is in
+  DOU+ delivery or in review for a promotion task or activity. Before
+  asking, ATP lists what follows, as the page does: the new video is
+  reviewed again and replaces the old one once it passes (likes,
+  comments and other counts stay); it must not differ much from the old
+  one; a music set on the old video gives way to the new file's sound;
+  bullet comments (弹幕) are cleared within 24 hours, chapters must be
+  confirmed again and components (hotspots, labels) are reviewed again
+  where Douyin says so. The cover stays unless `--cover` gives one.
+  `--video` and `--chapters` go in separate edits: set the chapters
+  again once the new video has passed review. Douyin videos have one
+  part, so `--part` is refused.
 - Douyin limits how often a work's text, title and cover may change; the
   summary shows the edits used, and a work that can no longer change
   fails with `permission_denied` and Douyin's reason. Changed works may be
@@ -353,6 +405,9 @@ prints the change (each field as old → new) and asks (`-y` in scripts).
 atp douyin edit 7697611474302225714 --topic 操作系统 --topic 计算机
 atp douyin edit https://www.douyin.com/video/7697611474302225714 --title '『操作系统 Ep.02』硬件视角'
 atp douyin edit '#1' --visibility private
+atp douyin edit 7697611474302225714 --chapters chapters.txt
+atp douyin edit 7697611474302225714 --no-chapters
+atp douyin edit 7697611474302225714 --video ep02-fixed.mp4
 ```
 
 ### delete
@@ -383,6 +438,20 @@ post (with live-photo clips) and its music; `--audio-only` saves the music.
 - Publishing and deleting are built from the contract of the creator
   platform's web client (its page bundles), and have not been run against
   a real account yet.
+- Chapters and video replacement are built the same way and are
+  untested too. Not confirmed: whether `item/info` carries a work's
+  chapters, summary, progress-bar setting and review state as the manage
+  page's work list does (when it does not, `edit --chapters` cannot show
+  the old chapters, resets the summary and turns the progress bar on);
+  whether `update/desc/valid/v2` with `action=init` already holds the
+  `media_fields` the page checks again before sending a new video; and
+  how Douyin picks the cover of a replaced video when the old one is
+  sent back. `read` gives a video's chapters (`extra.chapters`, with
+  `chapters_auto` for smart chapters Douyin made itself) from the
+  aweme's `chapter_list`, as the web player reads them.
+- Not offered with chapters: their introductions (章节简介) and the
+  summary (全文总结), smart chapters (智能章节) and turning off the
+  chapter progress bar.
 - Formats the web uploader also offers that ATP does not: panoramic
   video (全景视频), which needs the projection settings and a server-side
   transcode change (`vr/transcode/change`) ATP does not reproduce; short

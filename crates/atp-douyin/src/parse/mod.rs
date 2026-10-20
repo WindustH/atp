@@ -112,7 +112,37 @@ fn aweme_extra(v: &Value) -> Extra {
     v.at("video.duration").clone().into(),
   );
   put(&mut extra, "share_url", text("share_url"));
+  chapters(&mut extra, v);
   extra
+}
+
+/// The chapters a video shows (`chapter_list`: `desc`, `timestamp` in
+/// ms), or the smart chapters Douyin made and shows in their place
+/// (`recommend_chapter_info` with `chapter_recommend_type` 1), then with
+/// `chapters_auto`, as the web player reads them.
+fn chapters(extra: &mut Extra, v: &Value) {
+  let own = v.list("chapter_list");
+  let auto = own.is_empty() && v.i64("recommend_chapter_info.chapter_recommend_type") == Some(1);
+  let list = if auto {
+    v.list("recommend_chapter_info.recommend_chapter_list")
+  } else {
+    own
+  };
+  let marks: Vec<(String, f64)> = list
+    .iter()
+    .filter_map(|c| Some((c.str("desc")?, c.f64("timestamp")? / 1000.0)))
+    .collect();
+  if marks.is_empty() {
+    return;
+  }
+  let duration = v.f64("video.duration").map(|ms| ms / 1000.0);
+  extra.insert(
+    "chapters".into(),
+    atp_core::chapters::value(&marks, duration),
+  );
+  if auto {
+    extra.insert("chapters_auto".into(), json!(true));
+  }
 }
 
 /// Downloadable media: every image (and its live-photo clip) of an image
