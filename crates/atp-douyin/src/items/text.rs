@@ -1,14 +1,18 @@
 //! The text fields of an item (`text`, `text_extra`, `challenges` ...) as
-//! the page derives them from its editor: hashtags as `#name` spans,
-//! offsets in UTF-16 units (JavaScript string lengths), an image post's
-//! title joined with `。`, an article's topics counted in code points.
-//! The edit page fills its editor back from a published work the same way.
+//! the page derives them from its editor (`eA` and the editor's read-back
+//! in the creator bundle's text module): hashtags as `#name` spans,
+//! @-mentions as `@name` spans, offsets in UTF-16 units (JavaScript string
+//! lengths), an image post's title joined with `。`, an article's topics
+//! counted in code points. The edit page fills its editor back from a
+//! published work the same way.
 
 use atp_core::{Error, ErrorCode, Result, Value, ValueExt, json};
 
 use super::{Tag, Words};
 
-/// `text_extra` types.
+/// `text_extra` types: an @-mention (the page's `Friend`), a hashtag, an
+/// image post's title and the `。` after it.
+const MENTION: i64 = 0;
 const HASHTAG: i64 = 1;
 const IMAGE_TITLE: i64 = 7;
 const IMAGE_TITLE_DIVIDER: i64 = 8;
@@ -21,15 +25,28 @@ pub struct Text {
   pub title: String,
   pub extra: Value,
   pub challenges: Value,
+  /// The mentioned users' ids (`mentions`).
+  pub mentions: Value,
   pub source: String,
 }
 
-/// The editor's content: its text and the hashtags in it (`start`, `end`
-/// in UTF-16 units).
+/// An @-mention as the editor holds it: the name shown after `@` and the
+/// user's id (with `at_source` when the work has one), which the page
+/// reads back from the span it loaded.
+#[derive(Debug, Clone)]
+pub struct Mention {
+  pub name: String,
+  pub user_id: Value,
+  pub at_source: Option<Value>,
+}
+
+/// The editor's content: its text, the hashtags and the @-mentions in it
+/// (`start`, `end` in UTF-16 units).
 #[derive(Debug, Clone, Default)]
 pub struct Editor {
   pub text: String,
   pub spans: Vec<(usize, usize, Tag)>,
+  pub mentions: Vec<(usize, usize, Mention)>,
 }
 
 impl Editor {
@@ -46,11 +63,62 @@ impl Editor {
       text.push_str(&tag.name);
       spans.push((start, utf16(&text), tag.clone()));
     }
-    Self { text, spans }
+    Self {
+      text,
+      spans,
+      mentions: Vec::new(),
+    }
+  }
+
+  /// Keep the @-mentions of `old` whose `@name` is still in the text, in
+  /// order and outside the hashtags, at their new place; the names of the
+  /// others, which go as plain text (as when one is deleted in the page's
+  /// editor).
+  pub fn keep_mentions(&mut self, old: &[(usize, usize, Mention)]) -> Vec<String> {
+    let units: Vec<u16> = self.text.encode_utf16().collect();
+    let (mut from, mut dropped) = (0, Vec::new());
+    for (_, _, mention) in old {
+      let needle: Vec<u16> = format!("@{}", mention.name).encode_utf16().collect();
+      let found = (from..=units.len().saturating_sub(needle.len()))
+        .filter(|at| units[*at..].starts_with(&needle))
+        .map(|at| (at, at + needle.len()))
+        .find(|(start, end)| !self.spans.iter().any(|(s, e, _)| start < e && s < end));
+      match found {
+        Some((start, end)) => {
+          self.mentions.push((start, end, mention.clone()));
+          from = end;
+        }
+        None => dropped.push(mention.name.clone()),
+      }
+    }
+    dropped
   }
 
   pub fn tags(&self) -> Vec<Tag> {
     self.spans.iter().map(|(_, _, tag)| tag.clone()).collect()
+  }
+
+  /// `@name` of each mention, in order.
+  pub fn mention_names(&self) -> Vec<String> {
+    self
+      .mentions
+      .iter()
+      .map(|(_, _, m)| format!("@{}", m.name))
+      .collect()
+  }
+
+  /// The activities (活动) the text joins: the ids of its hashtags that
+  /// are an activity's (`challenge_ids` of `item/info`'s `activity_list`),
+  /// in order, as the page's `activity` lists them.
+  pub fn activity(&self, challenge_ids: &[u64]) -> Value {
+    json!(
+      self
+        .spans
+        .iter()
+        .filter(|(_, _, t)| t.id != 0 && challenge_ids.contains(&t.id))
+        .map(|(_, _, t)| t.id)
+        .collect::<Vec<_>>()
+    )
   }
 
   /// The text without its hashtags (and the space before each).
@@ -79,17 +147,13 @@ pub fn video_text(words: Words) -> Text {
 /// [`video_text`] of an editor's content.
 pub fn video_fields(title: &str, editor: &Editor) -> Text {
   let title = title.trim();
-  let (caption, spans) = (&editor.text, &editor.spans);
+  let caption = &editor.text;
   let tags = editor.tags();
   let shift = if title.is_empty() {
     0
   } else {
     utf16(title) + 1
   };
-  let extra: Vec<Value> = spans
-    .iter()
-    .map(|(start, end, tag)| hashtag(tag, start + shift, end + shift, *start, *end))
-    .collect();
   let text = if title.is_empty() {
     caption.clone()
   } else {
@@ -99,8 +163,9 @@ pub fn video_fields(title: &str, editor: &Editor) -> Text {
     text,
     caption: caption.clone(),
     title: title.to_owned(),
-    extra: Value::Array(extra),
+    extra: Value::Array(spans_extra(editor, shift)),
     challenges: challenges(&tags),
+    mentions: mentions(editor),
     source: sources(&tags),
   }
 }
@@ -113,7 +178,7 @@ pub fn image_text(words: Words) -> Text {
 /// [`image_text`] of an editor's content.
 pub fn image_fields(title: &str, editor: &Editor) -> Text {
   let title = title.trim();
-  let (caption, spans) = (&editor.text, &editor.spans);
+  let caption = &editor.text;
   let tags = editor.tags();
   let mut prefix = title.to_owned();
   let mut extra = Vec::new();
@@ -125,20 +190,62 @@ pub fn image_fields(title: &str, editor: &Editor) -> Text {
       extra.push(span(len, len + 1, IMAGE_TITLE_DIVIDER));
     }
   }
-  let shift = utf16(&prefix);
-  extra.extend(
-    spans
-      .iter()
-      .map(|(start, end, tag)| hashtag(tag, start + shift, end + shift, *start, *end)),
-  );
+  extra.extend(spans_extra(editor, utf16(&prefix)));
   Text {
     text: format!("{prefix}{caption}"),
     caption: caption.clone(),
     title: title.to_owned(),
     extra: Value::Array(extra),
     challenges: challenges(&tags),
+    mentions: mentions(editor),
     source: sources(&tags),
   }
+}
+
+/// The `text_extra` entries of the editor's hashtags and @-mentions in
+/// text order, `shift` units into the full text, `caption_*` within the
+/// editor's.
+fn spans_extra(editor: &Editor, shift: usize) -> Vec<Value> {
+  let tags = editor.spans.iter().map(|(start, end, tag)| {
+    (
+      *start,
+      hashtag(tag, start + shift, end + shift, *start, *end),
+    )
+  });
+  let mentions = editor.mentions.iter().map(|(start, end, m)| {
+    let mut entry = json!({
+      "start": start + shift,
+      "end": end + shift,
+      "type": MENTION,
+      "hashtag_name": "",
+      "hashtag_id": 0,
+      "user_id": m.user_id,
+    });
+    if let Some(source) = &m.at_source {
+      entry["at_source"] = source.clone();
+    }
+    entry["caption_start"] = json!(start);
+    entry["caption_end"] = json!(end);
+    (*start, entry)
+  });
+  let mut all: Vec<(usize, Value)> = tags.chain(mentions).collect();
+  all.sort_by_key(|(start, _)| *start);
+  all.into_iter().map(|(_, entry)| entry).collect()
+}
+
+/// The ids of the mentioned users that have one (`mentions`).
+fn mentions(editor: &Editor) -> Value {
+  let ids: Vec<Value> = editor
+    .mentions
+    .iter()
+    .map(|(_, _, m)| m.user_id.clone())
+    .filter(|id| match id {
+      Value::String(s) => !s.is_empty(),
+      Value::Number(n) => n.as_f64() != Some(0.0),
+      _ => false,
+    })
+    .collect();
+  Value::Array(ids)
 }
 
 /// A published video's title and editor content, as the edit page fills
@@ -155,7 +262,10 @@ pub fn video_editor(aweme: &Value) -> Result<(String, Editor)> {
   };
   // Offsets into `desc` move by what precedes the caption in it.
   let shift = utf16(&desc).saturating_sub(utf16(&caption));
-  let mut spans = Vec::new();
+  let mut editor = Editor {
+    text,
+    ..Editor::default()
+  };
   for e in aweme.list("text_extra") {
     let kind = e.i64("type").unwrap_or(-1);
     if kind == IMAGE_TITLE || kind == IMAGE_TITLE_DIVIDER {
@@ -170,10 +280,10 @@ pub fn video_editor(aweme: &Value) -> Result<(String, Editor)> {
       let at = |key| offset(e, key).saturating_sub(shift);
       (at("start"), at("end"))
     };
-    spans.push((start, end, span_tag(e, kind)?));
+    editor.load(e, kind, (start, end))?;
   }
-  spans.sort_by_key(|(start, _, _)| *start);
-  Ok((title, Editor { text, spans }))
+  editor.sort();
+  Ok((title, editor))
 }
 
 /// A published image post's title and editor content: its description is
@@ -192,7 +302,10 @@ pub fn image_editor(aweme: &Value) -> Result<(String, Editor)> {
   let body_at = mark(IMAGE_TITLE_DIVIDER).map_or(title_end, |(_, end)| end.min(units.len()));
   let title = String::from_utf16_lossy(&units[..title_end]);
   let text = String::from_utf16_lossy(&units[body_at..]);
-  let mut spans = Vec::new();
+  let mut editor = Editor {
+    text,
+    ..Editor::default()
+  };
   for e in extra {
     let kind = e.i64("type").unwrap_or(-1);
     if kind == IMAGE_TITLE || kind == IMAGE_TITLE_DIVIDER {
@@ -200,26 +313,62 @@ pub fn image_editor(aweme: &Value) -> Result<(String, Editor)> {
     }
     let start = offset(e, "start").saturating_sub(body_at);
     let end = offset(e, "end").saturating_sub(body_at);
-    spans.push((start, end, span_tag(e, kind)?));
+    editor.load(e, kind, (start, end))?;
   }
-  spans.sort_by_key(|(start, _, _)| *start);
-  Ok((title, Editor { text, spans }))
+  editor.sort();
+  Ok((title, editor))
 }
 
-/// The hashtag of a span; anything else (a mention, an activity) is
-/// refused, as ATP cannot write it back.
-fn span_tag(e: &Value, kind: i64) -> Result<Tag> {
-  if kind != HASHTAG {
-    return Err(Error::new(
-      ErrorCode::UnsupportedOperation,
-      "this work's text @-mentions people or joins an activity, which ATP cannot write \
-       back; change it on creator.douyin.com",
-    ));
+impl Editor {
+  /// Take a loaded `text_extra` span at `start..end` of the text: a
+  /// hashtag (an activity's too: it is a hashtag in `text_extra`) or an
+  /// @-mention, whose name is the text after its `@`, as the page shows
+  /// it. Other kinds are refused, as ATP cannot write them back.
+  fn load(&mut self, e: &Value, kind: i64, (start, end): (usize, usize)) -> Result<()> {
+    match kind {
+      HASHTAG => self.spans.push((
+        start,
+        end,
+        Tag {
+          name: e.str("hashtag_name").unwrap_or_default(),
+          id: e.u64("hashtag_id").unwrap_or(0),
+        },
+      )),
+      MENTION => {
+        let units: Vec<u16> = self.text.encode_utf16().collect();
+        let at = units
+          .get(start..end)
+          .filter(|s| s.first() == Some(&u16::from(b'@')));
+        let Some(span) = at else {
+          return Err(Error::new(
+            ErrorCode::UnsupportedOperation,
+            "an @-mention in this work's text is not where Douyin says; change the work on creator.douyin.com",
+          ));
+        };
+        let mention = Mention {
+          name: String::from_utf16_lossy(&span[1..]),
+          user_id: e.at("user_id").clone(),
+          at_source: Some(e.at("at_source").clone()).filter(|s| !s.is_null()),
+        };
+        self.mentions.push((start, end, mention));
+      }
+      other => {
+        return Err(Error::new(
+          ErrorCode::UnsupportedOperation,
+          format!(
+            "this work's text holds a link ATP cannot write back (text_extra type {other}); \
+             change it on creator.douyin.com"
+          ),
+        ));
+      }
+    }
+    Ok(())
   }
-  Ok(Tag {
-    name: e.str("hashtag_name").unwrap_or_default(),
-    id: e.u64("hashtag_id").unwrap_or(0),
-  })
+
+  fn sort(&mut self) {
+    self.spans.sort_by_key(|(start, _, _)| *start);
+    self.mentions.sort_by_key(|(start, _, _)| *start);
+  }
 }
 
 fn offset(e: &Value, key: &str) -> usize {

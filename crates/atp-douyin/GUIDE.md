@@ -417,8 +417,17 @@ prints the change (each field as old → new) and asks (`-y` in scripts).
   and warns before the last one. With none left, or when Douyin says the
   work can no longer change, the edit fails with `permission_denied`
   before anything is uploaded. Changed works may be reviewed again.
-- Works whose text @-mentions people or joins an activity are refused
-  (ATP cannot write those back), as are articles.
+- @-mentions and activities (活动) stay as the edit page keeps them. A
+  mention (`text_extra` type 0 with its `user_id`, and `mentions`) goes
+  back as loaded while the text stays; with a new TEXT or `--topic`,
+  each mention whose `@name` is still in the text is kept at its new
+  place, and the others go as plain text, as when one is deleted in the
+  page's editor (the summary names them). A work joins an activity
+  through a hashtag of the activity's (`activity_list[].challenge_ids`
+  of `item/info`); the form's `activity` lists those hashtags, so the
+  activity stays while its hashtag does. The summary shows mentions and
+  activities as old → new. Other kinds of links in the text, and
+  articles, are refused.
 
 ```
 atp douyin edit 7697611474302225714 --topic 操作系统 --topic 计算机

@@ -178,14 +178,15 @@ pub struct Covers {
 }
 
 /// The `update/desc/` form of a video (the edit page's `beforeModify`):
-/// the item, its text as the editor holds it, and its covers: `new` in
+/// the item, its text as the editor holds it (with its @-mentions and the
+/// activities among `challenge_ids` it joins), and its covers: `new` in
 /// place of the cover (竖封面, `croppedUri`) and `horizontal` in place of
 /// the 4:3 one (横封面) when uploaded, each kept as it is otherwise.
 pub fn video_modify(
   item_id: &str,
   vid: &str,
-  title: &str,
-  editor: &Editor,
+  (title, editor): (&str, &Editor),
+  challenge_ids: &[u64],
   covers: &Covers,
   new: Option<&Picture>,
   horizontal: Option<&Picture>,
@@ -193,7 +194,7 @@ pub fn video_modify(
   let text = video_fields(title, editor);
   let mut form = modify_head(item_id);
   form.push(("video_id".into(), vid.to_owned()));
-  push_text(&mut form, &text, true);
+  push_text(&mut form, &text, &editor.activity(challenge_ids), true);
   let cover = new.unwrap_or(&covers.cover);
   form.push(("croppedUri".into(), cover.uri.clone()));
   push_size(&mut form, "custom_cover_image", cover);
@@ -213,16 +214,19 @@ pub fn video_modify(
   form
 }
 
-/// The `update/desc/` form of an image post: the text when it changed and
-/// the cover when one was uploaded.
+/// The `update/desc/` form of an image post: the text when it changed
+/// (with its @-mentions and activities, as for videos) and the cover when
+/// one was uploaded.
 pub fn images_modify(
   item_id: &str,
   words: Option<(&str, &Editor)>,
+  challenge_ids: &[u64],
   cover: Option<&Picture>,
 ) -> Form {
   let mut form = modify_head(item_id);
   if let Some((title, editor)) = words {
-    push_text(&mut form, &image_fields(title, editor), false);
+    let activity = editor.activity(challenge_ids);
+    push_text(&mut form, &image_fields(title, editor), &activity, false);
   }
   if let Some(cover) = cover {
     form.push(("croppedUri".into(), cover.uri.clone()));
@@ -238,17 +242,18 @@ fn modify_head(item_id: &str) -> Form {
   ]
 }
 
-/// The text fields of `update/desc/`; a video's carry its caption and title.
-fn push_text(form: &mut Form, text: &Text, video: bool) {
+/// The text fields of `update/desc/`, with the `activity` ids; a video's
+/// carry its caption and title.
+fn push_text(form: &mut Form, text: &Text, activity: &Value, video: bool) {
   form.push(("text".into(), text.text.clone()));
   if video {
     form.push(("caption".into(), text.caption.clone()));
     form.push(("item_title".into(), text.title.clone()));
   }
-  form.push(("activity".into(), "[]".into()));
+  form.push(("activity".into(), activity.to_string()));
   form.push(("text_extra".into(), text.extra.to_string()));
   form.push(("challenges".into(), text.challenges.to_string()));
-  form.push(("mentions".into(), "[]".into()));
+  form.push(("mentions".into(), text.mentions.to_string()));
   if video {
     form.push(("title_permission".into(), "1".into()));
   }

@@ -49,6 +49,10 @@ struct Work {
   kind: Kind,
   title: String,
   editor: Editor,
+  /// The hashtag ids of the activities (活动) the work may join
+  /// (`activity_list[].challenge_ids` of `item/info`): its hashtags among
+  /// them are the activities it joins.
+  challenge_ids: Vec<u64>,
   /// 0 public, 1 only me, 2 friends (`status.private_status`).
   visibility: i64,
   download: i64,
@@ -107,7 +111,7 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
   let id = refs::aweme(api, post).await?;
   let creator = Creator::open(api).await?;
   let info = creator.get(ITEM_INFO).arg("item_id", &id).send().await?;
-  let work = Work::of(&id, info.at("aweme"))?;
+  let work = Work::of(&id, &info)?;
   check_media(&work, edit)?;
   let words = edit.text.is_some() || edit.title.is_some() || edit.topics.is_some();
   let covers = edit.cover.is_some() || edit.cover_horizontal.is_some();
@@ -125,13 +129,20 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
   if edit.video.is_some() {
     allowed.check_media()?;
   }
-  let (title, editor) = change(&work, edit)?;
-  let notes = match work.kind {
+  let (title, editor, dropped) = change(&work, edit)?;
+  let mut notes = match work.kind {
     Kind::Video { .. } => {
       cover_notes(edit.cover.as_deref(), edit.cover_horizontal.as_deref()).await
     }
     Kind::Images => Vec::new(),
   };
+  if !dropped.is_empty() {
+    let names: Vec<String> = dropped.iter().map(|n| format!("@{n}")).collect();
+    notes.push(format!(
+      "{} no longer in the new text: the mention goes, as when deleted in the page's editor",
+      names.join(" ")
+    ));
+  }
   ask(
     &work,
     edit,
@@ -253,11 +264,12 @@ async fn describe(
     Kind::Video { vid, covers } => {
       let vid = new_vid.as_deref().unwrap_or(vid);
       let (new, horizontal) = (cover.as_ref(), horizontal.as_ref());
-      items::video_modify(&work.id, vid, title, editor, covers, new, horizontal)
+      let ids = &work.challenge_ids;
+      items::video_modify(&work.id, vid, (title, editor), ids, covers, new, horizontal)
     }
     Kind::Images => {
       let words = words.then_some((title, editor));
-      items::images_modify(&work.id, words, cover.as_ref())
+      items::images_modify(&work.id, words, &work.challenge_ids, cover.as_ref())
     }
   })
 }
@@ -362,7 +374,10 @@ impl Editable {
 }
 
 impl Work {
-  fn of(id: &str, aweme: &Value) -> Result<Self> {
+  /// The work of an `item/info` answer: its `aweme`, and the activities
+  /// beside it (`activity_list`), as the edit page loads them.
+  fn of(id: &str, info: &Value) -> Result<Self> {
+    let aweme = info.at("aweme");
     if aweme.is_null() {
       return Err(Error::not_found(format!(
         "no work {id} on this account's creator platform"
@@ -384,11 +399,18 @@ impl Work {
         ));
       }
     };
+    let challenge_ids = info
+      .list("activity_list")
+      .iter()
+      .flat_map(|a| a.list("challenge_ids"))
+      .filter_map(|id| id.u64(""))
+      .collect();
     Ok(Self {
       id: id.to_owned(),
       kind,
       title,
       editor,
+      challenge_ids,
       visibility: aweme.i64("status.private_status").unwrap_or(0),
       download: aweme.i64("video_control.allow_download").unwrap_or(1),
       duration: ["video.duration", "duration"]
@@ -425,12 +447,15 @@ impl Work {
 
 /// The title and editor content after the edit: a new text replaces the
 /// body, new topics the hashtags; what is not given stays as it was, and
-/// an untouched text keeps its hashtags where they are.
-fn change(work: &Work, edit: &Edit) -> Result<(String, Editor)> {
+/// an untouched text keeps its hashtags and @-mentions where they are.
+/// A changed one keeps each mention whose `@name` it still holds; the
+/// names of the others come third.
+fn change(work: &Work, edit: &Edit) -> Result<(String, Editor, Vec<String>)> {
   let title = edit
     .title
     .as_deref()
     .map_or_else(|| work.title.clone(), |t| t.trim().to_owned());
+  let mut dropped = Vec::new();
   let editor = if edit.text.is_none() && edit.topics.is_none() {
     work.editor.clone()
   } else {
@@ -448,7 +473,9 @@ fn change(work: &Work, edit: &Edit) -> Result<(String, Editor)> {
       None => old,
     };
     let body = edit.text.clone().unwrap_or_else(|| work.editor.body());
-    Editor::typed(&body, &tags)
+    let mut editor = Editor::typed(&body, &tags);
+    dropped = editor.keep_mentions(&work.editor.mentions);
+    editor
   };
   let max = match work.kind {
     Kind::Video { .. } => VIDEO_TITLE_MAX,
@@ -463,7 +490,7 @@ fn change(work: &Work, edit: &Edit) -> Result<(String, Editor)> {
   if utf16(&editor.text) > TEXT_MAX {
     return Err(Error::input("the text takes at most 1000 characters"));
   }
-  Ok((title, editor))
+  Ok((title, editor, dropped))
 }
 
 /// Whether the work's text, title and cover may still change and how many
@@ -554,6 +581,24 @@ fn ask(
       visibility_name(work.visibility),
       visibility_name(visibility),
     );
+  let mentions = |e: &Editor| e.mention_names().join(" ");
+  if !work.editor.mentions.is_empty() {
+    change.field("mentions", &mentions(&work.editor), &mentions(editor));
+  }
+  let activities = |e: &Editor| {
+    let joined = e
+      .tags()
+      .into_iter()
+      .filter(|t| work.challenge_ids.contains(&t.id));
+    joined
+      .map(|t| format!("#{}", t.name))
+      .collect::<Vec<_>>()
+      .join(" ")
+  };
+  let old_activities = activities(&work.editor);
+  if !old_activities.is_empty() {
+    change.field("activities", &old_activities, &activities(editor));
+  }
   if let Some(new) = &edit.chapters {
     let old = work
       .chapters
