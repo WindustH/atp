@@ -1698,7 +1698,10 @@ name = "atp-xiaoyuzhou"
 version = "0.2.0"
 dependencies = [
  "atp-core",
+ "clap",
  "jiff",
+ "rand 0.9.5",
+ "serde_json",
  "url",
 ]
 

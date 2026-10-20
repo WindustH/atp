@@ -1,5 +1,6 @@
 //! Episodes: the episode page (show notes, the audio file, counts), its
-//! hot comments, and the file `download` saves.
+//! hot comments, the file `download` saves, and the episode as the app's
+//! API has it.
 
 use atp_core::paging::slice;
 use atp_core::{Comment, Error, ErrorCode, Media, Page, PageReq, Post, Result, Value, ValueExt};
@@ -7,6 +8,8 @@ use atp_core::{Comment, Error, ErrorCode, Media, Page, PageReq, Post, Result, Va
 use crate::api::Api;
 use crate::refs::{self, Item};
 use crate::{parse, shows};
+
+const APP_EPISODE: &str = "/v1/episode/get";
 
 /// The `pageProps` of `/episode/<id>`: `episode` and `comments`.
 async fn data(api: &Api, id: &str) -> Result<Value> {
@@ -35,28 +38,37 @@ pub async fn read_any(api: &Api, arg: &str) -> Result<Post> {
   }
 }
 
-/// The episode an argument names (a bare id counts as one).
-async fn episode_id(api: &Api, arg: &str) -> Result<String> {
-  match refs::resolve(api, arg).await? {
-    Item::Episode(id) | Item::Bare(id) => Ok(id),
-    _ => Err(Error::input(
-      "give an episode (a /episode/ link, or #N after `user-posts`)",
-    )),
+/// The episode as the app's API has it (`data` of `/v1/episode/get`),
+/// for a logged-in account: with its transcript's media id, and the audio
+/// of paid episodes the account may play.
+pub async fn app_episode(api: &Api, id: &str) -> Result<Value> {
+  let v = api
+    .app()
+    .get(APP_EPISODE, &[("eid", id.to_owned())])
+    .await?;
+  let episode = v.at("data");
+  if episode.str("eid").is_none() {
+    return Err(Error::not_found(format!("Xiaoyuzhou has no episode {id}")));
   }
+  Ok(episode.clone())
 }
 
 /// The hot comments the episode page shows (about 20, with some replies).
 pub async fn comments(api: &Api, arg: &str, page: &PageReq) -> Result<Page<Comment>> {
-  let id = episode_id(api, arg).await?;
+  let id = refs::episode(api, arg).await?;
   let props = data(api, &id).await?;
   let items: Vec<Comment> = props.list("comments").iter().map(parse::comment).collect();
   Ok(slice(items, page))
 }
 
-/// An episode and its audio file, for `download`.
+/// An episode and its audio file, for `download`. A paid episode's page
+/// gives none; logged in, the app's API is asked for it.
 pub async fn media(api: &Api, arg: &str) -> Result<(Post, Vec<Media>)> {
-  let id = episode_id(api, arg).await?;
-  let post = read(api, &id).await?;
+  let id = refs::episode(api, arg).await?;
+  let mut post = read(api, &id).await?;
+  if post.media.is_empty() && api.app().logged_in() {
+    post.media = parse::episode(&app_episode(api, &id).await?).media;
+  }
   if post.media.is_empty() {
     let paid = post.extra.contains_key("pay_type");
     let why = if paid {

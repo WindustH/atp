@@ -2,9 +2,8 @@
 //! site renders them on its server with Next.js, and each page carries
 //! what it shows in `__NEXT_DATA__` (`props.pageProps`): a show with its
 //! newest episodes, an episode with its show notes and hot comments, a
-//! user with the shows they host. No account and no app API: the
-//! logged-in API of Xiaoyuzhou's app (`api.xiaoyuzhoufm.com`) is never
-//! called.
+//! user with the shows they host. They need no account. What only a
+//! logged-in account sees comes from the app's API ([`App`], `app()`).
 //!
 //! A page that comes back without its data and looks like a human check
 //! (a firewall or captcha page) is `verification_required` with the page
@@ -14,6 +13,8 @@ use atp_core::http::status_error;
 use atp_core::json::next_data;
 use atp_core::text::{one_line, truncate};
 use atp_core::{Ctx, Error, ErrorCode, Result, Value, ValueExt};
+
+use crate::app::App;
 
 pub const BASE: &str = "https://www.xiaoyuzhoufm.com";
 /// Words of the pages Xiaoyuzhou's firewall answers with instead of a page.
@@ -33,6 +34,11 @@ pub struct Api {
 impl Api {
   pub fn new(ctx: Ctx) -> Self {
     Self { ctx }
+  }
+
+  /// The app's API, with the session's tokens.
+  pub fn app(&self) -> App<'_> {
+    App { ctx: &self.ctx }
   }
 
   /// The `pageProps` of the page at `path` (`/podcast/<id>`).

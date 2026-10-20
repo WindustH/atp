@@ -85,6 +85,16 @@ pub async fn resolve(api: &Api, arg: &str) -> Result<Item> {
   item(&target).map_err(|_| invalid(arg))
 }
 
+/// The episode an argument names (a bare id counts as one).
+pub async fn episode(api: &Api, arg: &str) -> Result<String> {
+  match resolve(api, arg).await? {
+    Item::Episode(id) | Item::Bare(id) => Ok(id),
+    _ => Err(Error::input(
+      "give an episode (a /episode/ link, or #N after `user-posts`)",
+    )),
+  }
+}
+
 pub fn show_url(id: &str) -> String {
   format!("{}/podcast/{id}", crate::api::BASE)
 }

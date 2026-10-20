@@ -1,11 +1,12 @@
-//! Page data → posts, comments and users. A show is a post of kind `show`
-//! linking to its page; an episode is a post of kind `episode` whose
-//! author is its show and whose media is the audio file the page plays
-//! (the publisher's file on Xiaoyuzhou's CDN); hot comments keep the
-//! replies the page shows under them.
+//! Page data and app answers → posts, comments, users and transcripts. A
+//! show is a post of kind `show` linking to its page; an episode is a
+//! post of kind `episode` whose author is its show and whose media is the
+//! audio file the page plays (the publisher's file on Xiaoyuzhou's CDN);
+//! hot comments keep the replies the page shows under them. The app's
+//! answers carry the same objects as the pages.
 
 use atp_core::text::html_to_text;
-use atp_core::{Comment, Media, MediaKind, Metrics, Post, User, Value, ValueExt, json};
+use atp_core::{Comment, Cue, Media, MediaKind, Metrics, Post, User, Value, ValueExt, json};
 use jiff::Timestamp;
 
 use crate::refs::{episode_url, show_url, user_url};
@@ -207,4 +208,147 @@ pub fn profile(v: &Value) -> User {
   );
   user.raw = Some(v.clone());
   user
+}
+
+/// An episode of the play history, with how far it was played: seconds
+/// (`extra.progress`), percent, when, and whether to the end.
+pub fn played(v: &Value, progress: Option<&Value>) -> Post {
+  let mut post = episode(v);
+  let seconds = progress.and_then(|p| p.u64("progress"));
+  let percent = seconds
+    .zip(v.u64("duration").filter(|d| *d > 0))
+    .map(|(s, d)| (s as f64 * 1000.0 / d as f64).round() / 10.0);
+  put(
+    &mut post.extra,
+    vec![
+      ("progress", json!(seconds)),
+      ("progress_percent", json!(percent)),
+      (
+        "played_at",
+        json!(
+          progress
+            .and_then(|p| time(p, "playedAt"))
+            .map(|t| t.to_string())
+        ),
+      ),
+      ("finished", json!(v.bool("isFinished"))),
+    ],
+  );
+  post
+}
+
+/// Keys of a segment's start and end, in seconds or milliseconds.
+const STARTS: &[&str] = &[
+  "start",
+  "startTime",
+  "start_time",
+  "begin",
+  "beginTime",
+  "bg",
+];
+const ENDS: &[&str] = &["end", "endTime", "end_time", "ed", "stop"];
+const STARTS_MS: &[&str] = &["startMs", "start_ms", "beginMs"];
+const ENDS_MS: &[&str] = &["endMs", "end_ms"];
+
+/// One segment as read: times in milliseconds when the key says so,
+/// else in a unit decided over the whole file.
+struct Segment {
+  start_ms: Option<f64>,
+  end_ms: Option<f64>,
+  start: Option<f64>,
+  end: Option<f64>,
+  text: String,
+}
+
+/// The timed lines of a transcript file: a list of segments (`text` with
+/// a start and an end) or one text. `duration` (the episode's, seconds)
+/// tells seconds from milliseconds when the keys do not.
+pub fn cues(v: &Value, duration: Option<f64>) -> Vec<Cue> {
+  let rows = match v {
+    Value::Array(rows) => rows.as_slice(),
+    _ => ["segments", "data", "transcript", "items", "sentences"]
+      .iter()
+      .map(|k| v.list(k))
+      .find(|rows| !rows.is_empty())
+      .unwrap_or(&[]),
+  };
+  if rows.is_empty() {
+    let text = v.str("text").map(|t| t.trim().to_owned());
+    return text
+      .filter(|t| !t.is_empty())
+      .map(|text| Cue {
+        from: 0.0,
+        to: duration.unwrap_or(0.0),
+        text,
+      })
+      .into_iter()
+      .collect();
+  }
+  let segments: Vec<Segment> = rows.iter().filter_map(segment).collect();
+  let latest = segments
+    .iter()
+    .flat_map(|s| [s.start, s.end])
+    .flatten()
+    .fold(0.0, f64::max);
+  let in_ms = match duration {
+    Some(d) if d > 0.0 => latest > d * 2.0 + 60.0,
+    _ => latest > 86_400.0,
+  };
+  let scale = if in_ms { 1000.0 } else { 1.0 };
+  let times: Vec<(f64, Option<f64>)> = segments
+    .iter()
+    .map(|s| {
+      let start = s
+        .start_ms
+        .map(|t| t / 1000.0)
+        .or(s.start.map(|t| t / scale));
+      let end = s.end_ms.map(|t| t / 1000.0).or(s.end.map(|t| t / scale));
+      (start.unwrap_or(0.0), end)
+    })
+    .collect();
+  segments
+    .into_iter()
+    .enumerate()
+    .map(|(i, s)| {
+      let (from, end) = times[i];
+      let next = times.get(i + 1).map(|(start, _)| *start);
+      Cue {
+        from,
+        to: end.or(next).unwrap_or(from).max(from),
+        text: s.text,
+      }
+    })
+    .collect()
+}
+
+fn segment(v: &Value) -> Option<Segment> {
+  let text = v
+    .first_str(&["text", "content", "sentence"])?
+    .trim()
+    .to_owned();
+  if text.is_empty() {
+    return None;
+  }
+  Some(Segment {
+    start_ms: seconds(v, STARTS_MS),
+    end_ms: seconds(v, ENDS_MS),
+    start: seconds(v, STARTS),
+    end: seconds(v, ENDS),
+    text,
+  })
+}
+
+/// The first of `keys` as a number: plain, or `01:02.5` / `1:02:03,500`.
+fn seconds(v: &Value, keys: &[&str]) -> Option<f64> {
+  keys.iter().find_map(|k| match v.at(k) {
+    Value::Number(n) => n.as_f64(),
+    Value::String(s) => s
+      .trim()
+      .replace(',', ".")
+      .split(':')
+      .try_fold(0.0, |total, part| {
+        part.parse::<f64>().ok().map(|n| total * 60.0 + n)
+      }),
+    _ => None,
+  })
 }

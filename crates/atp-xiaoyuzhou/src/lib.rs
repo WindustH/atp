@@ -1,22 +1,32 @@
-//! Xiaoyuzhou (小宇宙) for all-the-platforms, read-only through the
-//! public pages of www.xiaoyuzhoufm.com ([`api`]): shows and the episodes
-//! their pages list ([`shows`]), episodes with show notes, hot comments
-//! and their audio files ([`episodes`]), and users with the shows they
-//! host ([`users`]). There is no login: the app's logged-in API is never
-//! used.
+//! Xiaoyuzhou (小宇宙) for all-the-platforms. The public pages of
+//! www.xiaoyuzhoufm.com ([`api`]) give shows and the episodes their pages
+//! list ([`shows`]), episodes with show notes, hot comments and their
+//! audio files ([`episodes`]), and users with the shows they host
+//! ([`users`]), without an account. A login to the app's API ([`app`],
+//! [`login`]: a texted code or tokens) adds transcripts
+//! ([`transcripts`]), the play history with progress ([`history`]) and
+//! every episode of a show.
 
 mod api;
+mod app;
 mod episodes;
+mod extra;
+mod history;
+mod login;
 mod parse;
 mod refs;
 mod shows;
+mod transcripts;
 mod users;
+
+/// The commands only this platform has, for [`Platform::run_extra`](atp_core::Platform::run_extra).
+pub use extra::Command;
 
 use std::time::Duration;
 
 use atp_core::{
-  Cap, Choices, Comment, Ctx, Data, Error, Media, NoExtra, Page, PageReq, Platform, PlatformInfo,
-  PlatformKind, Post, Result, User,
+  Cap, Choices, Comment, Ctx, Data, Media, Page, PageReq, Platform, PlatformInfo, PlatformKind,
+  Post, Result, User,
 };
 
 use crate::api::Api;
@@ -30,27 +40,29 @@ impl Platform for Xiaoyuzhou {
     id: "xiaoyuzhou",
     name: "Xiaoyuzhou",
     aliases: &["xyz"],
-    about: "Xiaoyuzhou (小宇宙): podcast shows, episodes with show notes, hot comments, downloads",
+    about: "Xiaoyuzhou (小宇宙): podcast shows, episodes with show notes, hot comments, downloads, transcripts and play history",
     home: api::BASE,
     cookie_domains: &[],
     required_cookies: &[],
     caps: &[
+      Cap::TokenLogin,
       Cap::Read,
       Cap::Comments,
       Cap::User,
       Cap::UserPosts,
+      Cap::History,
       Cap::Download,
     ],
     choices: Choices::NONE,
     min_interval: Duration::from_millis(1500),
     kind: PlatformKind::Music,
-    token: "",
+    token: "ACCESS_TOKEN|REFRESH_TOKEN",
     env: &[],
-    guest: "read, comments, user, user-posts, download",
+    guest: "read, comments, user, user-posts (the newest 15 episodes), download",
     guide: include_str!("../GUIDE.md"),
   };
 
-  type Extra = NoExtra;
+  type Extra = Command;
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })
@@ -61,13 +73,15 @@ impl Platform for Xiaoyuzhou {
   }
 
   async fn whoami(&self) -> Result<User> {
-    Err(Error::unsupported("whoami").with_hint(
-      "ATP reads Xiaoyuzhou's public pages only; there is no login (see `atp guide xiaoyuzhou`)",
-    ))
+    users::whoami(&self.api).await
   }
 
   fn logged_in(&self) -> bool {
-    false
+    self.api.app().logged_in()
+  }
+
+  async fn login_token(&self, token: &str) -> Result<()> {
+    login::token(&self.api, token).await
   }
 
   async fn read(&self, post: &str) -> Result<Post> {
@@ -91,11 +105,15 @@ impl Platform for Xiaoyuzhou {
     users::posts(&self.api, user, page).await
   }
 
+  async fn history(&self, page: &PageReq) -> Result<Page<Post>> {
+    history::history(&self.api, page).await
+  }
+
   async fn media(&self, post: &str, _audio_only: bool) -> Result<(Post, Vec<Media>)> {
     episodes::media(&self.api, post).await
   }
 
   async fn run_extra(&self, command: Self::Extra) -> Result<Data> {
-    match command {}
+    extra::run(&self.api, command).await
   }
 }
