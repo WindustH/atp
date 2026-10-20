@@ -461,6 +461,7 @@ fn http_config(global: &GlobalArgs, info: &PlatformInfo) -> HttpConfig {
       .interval
       .map(|s| std::time::Duration::from_secs_f64(s.max(0.0)))
       .map_or(info.min_interval, |d| d.max(info.min_interval)),
+    pace: Some(Store::new(info.id).cache_dir().join(crate::http::PACE_FILE)),
   }
 }
 

@@ -5,19 +5,23 @@
 //! build requests with [`Http::get`] / [`Http::post`] and interpret the
 //! response envelope themselves.
 
+mod pace;
 mod request;
 mod response;
 mod stream;
 
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
-use std::time::{Duration, Instant};
+use std::path::PathBuf;
+use std::time::{Duration, Instant, SystemTime};
 
 use crate::error::{Error, Outcome, Result};
 use rand::Rng;
 use wreq::header::{HeaderMap, HeaderName, HeaderValue};
 pub use wreq::{Method, StatusCode};
 
+pub use self::pace::PACE_FILE;
+use self::pace::Pace;
 pub use self::request::*;
 pub use self::response::*;
 
@@ -39,6 +43,17 @@ pub const SEC_CH_UA: &str = r#""Google Chrome";v="149", "Chromium";v="149", "Not
 pub const SEC_CH_UA_PLATFORM: &str = r#""macOS""#;
 
 pub type Cookies = BTreeMap<String, String>;
+
+/// What pacing adds to a platform's gap: mostly a little, now and then a
+/// longer "reading" pause.
+fn jitter() -> Duration {
+  let mut rng = rand::rng();
+  let mut ms = rng.random_range(100..500);
+  if rng.random_bool(0.05) {
+    ms += rng.random_range(2000..5000);
+  }
+  Duration::from_millis(ms)
+}
 
 /// The proxy in effect: `explicit` (`--proxy`), then `ATP_PROXY`,
 /// `ALL_PROXY`, `HTTPS_PROXY` (either case).
@@ -65,6 +80,10 @@ pub struct HttpConfig {
   /// Domains the session cookies are sent to (and their subdomains); empty
   /// means every host.
   pub cookie_domains: &'static [&'static str],
+  /// The file every atp process using the platform paces its requests
+  /// through (`<cache>/<platform>/pace`, [`PACE_FILE`]); without one this
+  /// client paces alone.
+  pub pace: Option<PathBuf>,
 }
 
 impl Default for HttpConfig {
@@ -74,6 +93,7 @@ impl Default for HttpConfig {
       timeout: Duration::from_secs(30),
       min_interval: Duration::ZERO,
       cookie_domains: &[],
+      pace: None,
     }
   }
 }
@@ -89,6 +109,7 @@ pub struct Http {
   /// platform's own). Until then a failed change was certainly not sent.
   contacted: Cell<bool>,
   min_interval: Duration,
+  pace: Option<Pace>,
   proxy: Option<String>,
   cookie_domains: &'static [&'static str],
 }
@@ -134,6 +155,7 @@ impl Http {
       last: Cell::new(None),
       contacted: Cell::new(false),
       min_interval: cfg.min_interval,
+      pace: cfg.pace.clone().map(Pace::new),
       proxy: cfg.proxy.clone(),
       cookie_domains: cfg.cookie_domains,
     })
@@ -270,27 +292,31 @@ impl Http {
     tokio::time::sleep(Duration::from_millis(ms)).await;
   }
 
-  /// Wait until the platform's pacing allows the next request.
+  /// Wait until the platform's pacing allows the next request: its
+  /// `min_interval`, plus jitter, after this client's last request ended
+  /// and after the latest start any atp process reserved for the platform
+  /// (the pace file, which then holds this request's start).
   pub(crate) async fn throttle(&self) {
     if self.min_interval.is_zero() {
       return;
     }
-    if let Some(last) = self.last.get() {
-      let elapsed = last.elapsed();
-      if elapsed < self.min_interval {
-        let mut rng = rand::rng();
-        // Mostly short jitter, occasionally a longer "reading" pause.
-        let mut jitter = rng.random_range(100..500);
-        if rng.random_bool(0.05) {
-          jitter += rng.random_range(2000..5000);
-        }
-        tokio::time::sleep(self.min_interval - elapsed + Duration::from_millis(jitter)).await;
-      }
+    let gap = self.min_interval + jitter();
+    let mut wait = match self.last.get().map(|last| last.elapsed()) {
+      Some(elapsed) if elapsed < self.min_interval => gap - elapsed,
+      _ => Duration::ZERO,
+    };
+    if let Some(pace) = &self.pace
+      && let Some(start) = pace.reserve(SystemTime::now() + wait, gap).await
+    {
+      wait = start.duration_since(SystemTime::now()).unwrap_or_default();
+    }
+    if !wait.is_zero() {
+      tokio::time::sleep(wait).await;
     }
   }
 
   /// Count a request sent another way (through a browser tab) for the
-  /// pacing.
+  /// pacing; its start went into the pace file already.
   pub(crate) fn sent(&self) {
     self.last.set(Some(Instant::now()));
     self.contacted.set(true);

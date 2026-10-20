@@ -128,6 +128,7 @@ impl Open {
       min_interval: self
         .interval
         .map_or(info.min_interval, |d| d.max(info.min_interval)),
+      pace: Some(store.cache_dir().join(crate::http::PACE_FILE)),
     };
     let http = Http::new(&config, session.cookies)?;
     let mut ctx = Ctx::new(info, http, store, session.extra);

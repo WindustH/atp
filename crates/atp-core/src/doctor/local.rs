@@ -22,7 +22,11 @@ pub(super) fn dirs(config: &Path, cache: &Path) -> Vec<Check> {
   };
   vec![
     dir("config dir", config, "sessions and data files"),
-    dir("cache dir", cache, "caches, #N lists, browser profiles"),
+    dir(
+      "cache dir",
+      cache,
+      "caches, #N lists, browser profiles, pacing",
+    ),
   ]
 }
 

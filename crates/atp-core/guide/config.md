@@ -11,7 +11,7 @@ These work anywhere on the command line:
 | `--raw` | | include untouched upstream payloads |
 | `--proxy URL` | `ATP_PROXY` | http, https or socks5 proxy (`HTTPS_PROXY` / `ALL_PROXY` work too) |
 | `--timeout SECS` | | per request, default 30 |
-| `--interval SECS` | `ATP_INTERVAL` | minimum gap between requests |
+| `--interval SECS` | `ATP_INTERVAL` | minimum gap between requests to a platform (never below its own), kept across every atp running at once |
 | `-v, --verbose` | `ATP_LOG` | log requests (method, host, status, time) to stderr |
 | `--no-verify` | `ATP_NO_VERIFY=1` | fail on captchas instead of opening them in a browser |
 | | `ATP_BROWSER` | the browser for human checks and for platforms read through one: a path or a command (`chromium`) |
@@ -37,6 +37,7 @@ the names (never the values) of cookies responses set.
 | --- | --- |
 | `<config>/all-the-platforms/<platform>/session.json` | saved session (only you can read it) |
 | `<cache>/all-the-platforms/<platform>/` | caches (signing keys, query ids, tokens), `#N` lists, the login QR code |
+| `<cache>/all-the-platforms/<platform>/pace` | when the latest request to the platform was due: every atp running at once keeps the platform's pace through it |
 | `<cache>/all-the-platforms/<platform>/browser/` | the browser profile of a platform read through a browser (51job, boss): the site's cookies and storage; `logout` deletes it |
 
 | System | `<config>` | `<cache>` |

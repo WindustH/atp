@@ -42,7 +42,7 @@ one. Each platform crate re-exports its `Command` enum for `run_extra`.
 | `doctor` | `atp doctor`: the version, the config and cache folders, who may read each saved session file, the `status` of every saved session (one platform after another), ffmpeg on `PATH`, a Chromium-family browser (`chrome::find`), the proxy in effect, and the network and the clock from one request's `Date`; `--offline` stays local; exit code 1 when a check warns or fails |
 | `platforms` | `atp platforms`: one row per platform grouped by kind (TAB marks those read through a browser tab, `Platform::BROWSER_TAB`, and `window` those whose tab opens in a window, `TAB_WINDOW`), `atp platforms <id>` in detail, the same data as JSON (`browser_tab`, `tab_window`) |
 | `account` | `login` (QR / token / browser / cookie string), `logout`, `status` |
-| `http` | Chrome-fingerprinted client (wreq), cookie jar, pacing, proxy; `request` (building, sending, retries, streaming), `response`; a failed request says whether it may have reached a server (`error::Outcome`: `not_sent` only while nothing of the client got past connecting), which commands that change something report as `error.outcome` (`cli::access`) |
+| `http` | Chrome-fingerprinted client (wreq), cookie jar, pacing (shared by every atp process through `pace`, see [Pacing](#pacing)), proxy; `request` (building, sending, retries, streaming), `response`; a failed request says whether it may have reached a server (`error::Outcome`: `not_sent` only while nothing of the client got past connecting), which commands that change something report as `error.outcome` (`cli::access`) |
 | `store` | session file (0600), data files the user keeps beside it (`data`, `put_data`: lists and settings `logout` leaves alone), TTL cache (values and raw bytes), `#N` short-index lists |
 | `bulk` | commands on several things (`follow A B C`, `folder-add F P…`): one `Action` per thing in order, `each` one by one and `batches` through a platform's batch call, a failed thing marked and the rest going on, a login / check / rate-limit error ending the run; `move_by_adding`, the default `folder-move` |
 | `paging` | `collect`: follow cursors until `--limit` items, dropping repeated items, until the upstream ends or repeats a cursor; `collect_within`: also `--max-pages` (`Bounds`); `collect_window`: `--since` / `--until` |
@@ -265,6 +265,28 @@ through a browser instead:
   keeps its cookies in the session first); dropping the context ends it
   too, giving the browser a few seconds to write its profile out.
   `logout` deletes the profile.
+
+### Pacing
+
+Each platform declares `min_interval`, the least time between two of
+its requests (`--interval` / `ATP_INTERVAL` can only raise it). `Http`
+keeps it within a process (from the end of its last request, plus a
+little jitter and now and then a longer pause) and across processes
+through `<cache>/<platform>/pace`: a 21-byte file holding the start the
+latest request of any atp process reserved, in milliseconds since the
+epoch. Before a request, `Http::throttle` takes an advisory lock on the
+file (`File::try_lock`, which is `flock` on Unix and `LockFileEx` on
+Windows), reads that start, reserves its own (the later of its own
+earliest start and that one plus `min_interval` and jitter), writes it,
+unlocks and sleeps until then: one small write per request, the lock
+held only for the read and the write. Requests through a browser tab
+reserve their start the same way; `no_throttle` requests (media, drives'
+files) and platforms without a `min_interval` skip it. When the file
+cannot be opened or stays locked for 50 ms (ten tries), or locks are not
+supported, the request is paced by its process alone. A reservation more
+than ten minutes ahead counts as a clock that jumped and is ignored.
+`atp_core::open` paces through the same file; an `HttpConfig` without
+`pace` paces alone.
 
 ### Flow of one command
 
