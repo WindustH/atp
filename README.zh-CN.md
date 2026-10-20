@@ -76,7 +76,7 @@ $ atp tg listen -f jsonl          # 实时输出每一条新的 Telegram 消息
 | | Twitter / X | `twitter` | 推文、对话、列表、数据 | 浏览器 |
 | | Reddit | `reddit` | 帖子、评论、社区、收件箱 | 浏览器、应用 |
 | | Facebook | `facebook` | 个人页、公共主页、小组、主页数据、广告 | 浏览器、Token |
-| | Instagram | `instagram` | 帖子、Reels、快拍、私信、数据、广告 | 浏览器、Token |
+| | Instagram | `instagram` | 帖子、Reels、快拍、探索、私信、数据、发布、广告 | 浏览器、Token |
 | | Threads | `threads` | 帖子与轮播、对话、提及、搜索、数据，使用你自己的 Meta 应用 | Token |
 | | Misskey | `misskey` | 帖子、时间线、表情回应、聊天 | MiAuth、Token |
 | | Mastodon | `mastodon` | 嘟文、时间线、趋势、转嘟、书签，任意实例 | OAuth、Token |

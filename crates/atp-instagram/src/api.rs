@@ -2,15 +2,18 @@
 //! `/web/…` writes), called the way the web app calls them — its app id in
 //! `X-IG-App-ID`, the session's `csrftoken` echoed in `X-CSRFToken`.
 //! Profiles and single posts answer anonymously; nearly everything else
-//! wants the browser session (`sessionid`).
+//! wants the browser session (`sessionid`). Insights and publishing go
+//! through the Graph API instead, for the account a token acts for
+//! ([`Api::graph_account`]).
 //!
 //! Instagram blocks fast clients quickly ("Please wait a few minutes",
 //! checkpoints): requests are spaced out and those answers map to clear
 //! errors instead of retries.
 
 use atp_core::http::{Req, Resp};
-use atp_core::{Ctx, Error, ErrorCode, Result, Value, ValueExt, json};
-use atp_meta::graph;
+use atp_core::{Ctx, Error, ErrorCode, Result, Value, ValueExt, credentials, json};
+use atp_meta::Graph;
+use atp_meta::graph::{self, fields, host_for};
 
 use crate::{parse, refs};
 
@@ -64,6 +67,44 @@ impl Api {
 
   pub fn token(&self) -> Option<String> {
     graph::token(&self.ctx, &TOKEN_VARS)
+  }
+
+  /// The Graph API and the Instagram account id to act for:
+  /// INSTAGRAM_USER_ID, the Instagram-login token's own, or the account
+  /// linked to one of the token's Pages. `what` and `hint` say what needs
+  /// the token when there is none.
+  pub async fn graph_account(&self, what: &str, hint: &str) -> Result<(Graph<'_>, String)> {
+    let token = self
+      .token()
+      .ok_or_else(|| Error::auth(format!("no Graph API token for {what}")).with_hint(hint))?;
+    let ig_login = token.starts_with("IG");
+    let graph = Graph::new(&self.ctx, host_for(&token), token);
+    if let Some(id) = credentials::env("INSTAGRAM_USER_ID") {
+      return Ok((graph, id));
+    }
+    if ig_login {
+      let v = graph.get("me", &fields("user_id,username")).await?;
+      let id = v
+        .str("user_id")
+        .or_else(|| v.str("id"))
+        .ok_or_else(|| Error::upstream("the token names no Instagram account"))?;
+      return Ok((graph, id));
+    }
+    let pages = graph
+      .all(
+        "me/accounts",
+        &fields("instagram_business_account{id,username}"),
+        0,
+      )
+      .await?;
+    let id = pages
+      .iter()
+      .find_map(|page| page.str("instagram_business_account.id"))
+      .ok_or_else(|| {
+        Error::not_found("no Instagram business account linked to the token's Pages")
+          .with_hint(hint)
+      })?;
+    Ok((graph, id))
   }
 
   fn headers<'a>(&self, req: Req<'a>) -> Req<'a> {

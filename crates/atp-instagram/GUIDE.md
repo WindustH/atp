@@ -1,6 +1,6 @@
 Instagram has two ways in: the web API with a browser session, for nearly
 everything the site does, and the Graph API with an access token, for
-`insights` and `ads`.
+`insights`, `publish` and `ads`.
 
 ## Logging in
 
@@ -19,7 +19,8 @@ by numeric id), `comments` shows the first batch and `user-posts` the
 latest twelve posts; Instagram may still answer some of it to logged-in
 sessions only, depending on the network.
 
-With the session: `user-posts` (all), `comments` (all) and `replies`,
+With the session: `hot` (the explore grid), `user-posts` (all),
+`comments` (all) and `replies`,
 `likers`, `followers`, `following`, `search -t user` / `-t topic`
 (hashtags and places), `tag`, `location`, `stories`, `highlights`,
 `highlight`, `favorites` (saved posts, `--folder` a collection),
@@ -34,13 +35,18 @@ same way.
 
 ### Graph API token
 
-`insights` and `ads` need an access token: `atp instagram login --token
-TOKEN` checks it against the Graph API and saves it, or
+`insights`, `publish` and `ads` need an access token: `atp instagram
+login --token TOKEN` checks it against the Graph API and saves it, or
 `INSTAGRAM_ACCESS_TOKEN` / `META_ACCESS_TOKEN` supply one (they win over
-the saved token). For insights it is an Instagram-login token (it starts
-with `IG` and goes to graph.instagram.com) or a Facebook token of the Page
-the business or creator account is linked to, with `instagram_basic` and
-`instagram_manage_insights`. `INSTAGRAM_USER_ID` picks the account when
+the saved token). For insights and publishing it is an Instagram-login
+token (it starts with `IG` and goes to graph.instagram.com) or a Facebook
+token of the Page the business or creator account is linked to.
+Insights take `instagram_basic` and `instagram_manage_insights` (with an
+Instagram-login token, `instagram_business_manage_insights`); publishing
+takes `instagram_basic`, `instagram_content_publish` and
+`pages_read_engagement` (with an
+Instagram-login token, `instagram_business_content_publish`). Personal
+accounts have no Graph API. `INSTAGRAM_USER_ID` picks the account when
 several are linked. `ads` always goes to graph.facebook.com, so it needs a
 Facebook token (see `atp guide facebook ads`). An invalid or expired token
 fails with `not_authenticated` and the hint to run `login --token` with a
@@ -71,6 +77,43 @@ a terminal ATP opens it for you, see `atp guide login`).
 
 `-t user` finds accounts, `-t topic` hashtags, then places. There is no
 post search.
+
+### hot
+
+The explore grid the web app shows the logged-in account (needs the
+browser session): photos, carousels and reels, each once, whichever tile
+layout holds it. Further pages follow Instagram's `next_max_id`. The grid
+is chosen for the account, so it differs from one account to another.
+
+### publish
+
+`publish [CAPTION] --image URL… --video URL…` publishes through the Graph
+API's content publishing, with the token (see Logging in), for business
+and creator accounts:
+
+- one `--image`: a photo; one `--video`: a reel (`--cover URL` gives it a
+  cover image, `--reels-only` keeps it off the profile grid); several,
+  up to 10: a carousel, images first, then videos, in the order given.
+- Media are public `http(s)` URLs: Meta downloads them itself, so local
+  files are refused. Put a file where anyone can download it (a web
+  server, object storage with a public link) and pass that URL. Images
+  are JPEG; videos MP4 or MOV, within Instagram's limits for reels.
+- The caption carries hashtags and @mentions as written, 2,200 characters
+  at most.
+- ATP prints what is about to go out (the account, kind, caption and each
+  URL) and asks; `-y` in scripts. Then it creates a media container per
+  item, waits until Meta has processed each (five minutes at most), and
+  publishes. The answer has the new post's Graph API id and its link.
+- A container Meta cannot use fails with its reason (`upstream_error`)
+  and nothing is published. Meta caps how many posts an account
+  publishes through the API in 24 hours (a carousel counts once).
+
+```
+atp instagram publish 'Morning light #sea' --image https://example.com/photo.jpg
+atp instagram publish 'Clip' --video https://example.com/clip.mp4 --cover https://example.com/cover.jpg -y
+```
+
+The shared `post` takes local files only, so it is not offered here.
 
 ### tag, location
 
@@ -149,6 +192,8 @@ audiences, pixels, insights reports and `raw`.
 
 ## Limits
 
-Uploading posts is not supported, nor are pictures in comments and
-attachments in direct messages. Saved collections are read only here:
+Publishing takes media by public URL only, through the Graph API
+(business and creator accounts); stories and local files are not
+published. Pictures in comments and attachments in direct messages are
+not supported. Saved collections are read only here:
 they cannot be created, renamed or filled.

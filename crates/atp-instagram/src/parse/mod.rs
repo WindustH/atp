@@ -8,7 +8,7 @@ mod posts;
 use atp_core::text::from_secs;
 use atp_core::{Collection, Comment, Notification, User, Value, ValueExt};
 
-pub use self::posts::{items, post, sections};
+pub use self::posts::{explore, items, post, sections};
 use crate::api::WEB;
 use crate::refs;
 

@@ -1,11 +1,12 @@
 //! Instagram commands beyond the shared set.
 
-use atp_core::cli::PageArgs;
+use atp_core::cli::{PageArgs, read_text};
 use atp_core::{Data, Error, Result};
 use atp_meta::Graph;
 use atp_meta::graph::FACEBOOK;
 
 use crate::api::Api;
+use crate::containers::{self, Compose};
 use crate::{relations, stories, topics};
 
 #[derive(Debug, clap::Subcommand)]
@@ -64,10 +65,41 @@ pub enum Command {
     #[arg(required = true, value_name = "USER")]
     users: Vec<String>,
   },
+  /// Publish a photo, a carousel or a reel through the Graph API, from public URLs
+  #[command(after_long_help = EX_PUBLISH)]
+  Publish {
+    /// Caption, with its #hashtags and @mentions; `-` reads it from stdin
+    caption: Option<String>,
+    /// Public URL of a JPEG image; several images or videos make a carousel
+    #[arg(long = "image", value_name = "URL")]
+    images: Vec<String>,
+    /// Public URL of an MP4 or MOV video; one alone is a reel
+    #[arg(long = "video", value_name = "URL")]
+    videos: Vec<String>,
+    /// Public URL of a cover image for the reel
+    #[arg(long, value_name = "URL")]
+    cover: Option<String>,
+    /// Show the reel in the Reels tab only, not on the profile grid
+    #[arg(long)]
+    reels_only: bool,
+    /// Skip the confirmation question (needed in scripts)
+    #[arg(short, long)]
+    yes: bool,
+  },
   /// Marketing API: ad accounts, campaigns, ad sets, ads, insights reports
   #[command(subcommand)]
   Ads(atp_meta::ads::Command),
 }
+
+const EX_PUBLISH: &str = "\
+Examples:
+  atp instagram publish 'Morning light #sea' --image https://example.com/photo.jpg
+  atp instagram publish 'Three views' --image https://example.com/a.jpg --image https://example.com/b.jpg --video https://example.com/c.mp4
+  atp instagram publish 'Behind the scenes' --video https://example.com/clip.mp4 --cover https://example.com/cover.jpg
+
+Media are public URLs that Meta downloads; local files are refused.
+Needs a Graph API token of a business or creator account.
+More: atp guide instagram publish";
 
 const EX_HIGHLIGHTS: &str = "\
 Examples:
@@ -123,6 +155,23 @@ pub async fn run(api: &Api, command: Command) -> Result<Data> {
     }
     Command::DenyFollower { users } => {
       Data::actions(relations::answer(api, &user_refs(api, &users)?, false).await?)
+    }
+    Command::Publish {
+      caption,
+      images,
+      videos,
+      cover,
+      reels_only,
+      yes,
+    } => {
+      let compose = Compose {
+        caption: read_text(caption)?,
+        images,
+        videos,
+        cover,
+        reels_only,
+      };
+      Data::Action(containers::publish(api, &compose, yes).await?)
     }
     Command::Ads(command) => atp_meta::ads::run(&api.ctx, &ads_graph(api)?, command).await?,
   })

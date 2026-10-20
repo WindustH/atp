@@ -85,7 +85,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Twitter / X | `twitter` | tweets, threads, lists, analytics | browser |
 | | Reddit | `reddit` | posts, comments, subreddits, inbox | browser, app |
 | | Facebook | `facebook` | profiles, pages, groups, Page insights, ads | browser, token |
-| | Instagram | `instagram` | posts, reels, stories, DMs, insights, ads | browser, token |
+| | Instagram | `instagram` | posts, reels, stories, explore, DMs, insights, publishing, ads | browser, token |
 | | Threads | `threads` | posts and carousels, conversations, mentions, search, insights, through your own Meta app | token |
 | | Misskey | `misskey` | notes, timelines, reactions, chat | MiAuth, token |
 | | Mastodon | `mastodon` | statuses, timelines, trends, boosts, bookmarks, on any instance | OAuth, token |

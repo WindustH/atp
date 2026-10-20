@@ -1,6 +1,8 @@
 //! Posts in either shape (feed photos, carousels, reels, IGTV, stories),
 //! their files, and the lists they arrive in.
 
+use std::collections::HashSet;
+
 use atp_core::text::from_secs;
 use atp_core::{Media, MediaKind, Metrics, Page, Post, Value, ValueExt};
 
@@ -155,6 +157,50 @@ pub fn items(v: &Value) -> Page<Post> {
     .then(|| v.str("next_max_id"))
     .flatten();
   Page::new(posts, next)
+}
+
+/// The explore grid: every `media` in its `sectional_items`, whichever
+/// layout holds it (`layout_content.medias`, `fill_items`,
+/// `one_by_two_item.clips.items` …), once each, and the `next_max_id`
+/// cursor. A carousel's own items stay inside it.
+pub fn explore(v: &Value) -> Page<Post> {
+  let mut seen = HashSet::new();
+  let mut posts = Vec::new();
+  for section in v.list("sectional_items") {
+    gather(section, 0, &mut seen, &mut posts);
+  }
+  let next = (v.bool("more_available") == Some(true))
+    .then(|| v.str("next_max_id"))
+    .flatten();
+  Page::new(posts, next)
+}
+
+/// The `media` objects under `node`, depth first.
+fn gather(node: &Value, depth: usize, seen: &mut HashSet<String>, posts: &mut Vec<Post>) {
+  if depth > 8 {
+    return;
+  }
+  match node {
+    Value::Array(items) => {
+      for item in items {
+        gather(item, depth + 1, seen, posts);
+      }
+    }
+    Value::Object(map) => {
+      if let Some(media) = map.get("media").filter(|m| m.is_object())
+        && let Some(key) = media.first_str(&["pk", "id", "code"])
+        && seen.insert(key)
+      {
+        posts.push(post(media));
+      }
+      for (key, value) in map {
+        if key != "media" {
+          gather(value, depth + 1, seen, posts);
+        }
+      }
+    }
+    _ => {}
+  }
 }
 
 /// Grid sections (`layout_content.medias[].media`) and their `max_id|page` cursor.

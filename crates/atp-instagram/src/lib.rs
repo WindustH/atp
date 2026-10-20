@@ -1,14 +1,16 @@
 //! Instagram for all-the-platforms.
 //!
 //! The web API ([`api`]) with a browser session does nearly everything
-//! the site does: profiles, posts, comments, likers, followers, hashtags,
-//! places, saved posts, the activity inbox, stories and highlights, likes,
-//! comments, follows and direct messages. Profiles and single posts are
-//! also read anonymously. Insights of business and creator accounts come
-//! from the Graph API ([`insights`]), ads from the Marketing API.
+//! the site does: profiles, posts, the explore grid, comments, likers,
+//! followers, hashtags, places, saved posts, the activity inbox, stories
+//! and highlights, likes, comments, follows and direct messages. Profiles
+//! and single posts are also read anonymously. Insights of business and
+//! creator accounts come from the Graph API ([`insights`]), as does
+//! publishing ([`containers`]); ads from the Marketing API.
 
 mod api;
 mod comments;
+mod containers;
 mod extra;
 mod insights;
 mod library;
@@ -31,7 +33,7 @@ use std::time::Duration;
 
 use atp_core::output::Stream;
 use atp_core::{
-  Action, Cap, Choices, Collection, Comment, Ctx, Data, Edit, Error, Insights, Message,
+  Action, Cap, Choices, Collection, Comment, Ctx, Data, Draft, Edit, Error, Insights, Message,
   Notification, Page, PageReq, Platform, PlatformInfo, PlatformKind, Post, Query, Reply, Result,
   User,
 };
@@ -48,7 +50,7 @@ impl Platform for Instagram {
     id: "instagram",
     name: "Instagram",
     aliases: &["ig", "insta"],
-    about: "Instagram: posts, reels, stories, comments, users, hashtags, direct messages and insights",
+    about: "Instagram: posts, reels, stories, comments, users, hashtags, direct messages, insights and publishing",
     home: "https://www.instagram.com/",
     cookie_domains: &["instagram.com"],
     required_cookies: &[api::SESSION],
@@ -56,6 +58,7 @@ impl Platform for Instagram {
       Cap::TokenLogin,
       Cap::SearchUsers,
       Cap::SearchTopics,
+      Cap::Hot,
       Cap::Read,
       Cap::Comments,
       Cap::Replies,
@@ -163,6 +166,10 @@ impl Platform for Instagram {
     search::topics(&self.api, &query.keyword).await
   }
 
+  async fn hot(&self, _category: Option<&str>, page: &PageReq) -> Result<Page<Post>> {
+    posts::explore(&self.api, page).await
+  }
+
   async fn read(&self, post: &str) -> Result<Post> {
     posts::read(&self.api, post).await
   }
@@ -250,6 +257,14 @@ impl Platform for Instagram {
 
   async fn block(&self, users: &[String], undo: bool) -> Result<Vec<Action>> {
     relations::block(&self.api, users, undo).await
+  }
+
+  /// The shared `post` takes local files; the Graph API wants public URLs.
+  async fn publish(&self, _draft: &Draft) -> Result<Action> {
+    Err(Error::unsupported("post").with_hint(
+      "Instagram's Graph API publishes media from public URLs: \
+       `atp instagram publish CAPTION --image URL` (see `atp guide instagram publish`)",
+    ))
   }
 
   async fn delete(&self, post: &str) -> Result<Action> {

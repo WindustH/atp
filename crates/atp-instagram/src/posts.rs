@@ -1,4 +1,5 @@
-//! Posts: one post, a user's posts, liking, saving, editing and deleting.
+//! Posts: one post, a user's posts, the explore grid, liking, saving,
+//! editing and deleting.
 
 use atp_core::cli::Change;
 use atp_core::{Action, Edit, Error, ErrorCode, Page, PageReq, Post, Result, Value, ValueExt};
@@ -46,6 +47,15 @@ pub async fn user_posts(api: &Api, arg: &str, req: &PageReq) -> Result<Page<Post
   );
   let v = api.get(&format!("feed/user/{id}/"), &query).await?;
   Ok(parse::items(&v))
+}
+
+/// The explore grid (`hot`): what Instagram suggests to the logged-in
+/// account, as the web app's Explore page loads it.
+pub async fn explore(api: &Api, req: &PageReq) -> Result<Page<Post>> {
+  api.require_session("the explore grid")?;
+  let query = with_cursor(Vec::new(), "max_id", req.cursor.as_ref());
+  let v = api.get("discover/web/explore_grid/", &query).await?;
+  Ok(parse::explore(&v))
 }
 
 pub async fn like(api: &Api, post: &str, undo: bool) -> Result<Action> {
