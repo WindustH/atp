@@ -400,6 +400,7 @@ dependencies = [
  "atp-forem",
  "atp-googlemaps",
  "atp-hackernews",
+ "atp-hupu",
  "atp-instagram",
  "atp-jd",
  "atp-jike",
@@ -852,6 +853,18 @@ dependencies = [
  "clap",
  "futures-util",
  "jiff",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "atp-hupu"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "regex",
  "serde_json",
  "url",
 ]

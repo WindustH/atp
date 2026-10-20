@@ -86,6 +86,8 @@ pub use atp_forem as forem;
 pub use atp_googlemaps as googlemaps;
 #[cfg(feature = "hackernews")]
 pub use atp_hackernews as hackernews;
+#[cfg(feature = "hupu")]
+pub use atp_hupu as hupu;
 #[cfg(feature = "instagram")]
 pub use atp_instagram as instagram;
 #[cfg(feature = "jd")]

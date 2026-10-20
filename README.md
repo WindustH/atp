@@ -96,6 +96,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Douban 豆瓣 | `douban` | films, books and music with ratings, short comments and reviews, Top 250 and other lists, groups, what users marked | QR, browser |
 | | WeRead 微信读书 | `weread` | store search and rankings, your shelf and reading progress, your highlights and thoughts as Markdown | QR, browser |
 | | Jike 即刻 | `jike` | posts and reposts, comments, the following and recommended feeds, topics (圈子), notifications, posting with pictures | QR, token |
+| | Hupu 虎扑 | `hupu` | hot threads of the forum and of each zone, boards, threads with their replies and 亮了 highlights; replying, lighting replies and mentions with a login | not needed, browser |
 | | RSS | `rss` | RSS, Atom and JSON feeds, a subscription list with one timeline, RSSHub routes, Miniflux | not needed, Miniflux key |
 | Video | Bilibili 哔哩哔哩 | `bili` | videos, danmaku, subtitles, coins, creator data | QR, browser |
 | | Douyin 抖音 | `douyin` | videos, image posts, hot boards, live danmaku, no-watermark downloads | QR, phone, browser |
