@@ -1,12 +1,15 @@
 //! What a post can be put under on the creator platform, as its publish
 //! form offers them: the hashtags it suggests for a word
 //! (`challengesug`), hot spots (热点) to link a post to, and official
-//! activities (官方活动).
+//! activities (官方活动), one of which `post --activity` joins.
 
-use atp_core::{Collection, Page, Post, Query, Result, Value, ValueExt};
+use atp_core::text::from_unix;
+use atp_core::{Collection, Error, ErrorCode, Page, Post, Query, Result, Value, ValueExt};
+use jiff::Timestamp;
 
 use crate::api::Api;
 use crate::creator::Creator;
+use crate::items::Tag;
 use crate::parse;
 
 const SUGGEST: &str = "/aweme/v1/search/challengesug/";
@@ -93,17 +96,86 @@ fn sentences(list: &[Value], recommended: bool) -> Vec<Post> {
 /// lists for the account.
 pub async fn activities(api: &Api) -> Result<Page<Collection>> {
   let creator = Creator::open(api).await?;
-  let v = creator
-    .get(ACTIVITIES)
-    .arg("page", 1)
-    .arg("size", 9999)
-    .arg("need_challenge", 1)
-    .send()
-    .await?;
+  let v = activity_list(&creator).await?;
   let items = v
     .list("activity_list")
     .iter()
     .filter_map(parse::activity)
     .collect();
   Ok(Page::last(items))
+}
+
+async fn activity_list(creator: &Creator<'_>) -> Result<Value> {
+  creator
+    .get(ACTIVITIES)
+    .arg("page", 1)
+    .arg("size", 9999)
+    .arg("need_challenge", 1)
+    .send()
+    .await
+}
+
+/// An official activity a post joins: its name, when it ends, and its
+/// hashtags (`challenge` with `challenge_ids`), the first the one the
+/// picker puts in.
+#[derive(Debug, Clone)]
+pub struct Activity {
+  pub name: String,
+  pub end: Option<Timestamp>,
+  pub hashtags: Vec<Tag>,
+}
+
+/// The activity `id` (its `activity_id`) among those the picker lists:
+/// unknown ids, ended activities and ones without a hashtag (which the
+/// picker leaves out) are refused.
+pub async fn activity(creator: &Creator<'_>, id: &str) -> Result<Activity> {
+  joinable(&activity_list(creator).await?, id.trim())
+}
+
+/// [`activity`] in the list's answer.
+fn joinable(v: &Value, id: &str) -> Result<Activity> {
+  let a = v
+    .list("activity_list")
+    .iter()
+    .find(|a| a.str("activity_id").as_deref() == Some(id))
+    .ok_or_else(|| {
+      Error::not_found(format!(
+        "no current Douyin activity {id}; `atp douyin activities` lists the ones open to you"
+      ))
+    })?;
+  let name = a
+    .first_str(&["activity_name", "title"])
+    .unwrap_or_else(|| id.to_owned());
+  let end = a.i64("end_time").filter(|t| *t > 0).and_then(from_unix);
+  if let Some(end) = end
+    && end <= Timestamp::now()
+  {
+    return Err(Error::input(format!(
+      "Douyin's activity {name} ended {}",
+      atp_core::text::fmt_time(end)
+    )));
+  }
+  let ids = a.list("challenge_ids");
+  let hashtags: Vec<Tag> = a
+    .list("challenge")
+    .iter()
+    .zip(ids)
+    .filter_map(|(name, id)| {
+      Some(Tag {
+        name: name.str("")?,
+        id: id.u64("").filter(|id| *id != 0)?,
+      })
+    })
+    .collect();
+  if hashtags.is_empty() {
+    return Err(Error::new(
+      ErrorCode::UnsupportedOperation,
+      format!("Douyin's activity {name} has no hashtag to join it through"),
+    ));
+  }
+  Ok(Activity {
+    name,
+    end,
+    hashtags,
+  })
 }

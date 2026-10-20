@@ -9,6 +9,8 @@ use atp_core::output::note;
 use atp_core::{Draft, Error, Result};
 
 use super::POST_PAGE;
+use crate::items::{Place, Tag};
+use crate::topics::Activity;
 
 /// The limits the web form holds a post to (JavaScript string lengths).
 pub(super) const VIDEO_TITLE_MAX: usize = 30;
@@ -20,6 +22,15 @@ const ARTICLE_MIN: usize = 100;
 /// Scheduled posts go out 2 hours to 14 days ahead.
 const SCHEDULE_MIN: i64 = 2 * 3600;
 const SCHEDULE_MAX: i64 = 14 * 86_400;
+
+/// What `--location` and `--activity` name, looked up before the summary
+/// shows them: the place, the activity and the hashtag that joins it.
+#[derive(Debug, Default)]
+pub(super) struct Picks {
+  pub place: Option<Place>,
+  pub activity: Option<Activity>,
+  pub joined: Option<Tag>,
+}
 
 /// What a draft publishes.
 pub(super) enum Kind<'a> {
@@ -89,6 +100,12 @@ pub(super) fn check(draft: &Draft, kind: &Kind) -> Result<()> {
     }
     Kind::Article(_) if draft.cover.is_none() => fail("an article needs a cover (--cover)"),
     Kind::Article(_) if draft.ai_generated => fail("Douyin's article form has no AI declaration"),
+    Kind::Article(_) if draft.location.is_some() => {
+      fail("Douyin's article form has no location (--location)")
+    }
+    Kind::Article(_) if draft.activity.is_some() => {
+      fail("Douyin's article form joins no activity (--activity)")
+    }
     Kind::Images | Kind::Article(_) if !draft.chapters.is_empty() => {
       fail("chapters are for videos (--video)")
     }
@@ -141,7 +158,7 @@ pub(super) fn article_body(path: &Path) -> Result<String> {
 }
 
 /// Show what goes out, with `notes` on it, and ask (or take `--yes`).
-pub(super) fn ask(draft: &Draft, kind: &Kind, notes: &[String]) -> Result<()> {
+pub(super) fn ask(draft: &Draft, kind: &Kind, picks: &Picks, notes: &[String]) -> Result<()> {
   let mut lines = vec![format!("Douyin {}:", kind.name())];
   let mut line = |label: &str, value: String| lines.push(format!("  {label:<11} {value}"));
   line(
@@ -174,6 +191,19 @@ pub(super) fn ask(draft: &Draft, kind: &Kind, notes: &[String]) -> Result<()> {
     if let Some(value) = value {
       line(label, value.clone());
     }
+  }
+  if let Some(place) = &picks.place {
+    line("place", format!("{} ({})", place.name, place.id));
+  }
+  if let Some(activity) = &picks.activity {
+    let mut value = activity.name.clone();
+    if let Some(tag) = &picks.joined {
+      value.push_str(&format!(" · #{}", tag.name));
+    }
+    if let Some(end) = activity.end {
+      value.push_str(&format!(" (until {})", atp_core::text::fmt_time(end)));
+    }
+    line("activity", value);
   }
   if !draft.chapters.is_empty() {
     line("chapters", chapter_summary(&draft.chapters));

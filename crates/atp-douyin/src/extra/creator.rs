@@ -38,6 +38,7 @@ pub enum CreatorCommand {
     page: PageArgs,
   },
   /// Official activities (官方活动) open to your account
+  #[command(after_long_help = EX_ACTIVITIES)]
   Activities {
     #[command(flatten)]
     page: PageArgs,
@@ -89,8 +90,16 @@ const EX_POI: &str = "\
 Examples:
   atp douyin poi 三里屯
   atp douyin poi '上海 外滩' -n 30
+  atp douyin post --video v.mp4 --title 标题 --location '#1'   # tag a post with the first
 
 More: atp guide douyin poi";
+
+const EX_ACTIVITIES: &str = "\
+Examples:
+  atp douyin activities
+  atp douyin post --video v.mp4 --title 标题 --activity '#1'   # join the first
+
+More: atp guide douyin activities";
 
 const EX_HOTSPOTS: &str = "\
 Examples:

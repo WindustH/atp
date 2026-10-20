@@ -35,6 +35,17 @@ pub struct Settings {
   pub music: Option<(String, i64)>,
   /// A video's chapters, in order; none when empty.
   pub chapters: Vec<Chapter>,
+  /// A place the post is tagged with.
+  pub place: Option<Place>,
+}
+
+/// A place (POI, 位置) as the location box picks it: its id, name and
+/// `anchor_content`, which the item's `anchor` carries.
+#[derive(Debug, Clone, Default)]
+pub struct Place {
+  pub id: String,
+  pub name: String,
+  pub content: String,
 }
 
 /// A hashtag with the id Douyin knows it by (0 when typed, not picked).
@@ -44,13 +55,16 @@ pub struct Tag {
   pub id: u64,
 }
 
-/// The words of a post: a title, the text (or an article's Markdown) and
-/// its hashtags.
+/// The words of a post: a title, the text (or an article's Markdown),
+/// its hashtags and those of the official activity (活动) it joins.
 #[derive(Debug, Clone, Copy)]
 pub struct Words<'a> {
   pub title: &'a str,
   pub body: &'a str,
   pub tags: &'a [Tag],
+  /// The hashtags of the activity, the one the activity picker puts in
+  /// first; empty when the post joins none.
+  pub activity: &'a [Tag],
 }
 
 /// An uploaded image.
@@ -77,7 +91,7 @@ pub fn video(
     "text": text.text,
     "caption": text.caption,
     "item_title": text.title,
-    "activity": "[]",
+    "activity": text.activity.to_string(),
     "text_extra": text.extra.to_string(),
     "challenges": text.challenges.to_string(),
     "mentions": "[]",
@@ -98,7 +112,7 @@ pub fn video(
     "cover": video_cover(poster, cover, horizontal),
     "mix": mix(s, false),
     "chapter": { "chapter": chapter(s) },
-    "anchor": {},
+    "anchor": video_anchor(s.place.as_ref()),
     "sync": { "should_sync": false, "sync_to_toutiao": 0 },
     "open_platform": {},
     "assistant": { "is_preview": 0, "is_post_assistant": 1 },
@@ -118,7 +132,7 @@ pub fn images(s: &Settings, words: Words, pictures: &[Picture]) -> Value {
   let mut common = json!({
     "text": text.text,
     "text_extra": text.extra.to_string(),
-    "activity": "[]",
+    "activity": text.activity.to_string(),
     "challenges": text.challenges.to_string(),
     "hashtag_source": text.source,
     "mentions": "[]",
@@ -130,7 +144,8 @@ pub fn images(s: &Settings, words: Words, pictures: &[Picture]) -> Value {
   });
   extras(&mut common, s);
   let poster = pictures.first().map(|p| p.uri.as_str()).unwrap_or_default();
-  let mut item = json!({ "common": common, "cover": { "poster": poster }, "anchor": {} });
+  let anchor = image_anchor(s.place.as_ref());
+  let mut item = json!({ "common": common, "cover": { "poster": poster }, "anchor": anchor });
   if s.mix.is_some() {
     item["mix"] = mix(s, true);
   }
@@ -263,6 +278,28 @@ fn push_size(form: &mut Form, prefix: &str, picture: &Picture) {
   if picture.width > 0 && picture.height > 0 {
     form.push((format!("{prefix}_width"), picture.width.to_string()));
     form.push((format!("{prefix}_height"), picture.height.to_string()));
+  }
+}
+
+/// A video's `anchor` (the anchor field's `beforePost`): the place's id,
+/// name and `anchor_content`, empty without one.
+fn video_anchor(place: Option<&Place>) -> Value {
+  let Some(p) = place else {
+    return json!({});
+  };
+  let mut anchor = json!({ "poi_id": p.id, "poi_name": p.name });
+  if !p.content.is_empty() {
+    anchor["anchor_content"] = json!(p.content);
+  }
+  anchor
+}
+
+/// An image post's `anchor` (`imageAnchor`'s `beforePost`): the same
+/// fields, the name first.
+fn image_anchor(place: Option<&Place>) -> Value {
+  match place {
+    Some(p) => json!({ "poi_name": p.name, "poi_id": p.id, "anchor_content": p.content }),
+    None => json!({}),
   }
 }
 

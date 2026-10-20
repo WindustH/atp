@@ -610,6 +610,7 @@ Examples:
   atp reddit post \"Body text\" --title Title --topic r/test
   atp douyin post --video clip.mp4 --title 标题 --visibility private
   atp douyin post --video talk.mp4 --title 标题 --chapters chapters.txt
+  atp douyin post --video clip.mp4 --title 标题 --location 6601136811009427463
   atp bili post 简介 --video talk.mp4 --title 标题 --cover cover.jpg --topic 编程 --category 1015
   cat draft.md | atp bili post -
 

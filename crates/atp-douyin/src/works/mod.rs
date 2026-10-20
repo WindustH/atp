@@ -15,15 +15,15 @@ use atp_core::output::note;
 use atp_core::{Action, Draft, Error, Result, Value, ValueExt};
 use rand::Rng;
 
-use self::draft::{Kind, article_body, ask, check, cover_notes};
+use self::draft::{Kind, Picks, article_body, ask, check, cover_notes};
 pub use self::edit::edit;
 
 use crate::api::Api;
 use crate::creator::Creator;
-use crate::items::{self, Picture, Settings, Tag, Words};
+use crate::items::{self, Editor, Picture, Settings, Tag, Words};
 use crate::sign::guard::Guard;
 use crate::uploads::{self, Uploader};
-use crate::{library, refs, topics, users};
+use crate::{library, places, refs, topics, users};
 
 const CREATE: &str = "/web/api/media/aweme/create_v2/";
 const DELETE: &str = "/web/api/media/aweme/delete/";
@@ -43,18 +43,35 @@ pub async fn publish(api: &Api, draft: &Draft) -> Result<Action> {
     Kind::Video(_) => cover_notes(draft.cover.as_deref(), draft.cover_horizontal.as_deref()).await,
     _ => Vec::new(),
   };
-  ask(draft, &kind, &notes)?;
+  // A place or an activity is looked up first: the summary names it.
+  let early = if draft.location.is_some() || draft.activity.is_some() {
+    Some(Creator::open(api).await?)
+  } else {
+    None
+  };
+  let picks = match &early {
+    Some(creator) => picks(creator, draft).await?,
+    None => Picks::default(),
+  };
+  ask(draft, &kind, &picks, &notes)?;
   // Fail before uploading when the session cannot sign the final call.
   api.require_login()?;
   Guard::load(&api.ctx)?;
-  let creator = Creator::open(api).await?;
-  let settings = settings(&creator, draft).await?;
+  let creator = match early {
+    Some(creator) => creator,
+    None => Creator::open(api).await?,
+  };
+  let settings = settings(&creator, draft, picks.place).await?;
   let tags = tags(&creator, draft, &kind).await?;
   let uploader = Uploader::new(&creator, &users::uid(api).await?).await?;
   let words = Words {
     title: draft.title.as_deref().unwrap_or_default(),
     body: &draft.text,
     tags: &tags,
+    activity: picks
+      .activity
+      .as_ref()
+      .map_or(&[], |a| a.hashtags.as_slice()),
   };
   let body = match kind {
     Kind::Video(path) => video(&uploader, draft, &settings, words, path).await?,
@@ -157,6 +174,7 @@ async fn article(
     title: draft.title.as_deref().unwrap_or_default(),
     body: markdown,
     tags,
+    activity: &[],
   };
   Ok(items::article(s, words, &draft.text, &cover))
 }
@@ -187,7 +205,33 @@ fn created(v: &Value, kind: &Kind) -> Result<Action> {
   })
 }
 
-async fn settings(creator: &Creator<'_>, draft: &Draft) -> Result<Settings> {
+/// The place and the activity of `--location` and `--activity`, and the
+/// hashtag the text joins the activity through.
+async fn picks(creator: &Creator<'_>, draft: &Draft) -> Result<Picks> {
+  let place = match &draft.location {
+    Some(arg) => Some(places::place(creator, arg).await?),
+    None => None,
+  };
+  let activity = match &draft.activity {
+    Some(id) => Some(topics::activity(creator, id).await?),
+    None => None,
+  };
+  let joined = activity.as_ref().and_then(|a| {
+    let typed: Vec<Tag> = topic_names(draft).map(|name| Tag { name, id: 0 }).collect();
+    Editor::typed(&draft.text, &typed).join(&a.hashtags)
+  });
+  Ok(Picks {
+    place,
+    activity,
+    joined,
+  })
+}
+
+async fn settings(
+  creator: &Creator<'_>,
+  draft: &Draft,
+  place: Option<items::Place>,
+) -> Result<Settings> {
   let mix = match &draft.collection {
     Some(arg) => Some(library::mix_slot(creator, arg).await?),
     None => None,
@@ -211,19 +255,15 @@ async fn settings(creator: &Creator<'_>, draft: &Draft) -> Result<Settings> {
     mix,
     music,
     chapters: draft.chapters.clone(),
+    place,
   })
 }
 
 /// Hashtags: typed ones for videos and image posts (id 0, as when typed
 /// in the editor); an article's topics must be ones Douyin suggests.
 async fn tags(creator: &Creator<'_>, draft: &Draft, kind: &Kind<'_>) -> Result<Vec<Tag>> {
-  let names = draft
-    .topics
-    .iter()
-    .map(|t| t.trim().trim_start_matches('#').trim().to_owned())
-    .filter(|t| !t.is_empty());
   let mut tags = Vec::new();
-  for name in names {
+  for name in topic_names(draft) {
     let id = match kind {
       Kind::Article(_) => topic_id(creator, &name).await?,
       _ => 0,
@@ -231,6 +271,15 @@ async fn tags(creator: &Creator<'_>, draft: &Draft, kind: &Kind<'_>) -> Result<V
     tags.push(Tag { name, id });
   }
   Ok(tags)
+}
+
+/// The names of `--topic`, without `#`.
+fn topic_names(draft: &Draft) -> impl Iterator<Item = String> + '_ {
+  draft
+    .topics
+    .iter()
+    .map(|t| t.trim().trim_start_matches('#').trim().to_owned())
+    .filter(|t| !t.is_empty())
 }
 
 /// The id of the topic Douyin suggests under exactly this name.

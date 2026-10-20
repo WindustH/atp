@@ -37,6 +37,8 @@ pub struct Text {
   /// The mentioned users' ids (`mentions`).
   pub mentions: Value,
   pub source: String,
+  /// The ids of the activities' hashtags the post joins (`activity`).
+  pub activity: Value,
 }
 
 /// An @-mention as the editor holds it: the name shown after `@` and the
@@ -50,14 +52,16 @@ pub struct Mention {
 }
 
 /// The editor's content: its text, the hashtags and the @-mentions in it
-/// (`start`, `end` in UTF-16 units), and the links of the loaded text it
-/// passed over.
+/// (`start`, `end` in UTF-16 units), the links of the loaded text it
+/// passed over, and the ids of the hashtags among `spans` that join an
+/// official activity, put in from the activity picker.
 #[derive(Debug, Clone, Default)]
 pub struct Editor {
   pub text: String,
   pub spans: Vec<(usize, usize, Tag)>,
   pub mentions: Vec<(usize, usize, Mention)>,
   pub links: Vec<Link>,
+  pub joined: Vec<u64>,
 }
 
 /// A `text_extra` entry of a type the editor does not know (a search
@@ -102,6 +106,14 @@ impl Link {
 }
 
 impl Editor {
+  /// The editor as a new post leaves it: the body and hashtags typed
+  /// ([`Editor::typed`]), then the activity joined.
+  pub fn written(words: Words) -> Self {
+    let mut editor = Self::typed(words.body, words.tags);
+    editor.join(words.activity);
+    editor
+  }
+
   /// The body, then each tag as `#name`, as typed in the editor.
   pub fn typed(body: &str, tags: &[Tag]) -> Self {
     let mut text = body.trim().to_owned();
@@ -120,6 +132,64 @@ impl Editor {
       spans,
       ..Self::default()
     }
+  }
+
+  /// Join an official activity through one of its `hashtags` (the
+  /// picker's first when the text has none), as the page does: a hashtag
+  /// of the text under one of their names becomes the activity's (the
+  /// editor's `replaceActivity`), else `#name` written in the text is
+  /// marked as it, else the first goes at the end (the picker's
+  /// `insertActivityTagMention`). The hashtag it joins through.
+  pub fn join(&mut self, hashtags: &[Tag]) -> Option<Tag> {
+    let tag = if let Some((_, _, span)) = self
+      .spans
+      .iter_mut()
+      .find(|(_, _, t)| hashtags.iter().any(|h| h.name == t.name))
+    {
+      let joined = hashtags.iter().find(|h| h.name == span.name)?.clone();
+      *span = joined.clone();
+      joined
+    } else if let Some((start, end, joined)) = hashtags
+      .iter()
+      .find_map(|h| self.written_at(&h.name).map(|(s, e)| (s, e, h.clone())))
+    {
+      self.spans.push((start, end, joined.clone()));
+      self.sort();
+      joined
+    } else {
+      let first = hashtags.first()?.clone();
+      if !self.text.is_empty() {
+        self.text.push(' ');
+      }
+      let start = utf16(&self.text);
+      self.text.push('#');
+      self.text.push_str(&first.name);
+      self.spans.push((start, utf16(&self.text), first.clone()));
+      first
+    };
+    self.joined.push(tag.id);
+    Some(tag)
+  }
+
+  /// Where `#name` is written in the text as a whole word, outside the
+  /// hashtags and @-mentions (UTF-16 units).
+  fn written_at(&self, name: &str) -> Option<(usize, usize)> {
+    let needle = format!("#{name}");
+    self.text.match_indices(&needle).find_map(|(at, _)| {
+      let after = self.text[at + needle.len()..].chars().next();
+      if after.is_some_and(|c| c.is_alphanumeric() || c == '_') {
+        return None;
+      }
+      let start = utf16(&self.text[..at]);
+      let end = start + utf16(&needle);
+      let taken = self
+        .spans
+        .iter()
+        .map(|(s, e, _)| (*s, *e))
+        .chain(self.mentions.iter().map(|(s, e, _)| (*s, *e)))
+        .any(|(s, e)| start < e && s < end);
+      (!taken).then_some((start, end))
+    })
   }
 
   /// Keep the @-mentions of `old` whose `@name` is still in the text, in
@@ -193,7 +263,7 @@ impl Editor {
 /// The text of a video (`eA` with a title): `title caption`, hashtag
 /// offsets moved past the title, `caption_*` offsets within the caption.
 pub fn video_text(words: Words) -> Text {
-  video_fields(words.title, &Editor::typed(words.body, words.tags))
+  video_fields(words.title, &Editor::written(words))
 }
 
 /// [`video_text`] of an editor's content.
@@ -218,13 +288,14 @@ pub fn video_fields(title: &str, editor: &Editor) -> Text {
     extra: Value::Array(spans_extra(editor, shift)),
     challenges: challenges(&tags),
     mentions: mentions(editor),
-    source: sources(&tags),
+    source: sources(editor),
+    activity: editor.activity(&editor.joined),
   }
 }
 
 /// The text of an image post (`eA`, then the title joined with `。`).
 pub fn image_text(words: Words) -> Text {
-  image_fields(words.title, &Editor::typed(words.body, words.tags))
+  image_fields(words.title, &Editor::written(words))
 }
 
 /// [`image_text`] of an editor's content.
@@ -250,7 +321,8 @@ pub fn image_fields(title: &str, editor: &Editor) -> Text {
     extra: Value::Array(extra),
     challenges: challenges(&tags),
     mentions: mentions(editor),
-    source: sources(&tags),
+    source: sources(editor),
+    activity: editor.activity(&editor.joined),
   }
 }
 
@@ -488,9 +560,21 @@ fn challenges(tags: &[Tag]) -> Value {
   )
 }
 
-/// How each hashtag was added: typed (`search`).
-fn sources(tags: &[Tag]) -> String {
-  vec!["search"; tags.len()].join("/")
+/// How each hashtag was added (the `kind` the editor keeps with it):
+/// typed (`search`), or from the activity picker (`recommend`).
+fn sources(editor: &Editor) -> String {
+  editor
+    .spans
+    .iter()
+    .map(|(_, _, t)| {
+      if t.id != 0 && editor.joined.contains(&t.id) {
+        "recommend"
+      } else {
+        "search"
+      }
+    })
+    .collect::<Vec<_>>()
+    .join("/")
 }
 
 fn utf16(s: &str) -> usize {

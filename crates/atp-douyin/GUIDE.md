@@ -290,7 +290,8 @@ web uploader does. The files are uploaded first (videos in parts, with
 progress; a video upload that stopped continues when the same command
 runs again within two hours), then the work is created. Before anything
 is uploaded ATP prints what it is about to publish (format, title,
-visibility, the AI label, files and sizes) and asks; scripts pass `-y`.
+visibility, the AI label, place, activity, files and sizes) and asks;
+scripts pass `-y`.
 The answer is the new work's id (`post` → `id`), which `delete` and
 `read` take.
 
@@ -328,6 +329,28 @@ Options for all three:
   `2026-10-20 20:00` in local time, or an RFC 3339 time).
 - `--collection NAME|ID` adds the post to one of your collections (合集)
   as its next episode (`atp douyin mixes` lists them).
+
+Videos and image posts also take (the article form has neither):
+
+- `--location ID` tags the post with a place (位置), by an id `atp
+  douyin poi KEYWORD` printed (or `#N` right after it). ATP keeps the
+  places of a week's searches, since the location box finds places by
+  name only; an id it does not know is searched for as words, and a
+  place's exact name works too. The item's `anchor` carries the place
+  as the box picks it: `poi_id`, `poi_name` and `anchor_content`, the
+  search result's `anchor_post_ext.anchor_content` with its
+  `is_commerce_intention`. Places the box does not attach at once are
+  refused: promoted housing (a lead form) and those behind a notice to
+  confirm.
+- `--activity ID` joins an official activity (官方活动), by an id `atp
+  douyin activities` printed (or `#N` right after it). It must be in
+  that list, not ended, and have a hashtag. The post joins through the
+  activity's hashtag, as the page's activity picker inserts it: a
+  `--topic` of that name, or the `#name` written in TEXT, becomes it,
+  else it goes after the text and topics. It is sent as a hashtag with
+  the activity's id (`text_extra`, `challenges`, `hashtag_source`
+  `recommend`), and the id goes in `activity`. The summary names the
+  activity, the hashtag and its end.
 
 Videos also take `--chapters FILE` (视频章节): a file of one `0:00 Title`
 line per chapter (`-` reads standard input), shown on the video's
@@ -367,6 +390,16 @@ where chapters.txt holds:
 1:05 环境搭建
 4:30 Demo
 12:10 问答
+```
+
+A place and an activity, found first:
+
+```
+atp douyin poi 三里屯                  # ids, names and addresses
+atp douyin post --video v.mp4 --title T --location <poi_id>
+atp douyin activities                  # ids, dates and hashtags
+atp douyin post --video v.mp4 --title T --activity <id>
+atp douyin post -i a.jpg -i b.jpg --title 秋天 '银杏' --location '#3'
 ```
 
 ### edit
@@ -541,18 +574,21 @@ it. Untested.
 ### drafts
 
 `drafts` lists your drafts (草稿) on the creator platform, with their
-text and times; they have no link. Saving a post as a draft (`post
---draft`) is not offered: the publish form's draft calls (`aweme/draft`
-with request types 0 to 4) are not clear enough from its bundles.
-Untested.
+text and times; they have no link. Saving a post as a draft is not
+offered: on the web only articles are saved to the creator platform.
+Its draft calls (`aweme/draft` with `req_type` 0 save, 1 open one by
+`creation_id`, 2 discard, 3 the latest, 4 one handed over from another
+page) are made for the article form, which saves every half second and
+on 暂存离开 (save and leave), and refuse any other form. On the video
+and image-post forms 暂存离开 sends nothing: the page leaves, and what it
+keeps stays in the browser. Untested.
 
 ### poi
 
 `poi KEYWORD` finds locations (POI, 位置) as the publish form's location
 box does on its domestic tab (国内): name, address (`description`),
-`extra.city` and the id. Tagging a post with one is not offered yet: the
-form sends it as the item's `anchor` (`poi_id`, `poi_name`), and `post`
-has no option for it. Untested.
+`extra.city` and the id, which `post --location` takes. ATP keeps the
+places found for a week (in its cache) for that. Untested.
 
 ### hotspots
 
@@ -567,10 +603,10 @@ Linking a post to one is not offered. Untested.
 activity picker shows your account: name, dates and hashtags
 (`description`), `extra.heat`, `extra.topics` and their ids
 (`extra.topic_ids`), `extra.end_time`, and Douyin's codes for the kind,
-reward and category. The form joins a post to an activity by inserting
-one of its hashtags as an activity hashtag with its id; `post --topic`
-adds a typed hashtag without one, and whether that joins the activity is
-not known. Joining is not offered. Untested.
+reward and category. `post --activity ID` joins one, through its
+hashtag with its id (see post). Without it, a `--topic` of an
+activity's hashtag stays a typed hashtag without the id (the page's
+editor would turn it into the activity's). Untested.
 
 ### download
 
@@ -602,11 +638,16 @@ post (with live-photo clips) and its music; `--audio-only` saves the music.
   drama (短剧), which needs a playlet qualification and its own series.
   Daily posts (日常) and text-only posts are made in the app; the web
   uploader has neither.
-- Not offered when publishing: mentions (@), locations and other anchors
-  (`poi` finds locations), hot spots (`hotspots` lists them), official
-  activities (`activities` lists them), saving as a draft, co-creators,
+- Not offered when publishing: mentions (@), anchors other than a place
+  (goods, mini programs ...), hot spots (`hotspots` lists them), saving
+  as a draft (the web saves articles only, see drafts), co-creators,
   paid content, choosing a video's music (Douyin picks it), editing or
   cropping a cover in the page's editor, and pictures inside articles.
+- `--location` and `--activity` are built from the publish form's
+  bundles and untested too. Not confirmed: whether the location box
+  answers a search for a place's id (ATP keeps searched places for
+  that reason), and whether activity hashtag ids come as numbers (ATP
+  sends numbers, as it does for an edit).
 - Writes are untested against the live site (see Risk control), and so
   are the following orders, `--search` and `--mutual` (built from the web
   client's page bundles): how `oldest` and `smart` page on, and whether

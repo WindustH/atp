@@ -99,6 +99,8 @@ impl Platform for Douyin {
       Cap::PostMusic,
       Cap::PostChapters,
       Cap::PostCoverHorizontal,
+      Cap::PostLocation,
+      Cap::PostActivity,
       Cap::Delete,
       Cap::Edit,
       Cap::EditTitle,
