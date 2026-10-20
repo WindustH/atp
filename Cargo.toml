@@ -115,7 +115,6 @@ atp-boss = { path = "crates/atp-boss" }
 atp-proginn = { path = "crates/atp-proginn" }
 atp-steam = { path = "crates/atp-steam" }
 atp-forem = { path = "crates/atp-forem" }
-atp-12306 = { path = "crates/atp-12306" }
 
 aes = "0.8"
 base64 = "0.22"
@@ -223,7 +222,6 @@ all = [
   "proginn",
   "steam",
   "forem",
-  "12306",
 ]
 zhihu = ["dep:atp-zhihu"]
 xhs = ["dep:atp-xhs"]
@@ -307,7 +305,6 @@ boss = ["dep:atp-boss"]
 proginn = ["dep:atp-proginn"]
 steam = ["dep:atp-steam"]
 forem = ["dep:atp-forem"]
-12306 = ["dep:atp-12306"]
 
 [dependencies]
 atp-core.workspace = true
@@ -393,7 +390,6 @@ atp-boss = { workspace = true, optional = true }
 atp-proginn = { workspace = true, optional = true }
 atp-steam = { workspace = true, optional = true }
 atp-forem = { workspace = true, optional = true }
-atp-12306 = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio.workspace = true

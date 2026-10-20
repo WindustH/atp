@@ -375,7 +375,6 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 name = "atp"
 version = "0.2.0"
 dependencies = [
- "atp-12306",
  "atp-1point3acres",
  "atp-51job",
  "atp-amap",
@@ -460,17 +459,6 @@ dependencies = [
  "atp-zhihu",
  "atp-zhilian",
  "tokio",
-]
-
-[[package]]
-name = "atp-12306"
-version = "0.2.0"
-dependencies = [
- "atp-core",
- "clap",
- "jiff",
- "regex",
- "serde_json",
 ]
 
 [[package]]

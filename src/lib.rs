@@ -135,9 +135,6 @@ pub use atp_1point3acres as onepoint3acres;
 // Likewise the feature `51job` is the module `fiftyonejob`.
 #[cfg(feature = "51job")]
 pub use atp_51job as fiftyonejob;
-// And the feature `12306` is the module `railway12306`.
-#[cfg(feature = "12306")]
-pub use atp_12306 as railway12306;
 #[cfg(feature = "pinduoduo")]
 pub use atp_pinduoduo as pinduoduo;
 #[cfg(feature = "podcast")]

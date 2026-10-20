@@ -120,7 +120,6 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Baidu Map 百度地图 | `bmap` | places, geocoding, routes, weather, traffic | key |
 | | Tencent Map 腾讯地图 | `qqmap` | places, geocoding, routes, districts, weather | key |
 | | Ctrip 携程 | `ctrip` | sights, hotels, reviews with sub-scores, rankings, trains and transfers, flight fares, travel notes | browser |
-| | 12306 (China Railway 中国铁路) | `12306` | stations, the day's trains between two stations with the seats left per class, a train's stops, official fares; read-only, no booking | not needed |
 | Drives | Quark Drive 夸克网盘 | `quark` | files and folders, resumable downloads, instant uploads, shares, saving shared files | QR, browser |
 | | Baidu Netdisk 百度网盘 | `baidupan` | files and folders, shares, saving shared files, offline downloads; resumable downloads and instant uploads through your own open-platform app | QR, browser, app key |
 | Chat | WeChat 微信 (ClawBot) | `wechat` | receive and answer messages | QR |

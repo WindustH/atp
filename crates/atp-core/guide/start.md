@@ -23,9 +23,7 @@ one of them.
   `matrix`, `kook`, `vocechat`, `line`, `satori`.
 - Shopping: `taobao`, `xianyu`, `jd`, `pdd`, `dewu`, `steam` (the
   Steam store: games, prices in any storefront, reviews).
-- Maps, local life and travel: `amap`, `meituan`, `dianping`, `ctrip`,
-  `12306` (China Railway 中国铁路: trains, tickets left, stops and fares;
-  read-only).
+- Maps, local life and travel: `amap`, `meituan`, `dianping`, `ctrip`.
 - Cloud drives: `quark`, `baidupan`. Music and podcasts: `ncm` (NetEase
   Cloud Music), `qqmusic` (QQ Music), `spotify`, `podcast` (Apple's
   directory, show feeds, Podcast Index), `xiaoyuzhou` (Xiaoyuzhou 小宇宙,

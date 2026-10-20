@@ -144,9 +144,7 @@ it has.
 `trains FROM TO [--date]`: the day's trains, each with departure and
 arrival, duration, seats with fares and tickets left (`余N`; 99 means
 plenty), the lowest fare in `price`. The post's time is the departure.
-FROM and TO are stations or cities (`上海`, `上海虹桥`). For the
-railway's own data (the seats left per class as 12306 shows them, a
-train's stops, official fares) see `atp guide 12306`.
+FROM and TO are stations or cities (`上海`, `上海虹桥`).
 
 ### transfers
 
