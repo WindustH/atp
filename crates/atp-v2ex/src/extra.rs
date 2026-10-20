@@ -4,7 +4,7 @@ use atp_core::cli::{PageArgs, confirm};
 use atp_core::{Data, Page, Result};
 
 use crate::api::Api;
-use crate::{refs, topics, users};
+use crate::{coins, refs, topics, users};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum Command {
@@ -36,6 +36,11 @@ pub enum Command {
   },
   /// The token in use: scope, lifetime, when it was last used
   Token,
+  /// Claim today's login reward in coins (needs a login session)
+  #[command(name = "check-in", visible_alias = "checkin", after_long_help = EX_CHECK_IN)]
+  CheckIn,
+  /// Your coins: gold, silver and bronze (needs a login session)
+  Balance,
 }
 
 const EX_TOPICS: &str = "\
@@ -45,6 +50,14 @@ Examples:
 
 Without a token only the node's first page comes back.
 More: atp guide v2ex topics";
+
+const EX_CHECK_IN: &str = "\
+Examples:
+  atp v2ex login --browser       # once: the browser's login session
+  atp v2ex check-in
+  atp v2ex balance
+
+More: atp guide v2ex check-in";
 
 pub async fn run(api: &Api, command: Command) -> Result<Data> {
   let ctx = &api.ctx;
@@ -72,5 +85,7 @@ pub async fn run(api: &Api, command: Command) -> Result<Data> {
       Data::Action(users::delete_notification(api, &id).await?)
     }
     Command::Token => Data::Value(users::token(api).await?),
+    Command::CheckIn => Data::Action(coins::check_in(api).await?),
+    Command::Balance => Data::Value(coins::balance(api).await?),
   })
 }

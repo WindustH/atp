@@ -146,7 +146,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | Developer | Stack Overflow / Stack Exchange | `so` | questions with their answers and comments, tags, users, every Stack Exchange site | app key, token |
 | | Hacker News | `hn` | front-page lists, stories, whole comment threads, search | not needed |
 | | Lobsters | `lobsters` | hottest, newest and active stories, comment threads, tags, search | not needed |
-| | V2EX | `v2ex` | hot and latest topics, replies, members, nodes, notifications | token |
+| | V2EX | `v2ex` | hot and latest topics, replies, members, nodes, notifications, daily check-in | token, browser |
 | | Juejin 掘金 | `juejin` | articles as text, pins, hot ranking, comments with replies, users, likes, collection sets, daily check-in | browser |
 | | DEV / Forem | `forem` | articles with their Markdown, popular, top and latest lists, tags, comment threads, users; publishing, drafts and editing with an API key; dev.to or any Forem community | not needed, API key |
 | Jobs | Eleduck 电鸭社区 | `eleduck` | remote and part-time jobs with tag filters, pay read from titles, discussions, comments, your applications | QR, browser, token |

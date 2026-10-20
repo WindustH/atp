@@ -1,12 +1,15 @@
 //! V2EX for all-the-platforms, through its official API ([`api`]): API 1.0
 //! without an account (hot and latest topics, topics, replies, members,
 //! nodes) and API 2.0 with a personal access token (the account,
-//! notifications, paged replies and node topics).
+//! notifications, paged replies and node topics). A browser's login
+//! session reaches what only the site's pages have: the daily login reward
+//! and the coin balance ([`coins`]).
 //!
 //! Topics are posts and replies comments ([`topics`]); members, the
 //! account, notifications and nodes are in [`users`].
 
 mod api;
+mod coins;
 mod extra;
 mod parse;
 mod refs;
@@ -34,10 +37,10 @@ impl Platform for V2ex {
     id: "v2ex",
     name: "V2EX",
     aliases: &[],
-    about: "V2EX: hot and latest topics, replies, members, nodes and notifications",
+    about: "V2EX: hot and latest topics, replies, members, nodes, notifications and the daily check-in",
     home: "https://www.v2ex.com",
-    cookie_domains: &[],
-    required_cookies: &[],
+    cookie_domains: &["v2ex.com"],
+    required_cookies: &[api::SESSION],
     caps: &[
       Cap::TokenLogin,
       Cap::Hot,
@@ -64,7 +67,7 @@ impl Platform for V2ex {
   };
 
   type Extra = Command;
-  const EXTRA_READS: &'static [&'static str] = &["node", "topics", "nodes", "token"];
+  const EXTRA_READS: &'static [&'static str] = &["node", "topics", "nodes", "token", "balance"];
 
   fn new(ctx: Ctx) -> Result<Self> {
     Ok(Self { api: Api::new(ctx) })
@@ -74,12 +77,20 @@ impl Platform for V2ex {
     &self.api.ctx
   }
 
+  /// The login session's account when there is one, else the token's.
   async fn whoami(&self) -> Result<User> {
+    if self.api.has_session() {
+      return users::session_whoami(&self.api).await;
+    }
+    users::whoami(&self.api).await
+  }
+
+  async fn token_whoami(&self) -> Result<User> {
     users::whoami(&self.api).await
   }
 
   fn logged_in(&self) -> bool {
-    self.api.token().is_some()
+    self.api.token().is_some() || self.api.has_session()
   }
 
   async fn login_token(&self, token: &str) -> Result<()> {

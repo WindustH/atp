@@ -1,6 +1,7 @@
 //! V2EX payloads (API 1.0 and 2.0 name things alike) → the shared model:
 //! topics are posts, replies are comments (with their floor), members are
-//! users, nodes are collections, notifications are notifications.
+//! users, nodes are collections, notifications are notifications. Pages of
+//! the site, read with the login session, give the member and the coins.
 
 use std::sync::LazyLock;
 
@@ -12,6 +13,11 @@ use crate::api::BASE;
 
 static TOPIC_LINK: LazyLock<Regex> =
   LazyLock::new(|| Regex::new(r#"href="(/t/\d+[^"]*)""#).unwrap());
+static TOP_MEMBER: LazyLock<Regex> =
+  LazyLock::new(|| Regex::new(r#"href="/member/([A-Za-z0-9_-]+)""#).unwrap());
+static COINS: LazyLock<Regex> = LazyLock::new(|| {
+  Regex::new(r#"(\d+)\s*<img\b[^>]*?\bsrc="[^"]*?\b(gold|silver|bronze)\b"#).unwrap()
+});
 
 /// The source text (Markdown or plain), else the rendered HTML as text.
 fn content(v: &Value) -> Option<String> {
@@ -187,4 +193,41 @@ pub fn notification(v: &Value) -> Notification {
     raw: Some(v.clone()),
     ..Notification::default()
   }
+}
+
+/// The member a page is shown to: the profile link in its top bar
+/// (`#Top`), which pages shown to nobody lack.
+pub fn page_member(html: &str) -> Option<String> {
+  let top = html.find(r#"id="Top""#)?;
+  let bar = &html[top..];
+  let bar = &bar[..bar.find(r#"id="Wrapper""#).unwrap_or(bar.len())];
+  TOP_MEMBER.captures(bar).map(|m| m[1].to_owned())
+}
+
+/// The balance a page shows (the first `balance_area` with coins): gold,
+/// silver and bronze coins, each a number before its coin's picture.
+pub fn balance(html: &str) -> Option<[u64; 3]> {
+  html
+    .match_indices("balance_area")
+    .find_map(|(at, _)| coins(&html[at..]))
+}
+
+fn coins(area: &str) -> Option<[u64; 3]> {
+  let end = ["</a>", "</div>"]
+    .iter()
+    .filter_map(|tag| area.find(tag))
+    .min()?;
+  let area = &area[..end];
+  let mut coins = [0; 3];
+  let mut found = false;
+  for m in COINS.captures_iter(area) {
+    let slot = match &m[2] {
+      "gold" => 0,
+      "silver" => 1,
+      _ => 2,
+    };
+    coins[slot] = m[1].parse().ok()?;
+    found = true;
+  }
+  found.then_some(coins)
 }

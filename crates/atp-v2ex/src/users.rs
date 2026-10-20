@@ -11,9 +11,22 @@ use crate::{parse, refs};
 /// Rows per page of notifications, when the answer does not say.
 const NOTIFICATIONS_PAGE: usize = 10;
 
+/// The token's account (API 2.0).
 pub async fn whoami(api: &Api) -> Result<User> {
   let v = api.v2("member", Vec::new()).await?;
   Ok(parse::member(v.at("result")))
+}
+
+/// The login session's account: the name in a page's top bar, then its
+/// profile from API 1.0.
+pub async fn session_whoami(api: &Api) -> Result<User> {
+  api.require_session("whoami")?;
+  let html = api.html("/balance").await?;
+  let name = parse::page_member(&html).ok_or_else(|| {
+    Error::auth("V2EX shows this session no account")
+      .with_hint("log in again: `atp v2ex login --browser` (or `--cookie 'A2=…'`)")
+  })?;
+  user(api, &name).await
 }
 
 /// Keep the token; `whoami` checks it right after.

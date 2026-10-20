@@ -137,7 +137,7 @@ $ atp tg listen -f jsonl          # 实时输出每一条新的 Telegram 消息
 | 开发者社区 | Stack Overflow / Stack Exchange | `so` | 问题及其回答与评论、标签、用户，覆盖所有 Stack Exchange 站点 | 应用 Key、Token |
 | | Hacker News | `hn` | 首页各榜单、帖子、完整评论树、搜索 | 无需登录 |
 | | Lobsters | `lobsters` | 最热、最新与活跃帖子、评论树、标签、搜索 | 无需登录 |
-| | V2EX | `v2ex` | 最热与最新主题、回复、会员、节点、通知 | Token |
+| | V2EX | `v2ex` | 最热与最新主题、回复、会员、节点、通知、每日签到 | Token、浏览器 |
 | | 掘金 | `juejin` | 文章（转为纯文本）、沸点、热榜、评论与回复、用户、点赞、收藏集、每日签到 | 浏览器 |
 | | DEV / Forem | `forem` | 文章（含 Markdown 原文）、热门、各时段最热与最新列表、标签、评论树、用户；用 API Key 发布文章、保存草稿、修改文章；dev.to 或任意 Forem 社区 | 无需登录、API Key |
 | 求职招聘 | 电鸭社区 | `eleduck` | 远程与兼职工作（按标签筛选、从标题读出薪资）、讨论、评论、我的投递 | 扫码、浏览器、Token |
