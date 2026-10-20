@@ -294,6 +294,10 @@ One of three formats per post:
 - **Video**: `--video FILE`, an optional `--title` (30 characters at
   most) and TEXT (the description, 1000 at most). Without `--cover`
   Douyin's first frame is the cover; `--cover IMAGE` uploads one.
+  A video has two covers on Douyin: the cover (竖封面, shown at 3:4) and
+  a landscape one (横封面, 4:3); `--cover-horizontal IMAGE` uploads the
+  second. Given alone, it is the main cover too, as the web page makes
+  it.
 - **Image post (图文)**: `-i IMAGE` (repeatable, in order; the first is
   the cover), `--title` (20 at most), TEXT, and `--music ID` for
   background music (ids from `atp douyin musics`).
@@ -339,8 +343,13 @@ The chapters go out with the "progress bar" setting on (`chapter_type`
 summary (全文总结) or chapter introductions, and are reviewed with the
 video.
 
+Covers go as they are: the web page crops a picked image to 3:4 or 4:3
+in its cover editor, ATP does not. The summary notes an image far from
+its shape.
+
 ```
 atp douyin post --video ep01.mp4 --cover ep01.jpg --title '『操作系统 Ep.01』绪论' --ai --visibility private
+atp douyin post --video ep01.mp4 --cover v.jpg --cover-horizontal h.jpg --title 绪论
 atp douyin post -i a.jpg -i b.jpg -i c.jpg --title 测试 '正文' --topic 摄影
 atp douyin post --article notes.md --title 读书笔记 --cover head.jpg '一句话摘要'
 atp douyin post --video talk.mp4 --title 讲座 --chapters chapters.txt
@@ -368,7 +377,12 @@ prints the change (each field as old → new) and asks (`-y` in scripts).
 - `--topic NAME` (repeatable) replaces the hashtags, which go after the
   text as they do on `post`; `--no-topics` removes them. Without TEXT the
   description stays and only its hashtags change.
-- `--cover IMAGE` uploads a new cover.
+- `--cover IMAGE` uploads a new cover (竖封面, 3:4) and
+  `--cover-horizontal IMAGE` a new landscape one (横封面, 4:3); each
+  leaves the other as it is. A video whose cover is landscape (from
+  before videos had two) keeps that one as its 4:3 cover beside a new
+  `--cover`, as the edit page does. As on `post`, the images go
+  uncropped, with a note when one is far from its shape.
 - `--visibility public|friends|private` goes through the manage page's
   permission setting; it does not count as an edit.
 - `--chapters FILE` replaces a video's chapters, through the manage
@@ -408,6 +422,7 @@ atp douyin edit '#1' --visibility private
 atp douyin edit 7697611474302225714 --chapters chapters.txt
 atp douyin edit 7697611474302225714 --no-chapters
 atp douyin edit 7697611474302225714 --video ep02-fixed.mp4
+atp douyin edit 7698707923228265754 --cover v.jpg --cover-horizontal h.jpg
 ```
 
 ### delete
@@ -460,8 +475,8 @@ post (with live-photo clips) and its music; `--audio-only` saves the music.
   uploader has neither.
 - Not offered when publishing: mentions (@), locations and other anchors,
   hot topics, co-creators, paid content, choosing a video's music (Douyin
-  picks it), editing a cover in the page's editor, and pictures inside
-  articles.
+  picks it), editing or cropping a cover in the page's editor, and
+  pictures inside articles.
 - Writes are untested against the live site (see Risk control), and so
   are the following orders, `--search` and `--mutual` (built from the web
   client's page bundles): how `oldest` and `smart` page on, and whether

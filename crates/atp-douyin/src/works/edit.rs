@@ -1,11 +1,12 @@
 //! Changing a published work as the creator platform does it: the edit
 //! page (作品管理 → 修改作品) loads the work (`item/info`) and whether it
 //! may still change (`update/desc/valid/v2`), then sends the text, title,
-//! hashtags, cover and a new video file (更换视频, the page's `video_id`
-//! once it changed) through `update/desc/`; the manage page's permission
-//! form sets who can see it (`aweme/update/`) and its chapter editor
-//! (编辑章节) the chapters ([`chapters`](super::chapters)). Nothing goes
-//! out before the person has seen the change and said yes.
+//! hashtags, covers (竖封面 and 横封面) and a new video file (更换视频,
+//! the page's `video_id` once it changed) through `update/desc/`; the
+//! manage page's permission form sets who can see it (`aweme/update/`)
+//! and its chapter editor (编辑章节) the chapters
+//! ([`chapters`](super::chapters)). Nothing goes out before the person
+//! has seen the change and said yes.
 
 use std::time::Duration;
 
@@ -15,7 +16,9 @@ use atp_core::output::note;
 use atp_core::{Action, Edit, Error, ErrorCode, Result, Value, ValueExt};
 
 use super::chapters;
-use super::draft::{IMAGE_TITLE_MAX, TEXT_MAX, VIDEO_TITLE_MAX, chapter_summary, size_of, utf16};
+use super::draft::{
+  IMAGE_TITLE_MAX, TEXT_MAX, VIDEO_TITLE_MAX, chapter_summary, cover_notes, size_of, utf16,
+};
 use super::{MANAGE_PAGE, picture};
 use crate::api::Api;
 use crate::creator::Creator;
@@ -102,7 +105,8 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
   let work = Work::of(&id, info.at("aweme"))?;
   check_media(&work, edit)?;
   let words = edit.text.is_some() || edit.title.is_some() || edit.topics.is_some();
-  let describes = words || edit.cover.is_some() || edit.video.is_some();
+  let covers = edit.cover.is_some() || edit.cover_horizontal.is_some();
+  let describes = words || covers || edit.video.is_some();
   let visibility = edit.visibility.as_deref().map(visibility_code);
   let allowed = if describes {
     editable(&creator, &id).await?
@@ -113,7 +117,13 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
     allowed.check_media()?;
   }
   let (title, editor) = change(&work, edit)?;
-  ask(&work, edit, &title, &editor, &allowed)?;
+  let notes = match work.kind {
+    Kind::Video { .. } => {
+      cover_notes(edit.cover.as_deref(), edit.cover_horizontal.as_deref()).await
+    }
+    Kind::Images => Vec::new(),
+  };
+  ask(&work, edit, &title, &editor, &allowed, &notes)?;
 
   if describes {
     let form = describe(api, &creator, &work, edit, &title, &editor, words).await?;
@@ -170,6 +180,11 @@ fn check_media(work: &Work, edit: &Edit) -> Result<()> {
       "an image post has no video or chapters to change",
     ));
   }
+  if matches!(work.kind, Kind::Images) && edit.cover_horizontal.is_some() {
+    return Err(Error::input(
+      "an image post has no 4:3 cover; leave out --cover-horizontal",
+    ));
+  }
   let Some(list) = &edit.chapters else {
     return Ok(());
   };
@@ -188,7 +203,7 @@ fn check_media(work: &Work, edit: &Edit) -> Result<()> {
   Ok(())
 }
 
-/// The `update/desc/` form, after uploading the new video and cover.
+/// The `update/desc/` form, after uploading the new video and covers.
 async fn describe(
   api: &Api,
   creator: &Creator<'_>,
@@ -198,7 +213,8 @@ async fn describe(
   editor: &Editor,
   words: bool,
 ) -> Result<items::Form> {
-  let uploader = if edit.video.is_some() || edit.cover.is_some() {
+  let uploads = edit.video.is_some() || edit.cover.is_some() || edit.cover_horizontal.is_some();
+  let uploader = if uploads {
     Some(Uploader::new(creator, &users::uid(api).await?).await?)
   } else {
     None
@@ -213,10 +229,16 @@ async fn describe(
     note("uploading the cover");
     cover = Some(picture(up.image(path).await?));
   }
+  let mut horizontal = None;
+  if let (Some(up), Some(path)) = (&uploader, &edit.cover_horizontal) {
+    note("uploading the 4:3 cover");
+    horizontal = Some(picture(up.image(path).await?));
+  }
   Ok(match &work.kind {
     Kind::Video { vid, covers } => {
       let vid = new_vid.as_deref().unwrap_or(vid);
-      items::video_modify(&work.id, vid, title, editor, covers, cover.as_ref())
+      let (new, horizontal) = (cover.as_ref(), horizontal.as_ref());
+      items::video_modify(&work.id, vid, title, editor, covers, new, horizontal)
     }
     Kind::Images => {
       let words = words.then_some((title, editor));
@@ -445,8 +467,15 @@ impl Chapters {
   }
 }
 
-/// Show the change and ask (or take `--yes`).
-fn ask(work: &Work, edit: &Edit, title: &str, editor: &Editor, allowed: &Editable) -> Result<()> {
+/// Show the change, with `notes` on it, and ask (or take `--yes`).
+fn ask(
+  work: &Work,
+  edit: &Edit,
+  title: &str,
+  editor: &Editor,
+  allowed: &Editable,
+  notes: &[String],
+) -> Result<()> {
   let hashtags = |e: &Editor| {
     let names: Vec<String> = e.tags().iter().map(|t| format!("#{}", t.name)).collect();
     names.join(" ")
@@ -478,6 +507,12 @@ fn ask(work: &Work, edit: &Edit, title: &str, editor: &Editor, allowed: &Editabl
   }
   if let Some(path) = &edit.cover {
     change.row("cover", &path.display().to_string());
+  }
+  if let Some(path) = &edit.cover_horizontal {
+    change.row("cover 4:3", &path.display().to_string());
+  }
+  for text in notes {
+    change.row("", text);
   }
   if let Some(path) = &edit.video {
     let file = format!("{} ({})", path.display(), size_of(path));

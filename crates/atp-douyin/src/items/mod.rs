@@ -61,14 +61,16 @@ pub struct Picture {
   pub height: u64,
 }
 
-/// A video item. `cover` is an uploaded cover image, else the first
-/// frame (`poster`) stands.
+/// A video item. `cover` is an uploaded cover image (竖封面, 3:4), else
+/// the first frame (`poster`) stands; `horizontal` an uploaded 4:3 cover
+/// (横封面) beside it.
 pub fn video(
   s: &Settings,
   words: Words,
   vid: &str,
   poster: &str,
   cover: Option<&Picture>,
+  horizontal: Option<&Picture>,
 ) -> Value {
   let text = video_text(words);
   let common = json!({
@@ -93,7 +95,7 @@ pub fn video(
   });
   let mut item = json!({
     "common": common,
-    "cover": video_cover(poster, cover),
+    "cover": video_cover(poster, cover, horizontal),
     "mix": mix(s, false),
     "chapter": { "chapter": chapter(s) },
     "anchor": {},
@@ -176,8 +178,9 @@ pub struct Covers {
 }
 
 /// The `update/desc/` form of a video (the edit page's `beforeModify`):
-/// the item, its text as the editor holds it, and its covers, `new` in
-/// place of the cover when one was uploaded.
+/// the item, its text as the editor holds it, and its covers: `new` in
+/// place of the cover (竖封面, `croppedUri`) and `horizontal` in place of
+/// the 4:3 one (横封面) when uploaded, each kept as it is otherwise.
 pub fn video_modify(
   item_id: &str,
   vid: &str,
@@ -185,6 +188,7 @@ pub fn video_modify(
   editor: &Editor,
   covers: &Covers,
   new: Option<&Picture>,
+  horizontal: Option<&Picture>,
 ) -> Form {
   let text = video_fields(title, editor);
   let mut form = modify_head(item_id);
@@ -193,14 +197,15 @@ pub fn video_modify(
   let cover = new.unwrap_or(&covers.cover);
   form.push(("croppedUri".into(), cover.uri.clone()));
   push_size(&mut form, "custom_cover_image", cover);
-  // The page keeps a landscape cover as the horizontal one too.
+  // The page loads a landscape cover (from before works had two) as the
+  // horizontal one, `horizontal_cover` otherwise, and keeps it so.
   let old = &covers.cover;
-  let horizontal = match (&covers.horizontal, new) {
-    (_, Some(new)) if new.width > new.height => Some(new),
-    (Some(h), _) => Some(h),
-    (None, _) if old.width > old.height => Some(old),
-    _ => None,
+  let kept = if old.width > old.height {
+    Some(old)
+  } else {
+    covers.horizontal.as_ref()
   };
+  let horizontal = horizontal.or(kept);
   if let Some(h) = horizontal {
     form.push(("horizontal_custom_cover_image_uri".into(), h.uri.clone()));
     push_size(&mut form, "horizontal_custom_cover_image", h);
@@ -352,19 +357,55 @@ pub fn chapters_upsert(item_id: &str, chapters: &[Chapter], summary: &str, bar: 
   .to_vec()
 }
 
-/// A video's cover: the first frame, or an uploaded image (`upload_poster`).
-fn video_cover(poster: &str, cover: Option<&Picture>) -> Value {
+/// A video's covers as the cover field's `beforePost` gives them: the
+/// first frame, or an uploaded image (`upload_poster`), and an uploaded
+/// 4:3 cover beside it (`horizontal_custom_cover_image_*`). Without an
+/// uploaded cover the 4:3 one is the poster, as the page makes it when
+/// only the horizontal cover was set.
+fn video_cover(poster: &str, cover: Option<&Picture>, horizontal: Option<&Picture>) -> Value {
+  let horizontal_info = horizontal.map_or(Value::Null, |h| uploaded_info(h).1);
   let Some(picture) = cover else {
     let info = json!({ "firstFrameCoverUri": poster, "videoName": "", "uri": poster, "url": "", "posterDelay": 0 });
-    return json!({
+    let mut v = json!({
       "cover_text_uri": null,
       "cover_text": null,
       "poster": poster,
       "poster_delay": 0,
-      "cover_tools_extend_info": cover_state(info, Value::Null).to_string(),
-      "cover_tools_info": "{}",
     });
+    if let Some(h) = horizontal {
+      v["poster"] = json!(h.uri);
+      v["custom_cover_image_height"] = json!(h.height);
+      v["custom_cover_image_width"] = json!(h.width);
+    }
+    let state = cover_state(info, Value::Null, horizontal_info);
+    v["cover_tools_extend_info"] = json!(state.to_string());
+    v["cover_tools_info"] = json!("{}");
+    return v;
   };
+  let (uploaded, info) = uploaded_info(picture);
+  let mut v = json!({
+    "cover_text_uri": null,
+    "cover_text": null,
+    "custom_cover_image_height": picture.height,
+    "custom_cover_image_width": picture.width,
+    "upload_poster": picture.uri,
+  });
+  if let Some(h) = horizontal {
+    v["horizontal_custom_cover_image_uri"] = json!(h.uri);
+    v["horizontal_cover_tsp"] = json!(0);
+    v["horizontal_custom_cover_image_height"] = json!(h.height);
+    v["horizontal_custom_cover_image_width"] = json!(h.width);
+    v["horizontal_sticker_text"] = Value::Null;
+  }
+  let state = cover_state(info, uploaded, horizontal_info);
+  v["cover_tools_extend_info"] = json!(state.to_string());
+  v["cover_tools_info"] = json!("{}");
+  v
+}
+
+/// An uploaded cover as the cover editor holds it: the upload, and the
+/// cover info made of it.
+fn uploaded_info(picture: &Picture) -> (Value, Value) {
   let uploaded = json!({
     "uri": picture.uri,
     "url": "",
@@ -375,20 +416,12 @@ fn video_cover(poster: &str, cover: Option<&Picture>) -> Value {
   info["posterDelay"] = json!(0);
   info["edited"] = json!(true);
   info["type"] = json!(1);
-  json!({
-    "cover_text_uri": null,
-    "cover_text": null,
-    "custom_cover_image_height": picture.height,
-    "custom_cover_image_width": picture.width,
-    "upload_poster": picture.uri,
-    "cover_tools_extend_info": cover_state(info, uploaded).to_string(),
-    "cover_tools_info": "{}",
-  })
+  (uploaded, info)
 }
 
 /// The cover editor's state (`cover_tools_extend_info`), untouched but for
-/// the cover and an uploaded background.
-fn cover_state(cover: Value, background: Value) -> Value {
+/// the cover, an uploaded background and the horizontal cover.
+fn cover_state(cover: Value, background: Value, horizontal: Value) -> Value {
   json!({
     "recommendServerInfo": { "res": [], "times": [] },
     "recommendCoverList": [],
@@ -402,7 +435,7 @@ fn cover_state(cover: Value, background: Value) -> Value {
     "recommendCoverTime": 0,
     "coverInfo": cover,
     "coverUrl": "",
-    "coverHorizontalInfo": null,
+    "coverHorizontalInfo": horizontal,
     "coverHorizontalUrl": "",
     "pasterInfo": null,
     "stateInfo": null,

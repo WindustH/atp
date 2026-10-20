@@ -15,7 +15,7 @@ use atp_core::output::note;
 use atp_core::{Action, Draft, Error, Result, Value, ValueExt};
 use rand::Rng;
 
-use self::draft::{Kind, article_body, ask, check};
+use self::draft::{Kind, article_body, ask, check, cover_notes};
 pub use self::edit::edit;
 
 use crate::api::Api;
@@ -40,7 +40,11 @@ pub async fn publish(api: &Api, draft: &Draft) -> Result<Action> {
     Kind::Article(path) => article_body(path)?,
     _ => String::new(),
   };
-  ask(draft, &kind)?;
+  let notes = match kind {
+    Kind::Video(_) => cover_notes(draft.cover.as_deref(), draft.cover_horizontal.as_deref()).await,
+    _ => Vec::new(),
+  };
+  ask(draft, &kind, &notes)?;
   // Fail before uploading when the session cannot sign the final call.
   api.require_login()?;
   Guard::load(&api.ctx)?;
@@ -102,7 +106,14 @@ async fn video(
     Some(cover) => Some(picture(up.image(cover).await?)),
     None => None,
   };
-  if video.poster.is_empty() && cover.is_none() {
+  let horizontal = match &draft.cover_horizontal {
+    Some(path) => {
+      note("uploading the 4:3 cover");
+      Some(picture(up.image(path).await?))
+    }
+    None => None,
+  };
+  if video.poster.is_empty() && cover.is_none() && horizontal.is_none() {
     return Err(Error::upstream(
       "Douyin made no first-frame cover; give one with --cover",
     ));
@@ -113,6 +124,7 @@ async fn video(
     &video.vid,
     &video.poster,
     cover.as_ref(),
+    horizontal.as_ref(),
   ))
 }
 

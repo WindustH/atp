@@ -77,6 +77,9 @@ pub(super) fn check(draft: &Draft, kind: &Kind) -> Result<()> {
     Kind::Images if draft.cover.is_some() => {
       fail("an image post's cover is its first image; leave out --cover")
     }
+    Kind::Images | Kind::Article(_) if draft.cover_horizontal.is_some() => {
+      fail("a 4:3 cover (--cover-horizontal) is for videos")
+    }
     Kind::Video(_) if draft.music.is_some() => fail("--music is for image posts and articles"),
     Kind::Article(_) if title == 0 || title > ARTICLE_TITLE_MAX => {
       fail("an article needs a --title of at most 30 characters")
@@ -137,8 +140,8 @@ pub(super) fn article_body(path: &Path) -> Result<String> {
   Ok(text)
 }
 
-/// Show what goes out and ask (or take `--yes`).
-pub(super) fn ask(draft: &Draft, kind: &Kind) -> Result<()> {
+/// Show what goes out, with `notes` on it, and ask (or take `--yes`).
+pub(super) fn ask(draft: &Draft, kind: &Kind, notes: &[String]) -> Result<()> {
   let mut lines = vec![format!("Douyin {}:", kind.name())];
   let mut line = |label: &str, value: String| lines.push(format!("  {label:<11} {value}"));
   line(
@@ -181,8 +184,48 @@ pub(super) fn ask(draft: &Draft, kind: &Kind) -> Result<()> {
   for path in files.chain(&draft.images) {
     line("file", format!("{} ({})", path.display(), size_of(path)));
   }
+  if let Some(path) = &draft.cover_horizontal {
+    line(
+      "cover 4:3",
+      format!("{} ({})", path.display(), size_of(path)),
+    );
+    if draft.cover.is_none() {
+      line(
+        "",
+        "without --cover it is the main cover too, as on the web page".into(),
+      );
+    }
+  }
+  for text in notes {
+    line("", text.clone());
+  }
   note(&lines.join("\n"));
   confirm(draft.yes, "publish this on Douyin")
+}
+
+/// Notes on covers far from the shapes Douyin shows them in: 3:4 for the
+/// cover (竖封面), 4:3 for the horizontal one (横封面). The web page crops
+/// a picked image to them; ATP sends it as it is.
+pub(super) async fn cover_notes(cover: Option<&Path>, horizontal: Option<&Path>) -> Vec<String> {
+  let mut notes = Vec::new();
+  for (path, shape, name) in [(cover, 3.0 / 4.0, "3:4"), (horizontal, 4.0 / 3.0, "4:3")] {
+    let Some(path) = path else { continue };
+    let Ok(image) = atp_core::file::Image::read(path).await else {
+      continue;
+    };
+    let (width, height) = image.size();
+    if width == 0 || height == 0 {
+      continue;
+    }
+    let off = (width as f64 / height as f64) / shape;
+    if !(0.85..=1.15).contains(&off) {
+      notes.push(format!(
+        "{} is {width}×{height}, far from {name}; it goes uncropped (the web page crops it to {name})",
+        path.display()
+      ));
+    }
+  }
+  notes
 }
 
 /// `3 · 0:00 Intro · 1:20 Setup · 4:05 Demo`, or `(none)`.
