@@ -10,7 +10,7 @@ mod text;
 use atp_core::chapters::Chapter;
 use atp_core::{Value, json};
 
-pub use self::text::{Editor, image_editor, video_editor};
+pub use self::text::{ACTIVITY, Editor, image_editor, video_editor};
 use self::text::{Text, article_extra, image_fields, image_text, video_fields, video_text};
 
 /// `media_type` of each format.

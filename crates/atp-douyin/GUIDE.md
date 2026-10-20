@@ -421,22 +421,45 @@ prints the change (each field as old → new) and asks (`-y` in scripts).
   loads (`item/info`, `update/desc/valid/v2`, the chapters), prints the
   summary with the edits left, whether the work can be edited, whether
   its video can be replaced and whether its chapters are locked or in
-  review, and what Douyin would refuse; then the exact forms it would
-  send (`update/desc/`, `chapter/upsert` or `chapter/delete/`,
-  `aweme/update/`), uploads shown as `<uri of FILE after upload>`. It
-  uploads and sends nothing. Without other options it shows the work's
-  state.
-- @-mentions and activities (活动) stay as the edit page keeps them. A
-  mention (`text_extra` type 0 with its `user_id`, and `mentions`) goes
-  back as loaded while the text stays; with a new TEXT or `--topic`,
-  each mention whose `@name` is still in the text is kept at its new
-  place, and the others go as plain text, as when one is deleted in the
-  page's editor (the summary names them). A work joins an activity
-  through a hashtag of the activity's (`activity_list[].challenge_ids`
-  of `item/info`); the form's `activity` lists those hashtags, so the
-  activity stays while its hashtag does. The summary shows mentions and
-  activities as old → new. Other kinds of links in the text, and
-  articles, are refused.
+  review, and a `refused` row for each thing ATP or Douyin would refuse;
+  then the text as `item/info` gives it (`desc`, `item_title`,
+  `caption`, each `text_extra` entry, the @-mentions loaded from them,
+  the hashtag ids of `activity_list`) and the exact forms it would send
+  (`update/desc/`, `chapter/upsert` or `chapter/delete/`,
+  `aweme/update/`), uploads shown as `<uri of FILE after upload>`;
+  `update/desc/` only when its text can be made. It uploads and sends
+  nothing. Once the work loads it always prints, and it ends with status
+  0 even when it reports a refusal (its message then says the edit would
+  be refused), as it only reports; the same edit without `--dry-run`
+  fails with that refusal's error. Without other options it shows the
+  work's state.
+- The text keeps what the edit page keeps. Its editor knows five
+  `text_extra` types: an @-mention (0), a hashtag (1), an image post's
+  title and the `。` after it (7, 8) and an activity's hashtag (9, sent
+  back as a hashtag that joins the activity). A mention (with its
+  `user_id`, and `mentions`) goes back as loaded while the text stays;
+  with a new TEXT or `--topic`, each mention whose `@name` is still in
+  the text is kept at its new place, and the others go as plain text, as
+  when one is deleted in the page's editor (the summary names them). A
+  work joins an activity through a hashtag of the activity's
+  (`activity_list[].challenge_ids` of `item/info`); the form's
+  `activity` lists those hashtags, so the activity stays while its
+  hashtag does. The summary shows mentions and activities as old → new.
+- Other `text_extra` types are links the editor does not know: a search
+  word (搜索词, type 5, douyin.com's `Search`), which Douyin adds itself:
+  a word of the text linked to a search for it, with `search_text` and
+  `search_query_id` (`item/info` can hold one that the public video
+  page does not show); a group chat (type 16, `IMGroup`); and others.
+  The edit page's editor leaves their words in the text as plain text
+  and sends only hashtags and @-mentions back, so an edit that sends the
+  text (on a video every edit through `update/desc/`, covers too; on an
+  image post one that changes its words) drops them, the text changed
+  or not. The summary names each one that goes; Douyin may link the
+  words again. (When such a link comes after the last hashtag or
+  mention, the page's editor also loses the words before it; ATP keeps
+  the text whole.) An edit that sends a text whose @-mention is not
+  where Douyin says is refused; its chapters and visibility can still
+  change. Articles are refused.
 
 ```
 atp douyin edit 7697611474302225714 --topic 操作系统 --topic 计算机

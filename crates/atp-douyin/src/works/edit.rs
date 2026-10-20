@@ -7,7 +7,8 @@
 //! and its chapter editor (编辑章节) the chapters
 //! ([`chapters`](super::chapters)). Nothing goes out before the person
 //! has seen the change and said yes; a dry run shows the change, the
-//! work's state and the forms, and uploads and sends nothing.
+//! work's state, what would be refused, the text as loaded and the forms,
+//! and uploads and sends nothing.
 
 use std::time::Duration;
 
@@ -50,9 +51,14 @@ struct Work {
   kind: Kind,
   title: String,
   editor: Editor,
+  /// Why the editor cannot load the text as the page would send it back
+  /// (an @-mention not where Douyin says), when so: `editor` then holds
+  /// the plain description, and an edit that sends the text is refused.
+  unloaded: Option<Error>,
   /// The hashtag ids of the activities (活动) the work may join
-  /// (`activity_list[].challenge_ids` of `item/info`): its hashtags among
-  /// them are the activities it joins.
+  /// (`activity_list[].challenge_ids` of `item/info`), and of those its
+  /// text holds as one (`text_extra` type 9): its hashtags among them are
+  /// the activities it joins.
   challenge_ids: Vec<u64>,
   /// 0 public, 1 only me, 2 friends (`status.private_status`).
   visibility: i64,
@@ -108,15 +114,22 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
   let creator = Creator::open(api).await?;
   let info = creator.get(ITEM_INFO).arg("item_id", &id).send().await?;
   let work = Work::of(&id, &info)?;
-  check_media(&work, edit)?;
   let words = edit.text.is_some() || edit.title.is_some() || edit.topics.is_some();
   let covers = edit.cover.is_some() || edit.cover_horizontal.is_some();
   let describes = words || covers || edit.video.is_some();
+  // `update/desc/` carries a video's text with every change, an image
+  // post's only when it changes.
+  let sends_text = words || (describes && matches!(work.kind, Kind::Video { .. }));
   let visibility = edit
     .visibility
     .as_deref()
     .map(visibility_code)
     .filter(|code| *code != work.visibility);
+  let mut refused = Refusals::new(edit.dry_run);
+  if let (true, Some(e)) = (sends_text, &work.unloaded) {
+    refused.take(Err(e.clone()))?;
+  }
+  refused.take(check_media(&work, edit))?;
   // The edits left show either way; only `update/desc/` needs one, and a
   // dry run, which shows them.
   let allowed = match editable(&creator, &id).await {
@@ -124,8 +137,17 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
     Err(e) if describes || edit.dry_run => return Err(e),
     Err(_) => Editable::default(),
   };
-  let refused = refusal(&work, edit, &allowed, describes);
-  let (title, editor, dropped) = change(&work, edit)?;
+  let changed = change(&work, edit);
+  // Whether `update/desc/` can be made: a dry run shows it then.
+  let form_ok = changed.is_ok() && !(sends_text && work.unloaded.is_some());
+  let (title, editor, dropped) = match changed {
+    Ok(changed) => changed,
+    Err(e) => {
+      refused.take(Err(e))?;
+      (work.title.clone(), work.editor.clone(), Vec::new())
+    }
+  };
+  refusal(&work, edit, (&allowed, describes), &mut refused)?;
   let mut notes = match work.kind {
     Kind::Video { .. } => {
       cover_notes(edit.cover.as_deref(), edit.cover_horizontal.as_deref()).await
@@ -139,6 +161,9 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
       names.join(" ")
     ));
   }
+  if sends_text {
+    notes.extend(links_note(&work.editor));
+  }
   let mut change = summary(
     &work,
     edit,
@@ -150,11 +175,12 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
     for (label, value) in state(&work, &allowed) {
       change.row(label, &value);
     }
-    if let Err(e) = &refused {
+    for e in &refused.list {
       change.row("refused", &e.message);
     }
     change.show();
-    if describes {
+    show_loaded(&work, &info);
+    if describes && form_ok {
       let uploads = Uploads::placeholders(edit).await;
       let form = describe(&work, (&title, &editor), words, &uploads);
       show_request(&format!("{UPDATE_DESC}?read_aid=2906"), &form);
@@ -166,14 +192,19 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
     if let Some(code) = visibility {
       show_request(UPDATE_PERMISSION, &permission_request(&work, code));
     }
+    let message = if refused.list.is_empty() {
+      "edit --dry-run: nothing was uploaded or sent, no edit was used"
+    } else {
+      "edit --dry-run: this edit would be refused (see `refused`); nothing was uploaded \
+       or sent, no edit was used"
+    };
     return Ok(
       Action::done("dry-run", &id)
         .with_id(&id)
         .with_url(work.url())
-        .with_message("edit --dry-run: nothing was uploaded or sent, no edit was used"),
+        .with_message(message),
     );
   }
-  refused?;
   change.confirm(edit.yes, "change this work on Douyin")?;
 
   if describes {
@@ -207,23 +238,122 @@ pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
   Ok(Action::done("edit", &id).with_id(&id).with_url(work.url()))
 }
 
-/// What Douyin refuses now, which a dry run shows instead: chapters it
-/// holds, an edit with none left or that it no longer takes, a new video
-/// it does not take.
-fn refusal(work: &Work, edit: &Edit, allowed: &Editable, describes: bool) -> Result<()> {
+/// What stands in an edit's way once the work is loaded: a real edit
+/// stops at the first, a dry run shows each in a `refused` row and ends
+/// well (exit 0), as it uploads and sends nothing.
+struct Refusals {
+  dry_run: bool,
+  list: Vec<Error>,
+}
+
+impl Refusals {
+  fn new(dry_run: bool) -> Self {
+    Self {
+      dry_run,
+      list: Vec::new(),
+    }
+  }
+
+  /// A check's refusal: the error of a real edit, kept by a dry run.
+  fn take(&mut self, check: Result<()>) -> Result<()> {
+    match check {
+      Err(e) if self.dry_run => {
+        self.list.push(e);
+        Ok(())
+      }
+      other => other,
+    }
+  }
+}
+
+/// What Douyin refuses now: chapters it holds, an edit with none left or
+/// that it no longer takes, a new video it does not take.
+fn refusal(
+  work: &Work,
+  edit: &Edit,
+  (allowed, describes): (&Editable, bool),
+  refused: &mut Refusals,
+) -> Result<()> {
   if let (Some(_), Some(reason)) = (&edit.chapters, &work.chapters.locked) {
-    return Err(Error::new(
+    refused.take(Err(Error::new(
       ErrorCode::PermissionDenied,
       format!("Douyin: {reason}"),
-    ));
+    )))?;
   }
   if describes {
-    allowed.check_edits()?;
+    refused.take(allowed.check_edits())?;
   }
   if edit.video.is_some() {
-    allowed.check_media()?;
+    refused.take(allowed.check_media())?;
   }
   Ok(())
+}
+
+/// The note on the links of the loaded text the edit page's editor passes
+/// over (a search word ...), when there are some: they go, their words
+/// stay.
+fn links_note(editor: &Editor) -> Option<String> {
+  let names: Vec<String> = editor.links.iter().map(|l| l.name()).collect();
+  let (verb, its) = match names.len() {
+    0 => return None,
+    1 => ("goes", "its"),
+    _ => ("go", "their"),
+  };
+  Some(format!(
+    "{} {verb}: the edit page keeps {its} words as plain text and sends back only \
+     hashtags and @-mentions",
+    names.join(", ")
+  ))
+}
+
+/// A dry run's view of the work's text as `item/info` gives it: the
+/// description, title and caption, each `text_extra` entry, the
+/// @-mentions loaded from them and the activities' hashtag ids.
+fn show_loaded(work: &Work, info: &Value) {
+  let aweme = info.at("aweme");
+  let mut lines = vec!["item/info text:".to_owned()];
+  for key in ["desc", "item_title", "caption"] {
+    let value = aweme.at(key);
+    if !value.is_null() {
+      lines.push(format!("  {key} = {value}"));
+    }
+  }
+  let extra = aweme.list("text_extra");
+  if extra.is_empty() {
+    lines.push("  text_extra = []".into());
+  }
+  for (i, e) in extra.iter().enumerate() {
+    lines.push(format!("  text_extra[{i}] = {e}"));
+  }
+  let mentions: Vec<String> = work
+    .editor
+    .mentions
+    .iter()
+    .map(|(_, _, m)| {
+      format!(
+        "@{} (user_id {})",
+        m.name,
+        m.user_id.str("").unwrap_or_default()
+      )
+    })
+    .collect();
+  let mentions = if mentions.is_empty() {
+    "(none)".to_owned()
+  } else {
+    mentions.join(", ")
+  };
+  lines.push(format!("  mentions = {mentions}"));
+  let activities: Vec<Value> = info
+    .list("activity_list")
+    .iter()
+    .flat_map(|a| a.list("challenge_ids"))
+    .cloned()
+    .collect();
+  lines.push(format!(
+    "  activity_list challenge_ids = {}",
+    Value::Array(activities)
+  ));
+  note(&lines.join("\n"));
 }
 
 /// A dry run's rows on what the work allows now: edits through the edit
@@ -505,12 +635,12 @@ impl Work {
     }
     let images = !aweme.list("images").is_empty();
     let vid = first(aweme, &["video.vid", "vid", "video.play_addr.uri"]);
-    let (kind, (title, editor)) = match vid {
-      _ if images => (Kind::Images, items::image_editor(aweme)?),
+    let (kind, loaded) = match vid {
+      _ if images => (Kind::Images, items::image_editor(aweme)),
       Some(vid) => {
         let covers = covers(aweme);
         tracing::debug!("item/info: vid {vid}, covers {covers:?}");
-        (Kind::Video { vid, covers }, items::video_editor(aweme)?)
+        (Kind::Video { vid, covers }, items::video_editor(aweme))
       }
       None => {
         tracing::debug!("item/info aweme keys: {:?}", keys(aweme));
@@ -519,17 +649,38 @@ impl Work {
         ));
       }
     };
+    // A text the editor cannot load stays as Douyin gives it, for a dry
+    // run to show.
+    let (title, editor, unloaded) = match loaded {
+      Ok((title, editor)) => (title, editor, None),
+      Err(e) => {
+        let editor = Editor {
+          text: aweme.str("desc").unwrap_or_default(),
+          ..Editor::default()
+        };
+        (aweme.str("item_title").unwrap_or_default(), editor, Some(e))
+      }
+    };
+    // The editor reads an activity's hashtag (type 9) back as an
+    // activity, which goes in `activity` whatever `activity_list` holds.
+    let activities = aweme
+      .list("text_extra")
+      .iter()
+      .filter(|e| e.i64("type") == Some(items::ACTIVITY));
     let challenge_ids = info
       .list("activity_list")
       .iter()
       .flat_map(|a| a.list("challenge_ids"))
+      .chain(activities.map(|e| e.at("hashtag_id")))
       .filter_map(|id| id.u64(""))
+      .filter(|id| *id != 0)
       .collect();
     Ok(Self {
       id: id.to_owned(),
       kind,
       title,
       editor,
+      unloaded,
       challenge_ids,
       visibility: aweme.i64("status.private_status").unwrap_or(0),
       download: aweme.i64("video_control.allow_download").unwrap_or(1),

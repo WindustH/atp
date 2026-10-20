@@ -4,18 +4,27 @@
 //! @-mentions as `@name` spans, offsets in UTF-16 units (JavaScript string
 //! lengths), an image post's title joined with `。`, an article's topics
 //! counted in code points. The edit page fills its editor back from a
-//! published work the same way.
+//! published work the same way; the links it does not know it passes
+//! over, their words left as plain text.
 
 use atp_core::{Error, ErrorCode, Result, Value, ValueExt, json};
 
 use super::{Tag, Words};
 
-/// `text_extra` types: an @-mention (the page's `Friend`), a hashtag, an
-/// image post's title and the `。` after it.
+/// `text_extra` types the page's editor knows (its `Friend`, `Hashtag`,
+/// `ImageTitle`, `ImageTitleDiviver`, `Activity`): an @-mention, a
+/// hashtag, an image post's title and the `。` after it, and an
+/// activity's hashtag, which it sends back as a hashtag.
 const MENTION: i64 = 0;
 const HASHTAG: i64 = 1;
 const IMAGE_TITLE: i64 = 7;
 const IMAGE_TITLE_DIVIDER: i64 = 8;
+pub const ACTIVITY: i64 = 9;
+/// Links Douyin puts in a text itself, which the editor does not know
+/// (douyin.com's text types `Search` and `IMGroup`): a search word (搜索词,
+/// a word that opens a search for it) and a group chat.
+const SEARCH: i64 = 5;
+const GROUP_CHAT: i64 = 16;
 
 /// The text fields the publish form derives from its editor.
 #[derive(Debug)]
@@ -41,12 +50,55 @@ pub struct Mention {
 }
 
 /// The editor's content: its text, the hashtags and the @-mentions in it
-/// (`start`, `end` in UTF-16 units).
+/// (`start`, `end` in UTF-16 units), and the links of the loaded text it
+/// passed over.
 #[derive(Debug, Clone, Default)]
 pub struct Editor {
   pub text: String,
   pub spans: Vec<(usize, usize, Tag)>,
   pub mentions: Vec<(usize, usize, Mention)>,
+  pub links: Vec<Link>,
+}
+
+/// A `text_extra` entry of a type the editor does not know (a search
+/// word, type 5): the page's loader leaves its words in the text as plain
+/// text and keeps nothing else of it, so it is not sent back.
+#[derive(Debug, Clone)]
+pub struct Link {
+  pub kind: i64,
+  /// The words it marks in the description (else its `search_text`).
+  pub words: String,
+}
+
+impl Link {
+  fn of(e: &Value, kind: i64, desc: &str) -> Self {
+    let units: Vec<u16> = desc.encode_utf16().collect();
+    let end = offset(e, "end").min(units.len());
+    let start = offset(e, "start").min(end);
+    let words = String::from_utf16_lossy(&units[start..end])
+      .trim()
+      .to_owned();
+    let words = if words.is_empty() {
+      e.str("search_text").unwrap_or_default()
+    } else {
+      words
+    };
+    Self { kind, words }
+  }
+
+  /// What it is, as the summary names it: `search word 内核态 (text_extra
+  /// type 5)`.
+  pub fn name(&self) -> String {
+    let what = match self.kind {
+      SEARCH => "search word",
+      GROUP_CHAT => "group chat link",
+      _ => "link",
+    };
+    match self.words.as_str() {
+      "" => format!("{what} (text_extra type {})", self.kind),
+      words => format!("{what} {words} (text_extra type {})", self.kind),
+    }
+  }
 }
 
 impl Editor {
@@ -66,7 +118,7 @@ impl Editor {
     Self {
       text,
       spans,
-      mentions: Vec::new(),
+      ..Self::default()
     }
   }
 
@@ -250,7 +302,8 @@ fn mentions(editor: &Editor) -> Value {
 
 /// A published video's title and editor content, as the edit page fills
 /// them in: the caption (the description when there is neither a title
-/// nor a caption) with its spans moved into it.
+/// nor a caption) with its spans moved into it, the links it does not
+/// know passed over.
 pub fn video_editor(aweme: &Value) -> Result<(String, Editor)> {
   let title = aweme.str("item_title").unwrap_or_default();
   let caption = aweme.str("caption").unwrap_or_default();
@@ -268,7 +321,7 @@ pub fn video_editor(aweme: &Value) -> Result<(String, Editor)> {
   };
   for e in aweme.list("text_extra") {
     let kind = e.i64("type").unwrap_or(-1);
-    if kind == IMAGE_TITLE || kind == IMAGE_TITLE_DIVIDER {
+    if kind == IMAGE_TITLE || kind == IMAGE_TITLE_DIVIDER || editor.passes_over(e, kind, &desc) {
       continue;
     }
     let (cs, ce) = (offset(e, "caption_start"), offset(e, "caption_end"));
@@ -287,7 +340,8 @@ pub fn video_editor(aweme: &Value) -> Result<(String, Editor)> {
 }
 
 /// A published image post's title and editor content: its description is
-/// the title, `。` and the text (`text_extra` types 7 and 8 mark them).
+/// the title, `。` and the text (`text_extra` types 7 and 8 mark them);
+/// the links the editor does not know are passed over.
 pub fn image_editor(aweme: &Value) -> Result<(String, Editor)> {
   let desc = aweme.str("desc").unwrap_or_default();
   let units: Vec<u16> = desc.encode_utf16().collect();
@@ -308,7 +362,7 @@ pub fn image_editor(aweme: &Value) -> Result<(String, Editor)> {
   };
   for e in extra {
     let kind = e.i64("type").unwrap_or(-1);
-    if kind == IMAGE_TITLE || kind == IMAGE_TITLE_DIVIDER {
+    if kind == IMAGE_TITLE || kind == IMAGE_TITLE_DIVIDER || editor.passes_over(e, kind, &desc) {
       continue;
     }
     let start = offset(e, "start").saturating_sub(body_at);
@@ -320,13 +374,26 @@ pub fn image_editor(aweme: &Value) -> Result<(String, Editor)> {
 }
 
 impl Editor {
+  /// Whether the editor passes over a loaded `text_extra` entry: one of a
+  /// type it does not know (the page's loader takes only its own), whose
+  /// words stay in the text as plain text. It goes in `links`, with the
+  /// words it marks in `desc`.
+  fn passes_over(&mut self, e: &Value, kind: i64, desc: &str) -> bool {
+    let known = [MENTION, HASHTAG, IMAGE_TITLE, IMAGE_TITLE_DIVIDER, ACTIVITY];
+    if known.contains(&kind) {
+      return false;
+    }
+    self.links.push(Link::of(e, kind, desc));
+    true
+  }
+
   /// Take a loaded `text_extra` span at `start..end` of the text: a
-  /// hashtag (an activity's too: it is a hashtag in `text_extra`) or an
-  /// @-mention, whose name is the text after its `@`, as the page shows
-  /// it. Other kinds are refused, as ATP cannot write them back.
+  /// hashtag (an activity's too, which the editor reads back as `#name`)
+  /// or an @-mention, whose name is the text after its `@`, as the page
+  /// shows it.
   fn load(&mut self, e: &Value, kind: i64, (start, end): (usize, usize)) -> Result<()> {
     match kind {
-      HASHTAG => self.spans.push((
+      HASHTAG | ACTIVITY => self.spans.push((
         start,
         end,
         Tag {
@@ -352,15 +419,7 @@ impl Editor {
         };
         self.mentions.push((start, end, mention));
       }
-      other => {
-        return Err(Error::new(
-          ErrorCode::UnsupportedOperation,
-          format!(
-            "this work's text holds a link ATP cannot write back (text_extra type {other}); \
-             change it on creator.douyin.com"
-          ),
-        ));
-      }
+      _ => {}
     }
     Ok(())
   }
