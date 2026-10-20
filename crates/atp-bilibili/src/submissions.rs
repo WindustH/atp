@@ -1,13 +1,14 @@
 //! New videos (投稿) as the creator center's upload page submits them
 //! (member.bilibili.com/york/videoup, bundle `index.*.js`:
 //! `getBasicParams`, `getSubmitParams`, `submitArchive`): the file and the
-//! cover through [`uploads`], chapters through the player editor's
-//! pre-submit ([`chapters`]), then the archive through `add/v3`. The
-//! account's settings come from `archive/pre`: which categories (分区) it
-//! picks from (the new kind, `type_mode` 2, or the classic `typelist`),
-//! the creator's statements (创作声明) it offers and when a scheduled
-//! video may go out. Nothing goes out before the person has seen a
-//! summary and said yes; Bilibili reviews every video before it shows.
+//! covers (16:9, and 4:3 when given) through [`uploads`], chapters
+//! through the player editor's pre-submit ([`chapters`]), then the
+//! archive through `add/v3`. The account's settings come from
+//! `archive/pre`: which categories (分区) it picks from (the new kind,
+//! `type_mode` 2, or the classic `typelist`), the creator's statements
+//! (创作声明) it offers and when a scheduled video may go out. Nothing
+//! goes out before the person has seen a summary and said yes; Bilibili
+//! reviews every video before it shows.
 
 use std::path::Path;
 
@@ -51,6 +52,8 @@ struct Pre {
 struct Plan<'a> {
   video: &'a Path,
   cover: &'a Path,
+  /// The 4:3 cover beside the 16:9 one (`cover43`).
+  cover43: Option<&'a Path>,
   title: String,
   tags: Vec<String>,
   category: (String, String),
@@ -102,13 +105,22 @@ pub async fn publish(api: &Api, draft: &Draft) -> Result<Action> {
     statement,
     ..partial
   };
-  ask(draft, &plan)?;
+  let shape = match plan.cover43 {
+    Some(path) => uploads::cover43_note(path).await,
+    None => None,
+  };
+  ask(draft, &plan, shape)?;
   let file = uploads::video(api, plan.video).await?;
-  let cover = uploads::cover(api, plan.cover, uploads::PAGE).await?;
+  let cover = uploads::cover(api, plan.cover, "cover", uploads::PAGE).await?;
+  let cover43 = match plan.cover43 {
+    Some(path) => Some(uploads::cover(api, path, "4:3 cover", uploads::PAGE).await?),
+    None => None,
+  };
   if let Some((list, duration)) = plan.chapters {
     chapters::submit_new(api, file.cid, list, duration).await?;
   }
-  let body = body(draft, &plan, &pre, &file, &cover, &api.csrf()?);
+  let covers = (cover.as_str(), cover43.as_deref());
+  let body = body(draft, &plan, &pre, &file, covers, &api.csrf()?);
   // `csrf` joins the query too, and is signed with the rest.
   let data = api
     .post(ADD)
@@ -170,6 +182,7 @@ fn check(draft: &Draft) -> Result<Plan<'_>> {
   Ok(Plan {
     video,
     cover,
+    cover43: draft.cover_horizontal.as_deref(),
     title,
     tags,
     category: Default::default(),
@@ -323,8 +336,9 @@ fn statement(pre: &Pre, ai: bool) -> Result<(i64, String)> {
   }
 }
 
-/// Show what goes out and ask (or take `--yes`).
-fn ask(draft: &Draft, plan: &Plan) -> Result<()> {
+/// Show what goes out, with a note on the 4:3 cover's shape, and ask (or
+/// take `--yes`).
+fn ask(draft: &Draft, plan: &Plan, shape: Option<String>) -> Result<()> {
   let mut lines = vec!["Bilibili video:".to_owned()];
   let mut line = |label: &str, value: String| lines.push(format!("  {label:<11} {value}"));
   line("title", plan.title.clone());
@@ -354,6 +368,15 @@ fn ask(draft: &Draft, plan: &Plan) -> Result<()> {
   for path in [plan.video, plan.cover] {
     line("file", format!("{} ({})", path.display(), size_of(path)));
   }
+  if let Some(path) = plan.cover43 {
+    line(
+      "cover 4:3",
+      format!("{} ({})", path.display(), size_of(path)),
+    );
+  }
+  if let Some(text) = shape {
+    line("", text);
+  }
   line(
     "review",
     "Bilibili reviews the video before it shows".into(),
@@ -363,25 +386,26 @@ fn ask(draft: &Draft, plan: &Plan) -> Result<()> {
 }
 
 /// The record `add/v3` takes for one file: what the upload page always
-/// sends for an original video, and the rest only when asked for. The
-/// page's other settings at their defaults (4:3 cover, AI cover, dynamic
-/// text, 二创, reservation, push, space, watermark, subtitles, `web_os`)
-/// stay out: Bilibili answered records with them 21001, and takes the
-/// video without them.
+/// sends for an original video, and the rest (the 4:3 cover among them)
+/// only when asked for. The page's other settings at their defaults (AI
+/// cover, dynamic text, 二创, reservation, push, space, watermark,
+/// subtitles, `web_os`) stay out: Bilibili answered records with them
+/// 21001, and takes the video without them.
 fn body(
   draft: &Draft,
   plan: &Plan,
   pre: &Pre,
   file: &uploads::Uploaded,
-  cover: &str,
+  (cover, cover43): (&str, Option<&str>),
   csrf: &str,
 ) -> Value {
-  let mut body = json!({
-    "cover": cover,
-    "title": plan.title,
-    "copyright": 1,
-    "creation_statement": { "id": plan.statement.0 },
-  });
+  let mut body = json!({ "cover": cover });
+  if let Some(cover43) = cover43 {
+    body["cover43"] = cover43.into();
+  }
+  body["title"] = plan.title.clone().into();
+  body["copyright"] = 1.into();
+  body["creation_statement"] = json!({ "id": plan.statement.0 });
   if pre.new_kind {
     body["human_type2"] = plan.category.0.parse::<i64>().unwrap_or(0).into();
   }

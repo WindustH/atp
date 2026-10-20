@@ -207,6 +207,7 @@ async fn upload(api: &Api, path: &Path) -> Result<Value> {
 pub fn check_options(draft: &Draft) -> Result<()> {
   let video_only = [
     (draft.cover.is_some(), "--cover"),
+    (draft.cover_horizontal.is_some(), "--cover-horizontal"),
     (draft.visibility.is_some(), "--visibility"),
     (draft.schedule.is_some(), "--schedule"),
     (draft.ai_generated, "--ai"),

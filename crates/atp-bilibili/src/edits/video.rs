@@ -4,9 +4,10 @@
 //! The page loads the whole archive (`archive/view`) and sends the whole
 //! record back through `vu/web/edit`, not a difference: every field below
 //! is copied from what was loaded, and only the asked ones change. A new
-//! cover goes up through `cover/up` first; a new file for a part (换源)
-//! through [`uploads`], and the part then names it (`filename`, `cid`).
-//! Bilibili reviews the video again after a change. Chapters are not in
+//! cover (16:9 or 4:3) goes up through `cover/up` first; a new file for
+//! a part (换源) through [`uploads`], and the part then names it
+//! (`filename`, `cid`). Bilibili reviews the video again after a
+//! change. Chapters are not in
 //! the archive: they go through the player editor ([`chapters`]), and a
 //! change of chapters alone is not reviewed again.
 
@@ -59,7 +60,11 @@ pub async fn edit(api: &Api, v: &Video, edit: &Edit) -> Result<Action> {
   };
   let old = fields(view.at("archive"));
   let new = change(view.at("archive"), &old, edit)?;
-  ask(v, (&old, &new), edit, part, chapters.as_ref())?;
+  let shape = match &edit.cover_horizontal {
+    Some(path) => uploads::cover43_note(path).await,
+    None => None,
+  };
+  ask(v, (&old, &new), edit, part, chapters.as_ref(), shape)?;
   if archive {
     send(api, (&view, &new), edit, part, referer).await?;
   }
@@ -73,7 +78,7 @@ pub async fn edit(api: &Api, v: &Video, edit: &Edit) -> Result<Action> {
   )
 }
 
-/// Upload what the edit brings (a file for `part`, a cover), then send
+/// Upload what the edit brings (a file for `part`, covers), then send
 /// the record.
 async fn send(
   api: &Api,
@@ -87,11 +92,15 @@ async fn send(
     None => None,
   };
   let cover = match &edit.cover {
-    Some(path) => Some(uploads::cover(api, path, &referer).await?),
+    Some(path) => Some(uploads::cover(api, path, "cover", &referer).await?),
+    None => None,
+  };
+  let cover43 = match &edit.cover_horizontal {
+    Some(path) => Some(uploads::cover(api, path, "4:3 cover", &referer).await?),
     None => None,
   };
   let replaced = file.as_ref().map(|f| (part, f));
-  let body = body(view, new, cover, replaced, &api.csrf()?);
+  let body = body(view, new, (cover, cover43), replaced, &api.csrf()?);
   // The page's query: the time, then `csrf` (not signed).
   api
     .post(EDIT)
@@ -111,6 +120,7 @@ fn changes_archive(edit: &Edit) -> bool {
     || edit.title.is_some()
     || edit.topics.is_some()
     || edit.cover.is_some()
+    || edit.cover_horizontal.is_some()
     || edit.visibility.is_some()
     || edit.video.is_some()
 }
@@ -166,7 +176,9 @@ fn refuse(view: &Value, edit: &Edit, archive: bool) -> Result<()> {
     Some("the video cannot change before it opens (开放浏览前您的稿件暂无法编辑)")
   } else if truthy(a.at("attrs.is_premiere")) && !truthy(a.at("attrs.is_played")) {
     Some("a premiere cannot change before it has played (首映结束之后才可以编辑)")
-  } else if edit.cover.is_some() && !a.list("ab_cover_info.ab_covers").is_empty() {
+  } else if (edit.cover.is_some() || edit.cover_horizontal.is_some())
+    && !a.list("ab_cover_info.ab_covers").is_empty()
+  {
     Some("a cover test is running (封面测试中，暂不支持编辑封面)")
   } else {
     None
@@ -257,13 +269,15 @@ fn change(a: &Value, old: &Fields, edit: &Edit) -> Result<Fields> {
   Ok(new)
 }
 
-/// Show the change and ask (or take `--yes`).
+/// Show the change, with a note on the 4:3 cover's shape, and ask (or
+/// take `--yes`).
 fn ask(
   v: &Video,
   (old, new): (&Fields, &Fields),
   edit: &Edit,
   part: usize,
   chapters: Option<&chapters::Change>,
+  shape: Option<String>,
 ) -> Result<()> {
   let visibility = |private: bool| if private { "private" } else { "public" };
   let mut change = Change::new(format!("Bilibili video {}:", v.bvid));
@@ -278,6 +292,12 @@ fn ask(
     );
   if let Some(path) = &edit.cover {
     change.row("cover", &path.display().to_string());
+  }
+  if let Some(path) = &edit.cover_horizontal {
+    change.row("cover 4:3", &path.display().to_string());
+  }
+  if let Some(text) = &shape {
+    change.row("", text);
   }
   if let Some(c) = chapters {
     change.field("chapters", &summary(&c.old), &summary(&c.new));

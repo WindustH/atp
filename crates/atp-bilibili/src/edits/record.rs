@@ -28,16 +28,15 @@ pub(super) struct Fields {
 }
 
 /// The record `vu/web/edit` takes: the archive as loaded, with the new
-/// fields, and a new file in place of a part's.
+/// fields and covers (16:9, 4:3), and a new file in place of a part's.
 pub(super) fn body(
   view: &Value,
   new: &Fields,
-  cover: Option<String>,
+  (cover, cover43): (Option<String>, Option<String>),
   replaced: Option<(usize, &Uploaded)>,
   csrf: &str,
 ) -> Value {
   let a = view.at("archive");
-  let new_cover = cover.is_some();
   let cover = cover.unwrap_or_else(|| https(&a.str("cover").unwrap_or_default()));
   let mut body = json!({
     "aid": a.at("aid"),
@@ -56,7 +55,7 @@ pub(super) fn body(
     "topic_grey": 1,
   });
   own(a, new, &mut body);
-  kept(view, new, new_cover, &mut body);
+  kept(view, new, cover43, &mut body);
   body["csrf"] = csrf.into();
   body
 }
@@ -101,18 +100,15 @@ fn own(a: &Value, new: &Fields, body: &mut Value) {
   }
 }
 
-/// The settings the video changed from the defaults, as loaded; and the
+/// The settings the video changed from the defaults, as loaded, and the
+/// 4:3 cover: `cover43` when uploaded, else the video's own; and the
 /// visibility when it is or becomes private.
-fn kept(view: &Value, new: &Fields, new_cover: bool, body: &mut Value) {
+fn kept(view: &Value, new: &Fields, cover43: Option<String>, body: &mut Value) {
   let a = view.at("archive");
-  // A new cover clears the 4:3 crop (the page has no 4:3 editor either).
-  if let Some(cover43) = a.str("cover43") {
-    body["cover43"] = if new_cover {
-      String::new()
-    } else {
-      https(&cover43)
-    }
-    .into();
+  // The page's cover editor holds both covers and keeps the 4:3 one when
+  // only the 16:9 one changes.
+  if let Some(cover43) = cover43.or_else(|| a.str("cover43").map(|c| https(&c))) {
+    body["cover43"] = cover43.into();
   }
   if !a.list("ab_cover_info.ab_covers").is_empty() {
     body["is_ab_cover"] = true.into();

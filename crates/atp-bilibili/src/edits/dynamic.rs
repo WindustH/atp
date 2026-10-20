@@ -52,8 +52,10 @@ struct Topic {
 
 /// Change one of the account's dynamics.
 pub async fn edit(api: &Api, id: &str, edit: &Edit) -> Result<Action> {
-  if edit.cover.is_some() {
-    return Err(Error::unsupported("edit --cover (dynamics)"));
+  if edit.cover.is_some() || edit.cover_horizontal.is_some() {
+    return Err(Error::unsupported(
+      "edit --cover / --cover-horizontal (dynamics)",
+    ));
   }
   if edit.visibility.is_some() {
     return Err(Error::unsupported("edit --visibility (dynamics)"));

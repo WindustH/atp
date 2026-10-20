@@ -272,15 +272,16 @@ fn parts(tags: &[String]) -> Value {
   json!({ "parts": parts })
 }
 
-/// Upload a cover (JPEG or PNG); its address.
-pub async fn cover(api: &Api, path: &Path, referer: &str) -> Result<String> {
+/// Upload a cover (JPEG or PNG), the 16:9 one or the 4:3 one, `name`
+/// in the progress note; its address.
+pub async fn cover(api: &Api, path: &Path, name: &str, referer: &str) -> Result<String> {
   let image = Image::read(path).await?;
   if !matches!(image.mime, "image/jpeg" | "image/png") {
     return Err(Error::input("a Bilibili cover is a JPEG or PNG image"));
   }
   let data = base64::engine::general_purpose::STANDARD.encode(&image.data);
   let cover = format!("data:{};base64,{data}", image.mime);
-  note("uploading the cover");
+  note(&format!("uploading the {name}"));
   let v = api
     .post(COVER)
     .multipart(vec![FormPart::text("cover", cover)])
@@ -291,6 +292,23 @@ pub async fn cover(api: &Api, path: &Path, referer: &str) -> Result<String> {
   v.str("url")
     .map(|url| https(&url))
     .ok_or_else(|| Error::upstream("the cover upload returned no address"))
+}
+
+/// A note on a 4:3 cover (首页推荐 4:3 封面) more than 15% off that
+/// shape: the page crops a picked image to it in its cover editor, ATP
+/// sends it as it is.
+pub async fn cover43_note(path: &Path) -> Option<String> {
+  let (width, height) = Image::read(path).await.ok()?.size();
+  if width == 0 || height == 0 {
+    return None;
+  }
+  let off = (width as f64 / height as f64) / (4.0 / 3.0);
+  (!(0.85..=1.15).contains(&off)).then(|| {
+    format!(
+      "{} is {width}×{height}, far from 4:3; it goes uncropped (the web page crops it to 4:3)",
+      path.display()
+    )
+  })
 }
 
 /// An address as the creator center's pages pass it on: their client

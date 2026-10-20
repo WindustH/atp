@@ -168,13 +168,20 @@ images). Replies go through `comment`.
 
 With `--video FILE`, submits a video (投稿) the way the creator center's
 upload page does: the file goes up in 10 MB parts (a stopped upload
-continues where it was when run again within the hour), then the cover,
+continues where it was when run again within the hour), then the covers,
 then the archive. It prints what goes out and asks first (`-y` in
 scripts); Bilibili reviews every video before it shows.
 
 - `--title` (at most 80 characters), `--cover IMAGE` (JPEG or PNG),
   `--category ID` and at least one `--topic` (the tags, 10 at most) are
   required; TEXT is the description (简介, at most 2000 characters).
+- A video has two covers on Bilibili: the cover (`--cover`, 16:9, shown
+  in the uploader's space) and a 4:3 one (首页推荐 4:3 封面, shown in
+  recommendations). `--cover-horizontal IMAGE` (JPEG or PNG) uploads the
+  second; without it ATP sends none (the page sends a 4:3 crop of the
+  cover). The page's cover editor crops a picked image to each shape;
+  ATP sends them as they are, and the summary notes a 4:3 cover more
+  than 15% off that shape.
 - `--category` is a category (分区) id from `atp bili categories`, which
   lists the ones the account picks from: the new kind most accounts
   have now, or the classic sub-categories. A video in the new kind also
@@ -202,6 +209,8 @@ scripts); Bilibili reviews every video before it shows.
 atp bili categories
 atp bili post '简介' --video talk.mp4 --title '标题' --cover cover.jpg \
   --topic 编程 --topic Rust --category 1015 --chapters chapters.txt
+atp bili post '简介' --video talk.mp4 --title '标题' --cover 16x9.jpg \
+  --cover-horizontal 4x3.jpg --topic 编程 --category 1015
 ```
 
 ### edit
@@ -218,8 +227,10 @@ changes them:
 - `--topic NAME` (repeatable) replaces the tags, 10 at most; a topic the
   video joined (参与话题) keeps its tag in front. A video keeps at least
   one tag, so `--no-topics` is refused.
-- `--cover IMAGE` uploads a new cover (a 16:9 JPEG or PNG); the 4:3 crop
-  is cleared.
+- `--cover IMAGE` uploads a new cover (a 16:9 JPEG or PNG) and
+  `--cover-horizontal IMAGE` a new 4:3 one; each leaves the other as it
+  is, as the edit page's cover editor does. As on `post`, the images go
+  uncropped, with a note when the 4:3 one is far from its shape.
 - `--visibility public|private`; `friends` is refused.
 - `--video FILE` replaces the file of the video (换源), uploaded as for
   `post`; a video in several parts takes `--part N` (or a `?p=N` link).
@@ -241,7 +252,7 @@ changes them:
   their defaults; those at their defaults are left out). Joint
   submissions (联合投稿), videos for
   chargers (充电专属), interactive videos and videos with a commercial
-  order are refused, and so is a new cover while a cover test runs.
+  order are refused, and so are new covers while a cover test runs.
 - Bilibili reviews a changed video again. While a video is reviewed, or
   before it first opens, Bilibili refuses the edit and says why.
 
@@ -253,7 +264,8 @@ Dynamics (`t.bilibili.com/ID`) change the way their editor changes them:
 - `--title` sets the title, an empty one removes it; reposts have none.
 - `--topic ID` sets the one topic (a numeric topic id, as on `post`);
   `--no-topics` removes it.
-- `--cover`, `--visibility`, `--chapters` and `--video` are refused.
+- `--cover`, `--cover-horizontal`, `--visibility`, `--chapters` and
+  `--video` are refused.
 - Only dynamics Bilibili offers to edit change: your own, not while they
   are reviewed, and not with a commercial card. The summary shows the
   edits left and Bilibili's warning when it gives them.
@@ -261,6 +273,7 @@ Dynamics (`t.bilibili.com/ID`) change the way their editor changes them:
 ```
 atp bili edit BV1xx411c7mD --title '新标题' --topic 编程 --topic Rust
 atp bili edit BV1xx411c7mD --visibility private
+atp bili edit BV1xx411c7mD --cover-horizontal 4x3.jpg
 atp bili edit BV1xx411c7mD --chapters chapters.txt
 atp bili edit BV1xx411c7mD --video new-cut.mp4 --part 2
 atp bili edit https://t.bilibili.com/1012345678901234567 '改过的文字'
