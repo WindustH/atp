@@ -24,11 +24,11 @@ cover and visibility.
   (`edit-cover-horizontal`); `--visibility public|friends|private`
   (`edit-visibility`); `--chapters FILE` replaces a video's chapters and
   `--no-chapters` removes them (`edit-chapters`); `--video PATH` replaces
-  a published video's file, `--part N` naming the part of a video in
-  several parts (`edit-video`); `--dry-run` prints the change and the
-  requests it would make, uploading and sending nothing, and without
-  other options the post's state (`edit-dry-run`). Elsewhere they are
-  hidden and refused.
+  a published video's file (`edit-video`); `--part N` names the part of
+  a video in several parts that `--video` or `--chapters` change
+  (`edit-part`); `--dry-run` prints the change and the requests it would
+  make, uploading and sending nothing, and without other options the
+  post's state (`edit-dry-run`). Elsewhere they are hidden and refused.
 - A chapters file holds one `0:00 Title` line per chapter (the format in
   `atp guide post`); `-` reads it from standard input unless TEXT is read
   from there. Each platform's guide gives its rules.

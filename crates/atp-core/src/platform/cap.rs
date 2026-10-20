@@ -77,13 +77,16 @@ pub enum Cap {
   EditVisibility,
   /// `edit --chapters` and `--no-chapters`.
   EditChapters,
-  /// `edit --video` (and `--part`): a new file for a published video.
+  /// `edit --video`: a new file for a published video.
   EditVideo,
   /// `edit --cover-horizontal`: a new landscape (4:3) cover beside the main one.
   EditCoverHorizontal,
   /// `edit --dry-run`: the change and the requests it would make, with
   /// nothing uploaded or sent.
   EditDryRun,
+  /// `edit --part N`: the part of a video in several parts that `--video`
+  /// or `--chapters` change.
+  EditPart,
   Listen,
   /// A drive: `search`, `read` and `download` work on files and folders.
   Files,
@@ -186,6 +189,7 @@ impl Cap {
     Cap::EditVideo,
     Cap::EditCoverHorizontal,
     Cap::EditDryRun,
+    Cap::EditPart,
     Cap::Listen,
     Cap::Files,
     Cap::FollowingSearch,
@@ -272,6 +276,7 @@ impl Cap {
       Cap::EditVideo => "edit-video",
       Cap::EditCoverHorizontal => "edit-cover-horizontal",
       Cap::EditDryRun => "edit-dry-run",
+      Cap::EditPart => "edit-part",
       Cap::Listen => "listen",
       Cap::Files => "files",
       Cap::FollowingSearch => "following-search",

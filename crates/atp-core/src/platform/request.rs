@@ -116,7 +116,7 @@ pub struct Edit {
   /// A new file for the video ([`Cap::EditVideo`](super::Cap::EditVideo)).
   pub video: Option<PathBuf>,
   /// The part (from 1) of a video in several parts that `video` or
-  /// `chapters` change.
+  /// `chapters` change ([`Cap::EditPart`](super::Cap::EditPart)).
   pub part: Option<usize>,
   /// The person said yes ahead (`--yes`); platforms that show the change
   /// before sending it ask otherwise.

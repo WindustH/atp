@@ -407,7 +407,7 @@ prints the change (each field as old → new) and asks (`-y` in scripts).
   where Douyin says so. The cover stays unless `--cover` gives one.
   `--video` and `--chapters` go in separate edits: set the chapters
   again once the new video has passed review. Douyin videos have one
-  part, so `--part` is refused.
+  part, so there is no `--part`.
 - Douyin allows each work 5 edits (每个作品最多修改5次), so batch the
   changes. Every edit that changes the text, title, hashtags, covers or
   video uses one (the edit page's `update/desc/`); chapters and

@@ -188,7 +188,7 @@ impl EditArgs {
         "edit --chapters",
       ),
       (self.video.is_some(), Cap::EditVideo, "edit --video"),
-      (self.part.is_some(), Cap::EditVideo, "edit --part"),
+      (self.part.is_some(), Cap::EditPart, "edit --part"),
       (self.dry_run, Cap::EditDryRun, "edit --dry-run"),
     ];
     given
@@ -322,7 +322,7 @@ const EDIT_OPTIONS: &[(&str, &[Cap])] = &[
   ("chapters", &[Cap::EditChapters]),
   ("no_chapters", &[Cap::EditChapters]),
   ("video", &[Cap::EditVideo]),
-  ("part", &[Cap::EditVideo]),
+  ("part", &[Cap::EditPart]),
   ("dry_run", &[Cap::EditDryRun]),
 ];
 
@@ -606,6 +606,7 @@ Examples:
 
 Options other than the text show where the platform can change them
 (edit-title, edit-topics, edit-cover, edit-cover-horizontal,
-edit-visibility, edit-chapters, edit-video, edit-dry-run in `atp
-platforms`). A chapters file holds one `0:00 Title` line per chapter.
+edit-visibility, edit-chapters, edit-video, edit-part, edit-dry-run in
+`atp platforms`). A chapters file holds one `0:00 Title` line per
+chapter.
 More: atp guide edit";

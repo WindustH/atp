@@ -98,11 +98,6 @@ enum Kind {
 
 /// Change one of the account's works.
 pub async fn edit(api: &Api, post: &str, edit: &Edit) -> Result<Action> {
-  if edit.part.is_some() {
-    return Err(Error::input(
-      "a Douyin video has one part; leave out --part",
-    ));
-  }
   if edit.video.is_some() && edit.chapters.is_some() {
     return Err(Error::input(
       "change the chapters once the new video has passed review: Douyin asks for them \

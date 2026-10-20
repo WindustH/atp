@@ -135,6 +135,7 @@ impl Platform for Bilibili {
       Cap::EditVisibility,
       Cap::EditChapters,
       Cap::EditVideo,
+      Cap::EditPart,
       Cap::Download,
       Cap::AccountInsights,
       Cap::PostInsights,
