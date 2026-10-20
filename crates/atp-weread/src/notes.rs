@@ -1,5 +1,7 @@
 //! Your notes: the books you annotated, and per book your highlights
 //! (划线) and thoughts (想法) in reading order, as a list or as Markdown.
+//! With an API key they come from the Agent Gateway (`/user/notebooks`,
+//! `/book/bookmarklist`, `/review/list/mine`), in the web's shapes.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -10,35 +12,62 @@ use atp_core::{
 };
 
 use crate::api::Api;
+use crate::gateway::Gateway;
 use crate::parse;
 use crate::refs;
 
 /// The most pages of thoughts one book is read in.
 const MAX_PAGES: usize = 50;
+/// Books per page of the gateway's notebooks.
+const NOTEBOOK_PAGE: usize = 100;
 
 /// The books you highlighted or wrote thoughts in, the latest first.
 pub async fn notebooks(api: &Api, page: &PageReq) -> Result<Page<Post>> {
+  if let Some(gw) = api.gateway() {
+    return gateway_notebooks(&gw, page).await;
+  }
   api.require_login()?;
   let v = api.get("/api/user/notebook", &[]).await?;
   let mut rows: Vec<&Value> = v.list("books").iter().collect();
   rows.sort_by_key(|b| std::cmp::Reverse(b.i64("sort").unwrap_or(0)));
-  let items = rows
-    .into_iter()
-    .map(|b| {
-      let mut post = parse::book(b.at("book"));
-      post.created_at = b.i64("sort").and_then(atp_core::text::from_secs);
-      for key in ["bookmarkCount", "reviewCount", "noteCount"] {
-        if let Some(n) = b.u64(key) {
-          post
-            .metrics
-            .other
-            .insert(key.trim_end_matches("Count").into(), n);
-        }
-      }
-      post
-    })
-    .collect();
+  let items = rows.into_iter().map(notebook).collect();
   Ok(slice(items, page))
+}
+
+/// `/user/notebooks`, paged by the last book's `sort` (`lastSort`).
+async fn gateway_notebooks(gw: &Gateway<'_>, page: &PageReq) -> Result<Page<Post>> {
+  let mut params = vec![("count", json!(page.size_within(NOTEBOOK_PAGE)))];
+  if let Some(sort) = page.cursor.as_deref().and_then(|c| c.parse::<i64>().ok()) {
+    params.push(("lastSort", json!(sort)));
+  }
+  let v = gw.call("/user/notebooks", &params).await?;
+  let rows = v.list("books");
+  let last = rows.last().and_then(|b| b.i64("sort"));
+  let more = v.bool("hasMore").unwrap_or(false);
+  let items = rows.iter().map(notebook).collect();
+  Ok(Page::new(
+    items,
+    last.filter(|_| more).map(|s| s.to_string()),
+  ))
+}
+
+/// A book of the notebook list, with its counts of notes.
+fn notebook(b: &Value) -> Post {
+  let mut post = parse::book(b.at("book"));
+  if post.id.is_empty() {
+    post.id = b.str("bookId").unwrap_or_default();
+    post.url = Some(refs::book_url(&post.id));
+  }
+  post.created_at = b.i64("sort").and_then(atp_core::text::from_secs);
+  for key in ["bookmarkCount", "reviewCount", "noteCount"] {
+    if let Some(n) = b.u64(key) {
+      post
+        .metrics
+        .other
+        .insert(key.trim_end_matches("Count").into(), n);
+    }
+  }
+  post
 }
 
 /// A book's title, author and chapters, with all your notes in order.
@@ -51,10 +80,32 @@ pub struct Notes {
 
 pub async fn notes(api: &Api, arg: &str) -> Result<Notes> {
   let id = refs::book(arg)?;
-  api.require_login()?;
-  let marks = api
-    .get("/web/book/bookmarklist", &[("bookId", id.clone())])
+  let Some(gw) = api.gateway() else {
+    api.require_login()?;
+    let marks = api
+      .get("/web/book/bookmarklist", &[("bookId", id.clone())])
+      .await?;
+    return Ok(arrange(&id, &marks, thoughts(api, &id).await?));
+  };
+  let marks = gw
+    .call("/book/bookmarklist", &[("bookId", json!(id))])
     .await?;
+  // The gateway spells this parameter `bookid`.
+  let mine = gw
+    .call("/review/list/mine", &[("bookid", json!(id))])
+    .await?;
+  let mut notes = arrange(&id, &marks, mine.list("reviews").to_vec());
+  if notes.title == id {
+    let book = gw.call("/book/info", &[("bookId", json!(id))]).await?;
+    notes.title = book.str("title").unwrap_or(notes.title);
+    notes.author = book.str("author");
+  }
+  Ok(notes)
+}
+
+/// Highlights (`updated` of the bookmark list) and thoughts in reading
+/// order, each with its chapter.
+fn arrange(id: &str, marks: &Value, thoughts: Vec<Value>) -> Notes {
   let chapters: HashMap<u64, (u64, String)> = marks
     .list("chapters")
     .iter()
@@ -78,7 +129,7 @@ pub async fn notes(api: &Api, arg: &str) -> Result<Notes> {
       parse::highlight(mark, title_of(mark).as_deref()),
     ));
   }
-  for row in thoughts(api, &id).await? {
+  for row in thoughts {
     let r = if row.at("review").is_object() {
       row.at("review")
     } else {
@@ -91,12 +142,12 @@ pub async fn notes(api: &Api, arg: &str) -> Result<Notes> {
   }
   keyed.sort_by_key(|(key, _)| *key);
   let book = marks.at("book");
-  Ok(Notes {
-    title: book.str("title").unwrap_or_else(|| id.clone()),
+  Notes {
+    title: book.str("title").unwrap_or_else(|| id.to_owned()),
     author: book.str("author"),
-    url: refs::book_url(&id),
+    url: refs::book_url(id),
     notes: keyed.into_iter().map(|(_, post)| post).collect(),
-  })
+  }
 }
 
 /// Reading order: chapter index, then the place in the chapter. Reviews of

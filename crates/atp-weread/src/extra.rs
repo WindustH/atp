@@ -4,10 +4,11 @@ use std::path::PathBuf;
 
 use atp_core::cli::PageArgs;
 use atp_core::paging::slice;
-use atp_core::{Data, Result};
+use atp_core::{Data, Result, Value};
+use jiff::Timestamp;
 
 use crate::api::Api;
-use crate::{books, notes, shelf};
+use crate::{books, chapters, discover, notes, reading, shelf};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum Command {
@@ -31,11 +32,52 @@ pub enum Command {
   },
   /// Totals of your shelf and notes: books, finished, started, notes
   Stats,
+  /// Your reading statistics for a week, month, year or all time (needs an API key)
+  #[command(after_long_help = EX_READING)]
+  Reading {
+    /// The period: week, month, year or all
+    #[arg(long, default_value = "month", value_parser = ["week", "month", "year", "all"])]
+    period: String,
+    /// A time inside the period wanted (2026-09-01, 30d …); the current one by default
+    #[arg(long, value_parser = atp_core::text::parse_when, value_name = "WHEN")]
+    at: Option<Timestamp>,
+  },
   /// Books of a store category or ranking by its id, in order
   #[command(after_long_help = EX_CATEGORY)]
   Category {
     /// Category id (`100000` 精品小说, `200000` 历史 …) or ranking id (`rising` …)
     id: String,
+    #[command(flatten)]
+    page: PageArgs,
+  },
+  /// Books like one, as WeRead suggests them (needs an API key)
+  Related {
+    /// Book: id, reader or detail link, or #N
+    book: String,
+    #[command(flatten)]
+    page: PageArgs,
+  },
+  /// A book's table of contents: chapters with their level, words and price
+  Chapters {
+    /// Book: id, reader or detail link, or #N
+    book: String,
+  },
+  /// WeRead's AI outline of a book, chapter by chapter
+  #[command(after_long_help = EX_OUTLINE)]
+  Outline {
+    /// Book: id, reader or detail link, or #N
+    book: String,
+    /// Deepest level shown: 2 topics, 3 key points, 4 details
+    #[arg(long, default_value_t = 4, value_parser = clap::value_parser!(u64).range(2..=4))]
+    depth: u64,
+  },
+  /// Where a word occurs in a book, with the passage around each place
+  #[command(after_long_help = EX_BOOK_SEARCH)]
+  BookSearch {
+    /// Book: id, reader or detail link, or #N
+    book: String,
+    /// The word or phrase to look for
+    query: String,
     #[command(flatten)]
     page: PageArgs,
   },
@@ -57,6 +99,14 @@ Examples:
 
 More: atp guide weread progress";
 
+const EX_READING: &str = "\
+Examples:
+  atp weread reading                           # this month
+  atp weread reading --period year --at 2025-06-01
+  atp weread reading --period week -f json
+
+More: atp guide weread reading";
+
 const EX_CATEGORY: &str = "\
 Examples:
   atp weread category 100000 -n 50             # 精品小说
@@ -64,38 +114,87 @@ Examples:
 
 More: atp guide weread category";
 
+const EX_OUTLINE: &str = "\
+Examples:
+  atp weread outline 695233
+  atp weread outline '#1' --depth 3 -f csv > outline.csv
+
+More: atp guide weread outline";
+
+const EX_BOOK_SEARCH: &str = "\
+Examples:
+  atp weread book-search 695233 叶文洁
+  atp weread book-search '#1' 'dark forest' -n 100 -f jsonl
+
+More: atp guide weread book-search";
+
 pub async fn run(api: &Api, command: Command) -> Result<Data> {
   let ctx = &api.ctx;
   Ok(match command {
     Command::Notes {
-      book: None, page, ..
-    } => Data::Posts(
-      page
-        .collect_dated(async |req| notes::notebooks(api, &req).await)
-        .await?,
-    ),
-    Command::Notes {
-      book: Some(book),
+      book,
       markdown,
       page,
-    } => {
-      let found = notes::notes(api, &ctx.post_ref(&book)?).await?;
-      if let Some(path) = markdown {
-        return notes::export(&found, &path);
-      }
-      let items = notes::posts(found);
-      Data::Posts(
-        page
-          .collect_dated(async |req| Ok(slice(items.clone(), &req)))
-          .await?,
-      )
-    }
+    } => notes(api, book, markdown, page).await?,
     Command::Progress { book } => Data::Value(shelf::progress(api, &ctx.post_ref(&book)?).await?),
     Command::Stats => Data::Value(shelf::stats(api).await?),
+    Command::Reading { period, at } => {
+      let at = at.map(|t| t.as_second());
+      Data::Value(reading::reading(api, &period, at).await?)
+    }
     Command::Category { id, page } => Data::Posts(
       page
         .collect_dated(async |req| books::category_books(api, &id, &req).await)
         .await?,
     ),
+    Command::Related { book, page } => {
+      let book = ctx.post_ref(&book)?;
+      Data::Posts(
+        page
+          .collect(async |req| discover::similar(api, &book, &req).await)
+          .await?,
+      )
+    }
+    Command::Chapters { book } => rows(chapters::chapters(api, &ctx.post_ref(&book)?).await?),
+    Command::Outline { book, depth } => {
+      rows(chapters::outline(api, &ctx.post_ref(&book)?, depth).await?)
+    }
+    Command::BookSearch { book, query, page } => {
+      let book = ctx.post_ref(&book)?;
+      Data::Posts(
+        page
+          .collect(async |req| chapters::search(api, &book, &query, &req).await)
+          .await?,
+      )
+    }
   })
+}
+
+async fn notes(
+  api: &Api,
+  book: Option<String>,
+  markdown: Option<PathBuf>,
+  page: PageArgs,
+) -> Result<Data> {
+  let Some(book) = book else {
+    return Ok(Data::Posts(
+      page
+        .collect_dated(async |req| notes::notebooks(api, &req).await)
+        .await?,
+    ));
+  };
+  let found = notes::notes(api, &api.ctx.post_ref(&book)?).await?;
+  if let Some(path) = markdown {
+    return notes::export(&found, &path);
+  }
+  let items = notes::posts(found);
+  Ok(Data::Posts(
+    page
+      .collect_dated(async |req| Ok(slice(items.clone(), &req)))
+      .await?,
+  ))
+}
+
+fn rows(items: Vec<Value>) -> Data {
+  Data::Value(Value::Array(items))
 }

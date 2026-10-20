@@ -1,4 +1,6 @@
 //! Your shelf (书架), reading progress and the totals they add up to.
+//! With an API key, the shelf and the progress come from the Agent
+//! Gateway (`/shelf/sync`, `/book/getprogress`), in the web's shapes.
 
 use std::collections::HashMap;
 
@@ -10,8 +12,11 @@ use crate::api::Api;
 use crate::parse;
 use crate::refs;
 
-/// The whole shelf as the web reader syncs it.
+/// The whole shelf as the web reader (or the gateway) syncs it.
 async fn sync(api: &Api) -> Result<Value> {
+  if let Some(gw) = api.gateway() {
+    return gw.call("/shelf/sync", &[]).await;
+  }
   api.require_login()?;
   let params = [
     ("synckey", "0".to_owned()),
@@ -53,6 +58,9 @@ pub async fn shelf(
     let mut post = parse::shelved(a.at("albumInfo"), None);
     post.kind = "album".into();
     post.title = post.title.or_else(|| a.str("albumInfo.name"));
+    if post.id.is_empty() {
+      post.id = a.str("albumInfo.albumId").unwrap_or_default();
+    }
     post
   }));
   books.sort_by_key(|b| std::cmp::Reverse(b.created_at));
@@ -62,10 +70,18 @@ pub async fn shelf(
 /// How far you are in one book, and how long you have read it.
 pub async fn progress(api: &Api, arg: &str) -> Result<Value> {
   let id = refs::book(arg)?;
-  api.require_login()?;
-  let v = api
-    .get("/web/book/getProgress", &[("bookId", id.clone())])
-    .await?;
+  let v = match api.gateway() {
+    Some(gw) => {
+      gw.call("/book/getprogress", &[("bookId", json!(id))])
+        .await?
+    }
+    None => {
+      api.require_login()?;
+      api
+        .get("/web/book/getProgress", &[("bookId", id.clone())])
+        .await?
+    }
+  };
   let b = v.at("book");
   let time = |key: &str| b.i64(key).and_then(from_secs).map(|t| t.to_string());
   Ok(json!({
@@ -95,7 +111,10 @@ pub async fn stats(api: &Api) -> Result<Value> {
     .filter(|p| p.u64("progress").is_some_and(|n| n > 0))
     .count();
   let seconds: u64 = progress.values().filter_map(|p| p.u64("readingTime")).sum();
-  let notes = api.get("/api/user/notebook", &[]).await?;
+  let notes = match api.gateway() {
+    Some(gw) => gw.call("/user/notebooks", &[("count", json!(100))]).await?,
+    None => api.get("/api/user/notebook", &[]).await?,
+  };
   Ok(json!({
     "books_on_shelf": books.len(),
     "albums_on_shelf": v.list("albums").len(),

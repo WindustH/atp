@@ -4,17 +4,23 @@
 //! Errors arrive as `{errCode, errMsg}`. `-2012` (登录超时) means the key
 //! expired: like the reader, ATP renews it once through
 //! `/web/login/renewal` and repeats the call.
+//!
+//! With an API key, most reads go through WeRead's official Agent Gateway
+//! instead ([`Gateway`], `gateway()`).
 
 use atp_core::http::{Method, Req};
 use atp_core::text::{one_line, truncate};
 use atp_core::{Ctx, Error, ErrorCode, Result, Value, ValueExt, json};
+
+use crate::gateway::Gateway;
 
 pub const BASE: &str = "https://weread.qq.com";
 /// Cookies of a logged-in session.
 pub const LOGIN_COOKIES: &[&str] = &["wr_vid", "wr_skey"];
 /// `errCode` of an expired key.
 const EXPIRED: i64 = -2012;
-const LOGIN_HINT: &str = "log in again: `atp weread login` (QR code) or `--browser`";
+const LOGIN_HINT: &str = "log in again: `atp weread login` (QR code), `--browser`, or \
+   `--token wrk-…` (an API key)";
 
 pub struct Api {
   pub ctx: Ctx,
@@ -26,11 +32,35 @@ impl Api {
     Self { ctx }
   }
 
+  /// A cookie session, or an API key.
+  pub fn logged_in(&self) -> bool {
+    self.has_cookies() || self.gateway().is_some()
+  }
+
+  pub fn has_cookies(&self) -> bool {
+    LOGIN_COOKIES.iter().all(|c| self.ctx.http.has_cookie(c))
+  }
+
+  /// The Agent Gateway, when there is an API key.
+  pub fn gateway(&self) -> Option<Gateway<'_>> {
+    Gateway::new(&self.ctx)
+  }
+
   pub fn require_login(&self) -> Result<()> {
     self
       .ctx
       .require_login(LOGIN_COOKIES)
       .map_err(|e| e.with_hint(LOGIN_HINT))
+  }
+
+  /// The gateway for a read only it offers, or the error saying it needs a key.
+  pub fn require_gateway(&self, what: &str) -> Result<Gateway<'_>> {
+    self.gateway().ok_or_else(|| {
+      Error::auth(format!(
+        "{what} comes from WeRead's Agent Gateway, which needs an API key"
+      ))
+      .with_hint("log in with `atp weread login --token wrk-…` (or set WEREAD_API_KEY)")
+    })
   }
 
   /// The logged-in user number.
@@ -46,6 +76,19 @@ impl Api {
         .http
         .get(format!("{BASE}{path}"))
         .queries(params.iter().map(|(k, v)| (*k, v)))
+    };
+    self.call(build, path).await
+  }
+
+  /// `POST <BASE><path>` with a JSON body.
+  pub async fn post(&self, path: &str, body: &Value) -> Result<Value> {
+    let build = || {
+      self
+        .ctx
+        .http
+        .post(format!("{BASE}{path}"))
+        .header("origin", BASE)
+        .json(body)
     };
     self.call(build, path).await
   }

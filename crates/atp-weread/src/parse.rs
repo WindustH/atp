@@ -89,17 +89,39 @@ fn book_extra(post: &mut Post, v: &Value) {
   }
 }
 
-/// An entry of a ranking or category list, with its place.
+/// An entry of a ranking, category or search list (`bookInfo` and the
+/// entry's own counts), with its place.
 pub fn ranked(v: &Value, rank: u64) -> Post {
   let mut post = book(v.at("bookInfo"));
+  place(&mut post, v, rank);
+  post.raw = Some(v.clone());
+  post
+}
+
+/// A book listed flat (its fields and the list's counts side by side),
+/// with its place.
+pub fn ranked_flat(v: &Value, rank: u64) -> Post {
+  let mut post = book(v);
+  place(&mut post, v, rank);
+  post
+}
+
+/// The place, readers and rating an entry of a list carries.
+fn place(post: &mut Post, v: &Value, rank: u64) {
   post
     .extra
     .insert("rank".into(), json!(v.u64("searchIdx").unwrap_or(rank)));
   if let Some(readers) = v.u64("readingCount") {
     post.metrics.other.insert("readers".into(), readers);
   }
-  post.raw = Some(v.clone());
-  post
+  if !post.extra.contains_key("recommend_percent")
+    && let Some(rating) = v.u64("newRating").filter(|r| *r > 0)
+  {
+    let percent = rating as f64 / 10.0;
+    post
+      .extra
+      .insert("recommend_percent".into(), json!(percent));
+  }
 }
 
 /// A book on your shelf, with how far you are (`extra.progress`, percent)
