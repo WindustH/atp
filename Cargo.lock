@@ -460,6 +460,7 @@ dependencies = [
  "atp-youtube",
  "atp-zhihu",
  "atp-zhilian",
+ "atp-zsxq",
  "tokio",
 ]
 
@@ -1735,6 +1736,20 @@ dependencies = [
  "jiff",
  "rand 0.9.5",
  "serde_json",
+ "url",
+]
+
+[[package]]
+name = "atp-zsxq"
+version = "0.2.0"
+dependencies = [
+ "atp-core",
+ "clap",
+ "jiff",
+ "rand 0.9.5",
+ "regex",
+ "serde_json",
+ "sha1 0.10.7",
  "url",
 ]
 

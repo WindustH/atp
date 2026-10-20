@@ -85,6 +85,7 @@ fn main() -> ExitCode {
   .platform::<atp_weread::WeRead>()
   .platform::<atp_jike::Jike>()
   .platform::<atp_hupu::Hupu>()
+  .platform::<atp_zsxq::Zsxq>()
   .platform::<atp_podcast::Podcast>()
   .platform::<atp_xiaoyuzhou::Xiaoyuzhou>()
   .platform::<atp_lemmy::Lemmy>()

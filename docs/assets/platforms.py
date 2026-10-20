@@ -50,6 +50,7 @@ GROUPS = [
         ("weread", "微信读书", "WeRead", "weread", "#37A7FF"),
         ("jike", "即刻", "Jike", "app:966129812", ""),
         ("hupu", "虎扑", "Hupu", "app:906632439", ""),
+        ("zsxq", "知识星球", "ZSXQ", "app:1039749242", ""),
         ("rss", "RSS", "RSSHub · Miniflux", "rss", "#FFA500"),
     ]),
     ("视频", "VIDEO", [

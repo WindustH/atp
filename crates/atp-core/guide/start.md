@@ -16,7 +16,8 @@ one of them.
   `threads`, `misskey`, `mastodon`, `bluesky`, `lemmy`, `discourse`
   (any Discourse forum, such as linux.do), `toutiao`, `bangumi` (Bangumi
   番组计划), `douban` (Douban 豆瓣), `weread` (WeRead 微信读书), `jike`
-  (Jike 即刻), `hupu` (Hupu 虎扑), `rss` (RSS, Atom and JSON feeds,
+  (Jike 即刻), `hupu` (Hupu 虎扑), `zsxq` (ZSXQ 知识星球: the groups
+  you joined, read with a login), `rss` (RSS, Atom and JSON feeds,
   RSSHub, Miniflux).
 - Video: `bili`, `douyin`, `kuaishou`, `youtube`, `tiktok`.
 - Chat: `wechat`, `telegram`, `discord`, `whatsapp`, `qq`, `onebot`,
