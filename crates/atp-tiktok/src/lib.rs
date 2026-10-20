@@ -3,9 +3,10 @@
 //! Reads pages' rehydration data where it can (videos, profiles, hashtags,
 //! sounds) and the web client's signed API for lists (comments, a user's
 //! videos, search, followers ...), with the browser session cookies
-//! (`sessionid`) when logged in. Ad accounts go through the official
-//! Marketing API (`ads`), with an access token. `listen` follows live
-//! rooms over the webcast websocket.
+//! (`sessionid`) when logged in: the inbox's notices, and TikTok Studio's
+//! list of your videos with their counters. Ad accounts go through the
+//! official Marketing API (`ads`), with an access token. `listen` follows
+//! live rooms over the webcast websocket.
 
 mod ads;
 mod api;
@@ -14,10 +15,12 @@ mod folders;
 mod insights;
 mod live;
 mod login;
+mod notifications;
 mod parse;
 mod refs;
 mod rooms;
 mod sign;
+mod studio;
 mod users;
 mod videos;
 mod waf;
@@ -30,8 +33,9 @@ use std::time::Duration;
 
 use atp_core::output::Stream;
 use atp_core::{
-  Action, Cap, Choices, Collection, Comment, Ctx, Data, Insights, Media, Page, PageReq, Platform,
-  PlatformInfo, PlatformKind, Post, QrStatus, QrTicket, Query, Reply, Result, User,
+  Action, Cap, Choices, Collection, Comment, Ctx, Data, Insights, Media, Notification, Page,
+  PageReq, Platform, PlatformInfo, PlatformKind, Post, QrStatus, QrTicket, Query, Reply, Result,
+  User,
 };
 
 use crate::api::Api;
@@ -67,6 +71,7 @@ impl Platform for TikTok {
       Cap::Collections,
       Cap::Favorites,
       Cap::Likes,
+      Cap::Notifications,
       Cap::Like,
       Cap::Favorite,
       Cap::Comment,
@@ -84,6 +89,7 @@ impl Platform for TikTok {
     ],
     choices: Choices {
       search_filter: &["general", "video"],
+      notification_kind: notifications::KINDS,
       ..Choices::NONE
     },
     min_interval: Duration::from_millis(1500),
@@ -205,6 +211,10 @@ impl Platform for TikTok {
 
   async fn likes(&self, user: Option<&str>, page: &PageReq) -> Result<Page<Post>> {
     users::likes(&self.api, user, page).await
+  }
+
+  async fn notifications(&self, kind: Option<&str>, page: &PageReq) -> Result<Page<Notification>> {
+    notifications::list(&self.api, kind, page).await
   }
 
   async fn like(&self, post: &str, undo: bool) -> Result<Action> {

@@ -39,8 +39,9 @@ session from a residential network fares best. Newer web pages also sign
 with `X-Gnarly`, which is not reproduced.
 
 Your own likes, favorites, collections and playlists (without a USER),
-account `insights`, and every write (`like`, `favorite`, `comment`,
-`delete-comment`, `follow`, `delete`) need a cookie session.
+account `insights`, `notifications`, `studio`, and every write (`like`,
+`favorite`, `comment`, `delete-comment`, `follow`, `delete`) need a
+cookie session.
 
 ### When the session ends
 
@@ -172,9 +173,31 @@ yours without a USER.
 
 The public counters: for a post views, likes, comments, shares,
 favorites, reposts and the like rate; for your account followers,
-following, likes, posts and friends. TikTok Studio's analytics (traffic
-sources, audience, watch time) are not reachable through the web API.
-Ad accounts have their reports in `ads report`.
+following, likes, posts and friends. TikTok Studio's analytics pages
+(traffic sources, audience, watch time) are not read; its content list
+is, with each video's counters: see `studio`. Ad accounts have their
+reports in `ads report`.
+
+### studio
+
+`studio` lists your videos as TikTok Studio's content page does
+(`/tiktokstudio/content`), the newest first, each with the counters
+Studio shows: views, likes, comments, saves (`metrics.favorites`) and
+shares. `-n` follows Studio's pages (50 videos each); `--since` /
+`--until` keep a window; `-f csv` gives one row per video. It needs a
+cookie session, and an account with TikTok Studio. The call is signed
+like the other API calls (`X-Bogus` over the query); whether TikTok
+asks this route for more than that is not known. Untested so far: it
+needs a login.
+
+### notifications
+
+`notifications [--type all|like|comment|mention|follower]` reads the
+inbox's activity (`/api/notice/multi/`), the newest first: who liked,
+commented, mentioned or followed, the video it was about (`target`,
+`url`) and whether it was unread. Whether reading them marks them read
+is not known. Untested so far: it needs a login; notice kinds ATP does
+not know come as `other`.
 
 ### ads
 

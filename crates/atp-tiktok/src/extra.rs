@@ -1,11 +1,19 @@
-//! TikTok-only commands: hashtags, sounds, playlists, related videos, and
-//! the Marketing API (`ads`).
+//! TikTok-only commands: hashtags, sounds, playlists, related videos,
+//! TikTok Studio's list of your videos, and the Marketing API (`ads`).
 
 use atp_core::cli::PageArgs;
 use atp_core::{Data, Page, Result};
 
 use crate::api::Api;
-use crate::{ads, users, videos};
+use crate::{ads, studio, users, videos};
+
+const EX_STUDIO: &str = "\
+Examples:
+  atp tiktok studio                      # your newest videos with their counters
+  atp tiktok studio -n 200 -f csv > videos.csv
+  atp tiktok studio --since 30d
+
+More: atp guide tiktok studio";
 
 const EX_ADS: &str = "\
 Examples:
@@ -71,6 +79,12 @@ pub enum Command {
     #[command(flatten)]
     page: PageArgs,
   },
+  /// Your videos as TikTok Studio lists them, with views, likes, comments, saves and shares
+  #[command(after_long_help = EX_STUDIO)]
+  Studio {
+    #[command(flatten)]
+    page: PageArgs,
+  },
   /// The Marketing API: ad accounts, campaigns, ads and reports
   #[command(after_long_help = EX_ADS)]
   Ads {
@@ -115,6 +129,11 @@ pub async fn run(api: &Api, command: Command) -> Result<Data> {
     Command::Related { video, page } => Data::Posts(
       page
         .collect_dated(async |r| videos::related(api, &video, &r).await)
+        .await?,
+    ),
+    Command::Studio { page } => Data::Posts(
+      page
+        .collect_dated(async |r| studio::videos(api, &r).await)
         .await?,
     ),
     Command::Ads { command } => ads::run(api, command).await?,

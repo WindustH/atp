@@ -159,38 +159,62 @@ impl Api {
 
   /// GET a signed `/api/...` endpoint.
   pub async fn get(&self, path: &str, params: &[(&str, String)]) -> Result<Value> {
-    self.call(Method::GET, path, params).await
+    self.call(Method::GET, path, params, None).await
   }
 
   /// POST a signed `/api/...` endpoint (writes; parameters in the query).
   pub async fn post(&self, path: &str, params: &[(&str, String)]) -> Result<Value> {
     self.require_login()?;
-    self.call(Method::POST, path, params).await
+    self.call(Method::POST, path, params, None).await
   }
 
-  async fn call(&self, method: Method, path: &str, params: &[(&str, String)]) -> Result<Value> {
+  /// POST a signed endpoint with a JSON body, as TikTok Studio's pages
+  /// send their reads (`page` is the page that calls it). Signed like
+  /// every other call: over the query, with the body left out.
+  pub async fn post_json(
+    &self,
+    path: &str,
+    params: &[(&str, String)],
+    body: &Value,
+    page: &str,
+  ) -> Result<Value> {
+    self.require_login()?;
+    self
+      .call(Method::POST, path, params, Some((body, page)))
+      .await
+  }
+
+  async fn call(
+    &self,
+    method: Method,
+    path: &str,
+    params: &[(&str, String)],
+    json: Option<(&Value, &str)>,
+  ) -> Result<Value> {
     let query = self.query(params).await?;
     let now = jiff::Timestamp::now().as_second() as u32;
     let url = format!(
       "{WWW}{path}?{query}&X-Bogus={}",
       sign::x_bogus(&query, USER_AGENT, now)
     );
+    let referer = json.map_or_else(|| format!("{WWW}/"), |(_, page)| page.to_owned());
     let mut req: Req<'_> = self
       .ctx
       .http
       .request(method.clone(), url)
-      .header("referer", format!("{WWW}/"))
+      .header("referer", referer)
       .header("sec-fetch-site", "same-origin")
       .header("sec-fetch-mode", "cors")
       .header("sec-fetch-dest", "empty");
     if method == Method::POST {
-      req = req
-        .header("origin", WWW)
-        .header(
-          "tt-csrf-token",
-          self.ctx.http.cookie("tt_csrf_token").unwrap_or_default(),
-        )
-        .bytes(Vec::new(), "application/x-www-form-urlencoded");
+      req = req.header("origin", WWW).header(
+        "tt-csrf-token",
+        self.ctx.http.cookie("tt_csrf_token").unwrap_or_default(),
+      );
+      req = match json {
+        Some((body, _)) => req.json(body),
+        None => req.bytes(Vec::new(), "application/x-www-form-urlencoded"),
+      };
     }
     let resp = req.send().await?;
     match resp.status.as_u16() {

@@ -1,14 +1,15 @@
 //! `insights`: the counters TikTok shows publicly, for an account or a post.
-//! TikTok Studio's analytics are not reachable through the web API used
-//! here; ad accounts have reports in `atp tiktok ads report`.
+//! TikTok Studio's analytics pages are not read; its content list, with
+//! each video's counters, is `atp tiktok studio`; ad accounts have reports
+//! in `atp tiktok ads report`.
 
 use atp_core::{Insights, Result, Value};
 
 use crate::api::Api;
 use crate::{users, videos};
 
-const STUDIO: &str = "TikTok Studio analytics (traffic sources, audience, watch time) are not \
-   available through the web API; these are the public counters";
+const STUDIO: &str = "TikTok Studio's analytics (traffic sources, audience, watch time) are not \
+   read; these are the public counters (`atp tiktok studio` lists your videos with theirs)";
 
 pub async fn insights(api: &Api, post: Option<&str>) -> Result<Insights> {
   match post {
