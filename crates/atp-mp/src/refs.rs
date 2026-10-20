@@ -16,8 +16,16 @@ pub const HOME: &str = "https://mp.weixin.qq.com";
 /// short links without their query, long ones without tracking parameters.
 pub fn article_url(arg: &str) -> Result<String> {
   let arg = arg.trim().replace("&amp;", "&");
-  let mut url = Url::parse(&arg)
-    .ok()
+  let parsed = Url::parse(&arg).ok();
+  if parsed.as_ref().and_then(Url::host_str) == Some("weixin.sogou.com") {
+    return Err(
+      Error::input("a Sogou search link, not the article's own").with_hint(
+        "Sogou leads to the article only from its results page: open the link in a browser \
+         and pass the mp.weixin.qq.com link it reaches",
+      ),
+    );
+  }
+  let mut url = parsed
     .filter(|u| u.host_str() == Some("mp.weixin.qq.com"))
     .ok_or_else(|| {
       Error::input(format!(

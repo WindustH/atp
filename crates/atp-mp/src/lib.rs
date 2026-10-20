@@ -1,8 +1,8 @@
 //! WeChat Official Accounts (微信公众号) for all-the-platforms.
 //!
 //! Three ways in, by what they can reach:
-//! - public pages, anonymously: articles ([`articles`]) and albums
-//!   ([`albums`]);
+//! - public pages, anonymously: articles ([`articles`]), albums
+//!   ([`albums`]) and article search through Sogou ([`search`]);
 //! - the official API ([`official`]) with the account's AppID and AppSecret:
 //!   drafts and material for every account type; publishing, comments,
 //!   analytics and followers for verified organization accounts;
@@ -31,6 +31,7 @@ mod publish;
 mod published;
 mod refs;
 mod safety;
+mod search;
 mod tools;
 mod uploads;
 mod users;
@@ -65,6 +66,7 @@ impl Platform for Mp {
     caps: &[
       Cap::QrLogin,
       Cap::TokenLogin,
+      Cap::Search,
       Cap::SearchUsers,
       Cap::Read,
       Cap::Comments,
@@ -84,7 +86,7 @@ impl Platform for Mp {
     kind: PlatformKind::Social,
     token: "APPID:SECRET",
     env: &["WECHAT_APPID", "WECHAT_SECRET"],
-    guest: "read, download, album; user from an article link",
+    guest: "search (articles), read, download, album; user from an article link",
     guide: include_str!("../GUIDE.md"),
   };
 
@@ -132,6 +134,10 @@ impl Platform for Mp {
       published::add_own_counts(&self.api, &mut post).await;
     }
     Ok(post)
+  }
+
+  async fn search(&self, query: &Query, page: &PageReq) -> Result<Page<Post>> {
+    search::articles(&self.api, &query.keyword, page).await
   }
 
   async fn search_users(&self, query: &Query, page: &PageReq) -> Result<Page<User>> {

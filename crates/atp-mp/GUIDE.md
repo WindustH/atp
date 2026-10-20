@@ -5,10 +5,10 @@ be set up together.
 
 ### Public pages, no login
 
-`read` and `download` any article (text, account, time, original-size
-images, article videos, audio), `album` lists, and `user` from an article
-or album link. Read / like counts and comments of others' articles are not
-public.
+`search` articles (through Sogou's WeChat search), `read` and `download`
+any article (text, account, time, original-size images, article videos,
+audio), `album` lists, and `user` from an article or album link. Read /
+like counts and comments of others' articles are not public.
 
 ### Backend (QR code or browser session)
 
@@ -108,9 +108,26 @@ the backend; your own account shows what `whoami` shows.
 
 ### search
 
-`search -t user NAME` finds accounts by name or WeChat ID (backend, five per
-page). Accounts can opt out of being found by name. There is no article
+`search WORDS` finds articles through Sogou's WeChat search (搜狗微信,
+weixin.sogou.com), without a login: title, account name, summary, time
+and the cover (`extra.cover`), ten a page, ten pages at most (Sogou shows
+no more without a Sogou login). Sogou ranks by relevance, not time:
+`--since` drops older articles, and a page of older ones only ends the
 search.
+
+- The links are Sogou's (`https://weixin.sogou.com/link?url=…`), not the
+  articles': Sogou leads to the article only from its results page, and
+  sends a plain request for the link to its anti-spider check. Open one
+  in a browser to reach the article; `read` takes the
+  mp.weixin.qq.com link it reaches, not the Sogou link.
+- Sogou turns away searches it suspects with a captcha page
+  (`/antispider/`): the command fails with `verification_required` and
+  that page. ATP sends Sogou no cookies, so passing the captcha in a
+  browser does not help ATP and none is opened; wait (an hour or more)
+  and search again, sparingly.
+
+`search -t user NAME` finds accounts by name or WeChat ID (backend, five per
+page). Accounts can opt out of being found by name.
 
 ### user-posts
 
@@ -208,4 +225,6 @@ Backend: the accounts this session can switch to.
 - The backend endpoints are unofficial and can change; listing another
   account's history quickly is rate limited (`rate_limited`: stop for an
   hour or more; long lists trip it after about 600 articles).
+- Article search is Sogou's: what it finds is what Sogou has indexed,
+  ten pages at most, and its links are not article links (see `search`).
 - ATP keeps at least 1.5 s between requests.

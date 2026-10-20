@@ -81,7 +81,7 @@ $ atp tg listen -f jsonl          # every new Telegram message, as it arrives
 | | Weibo 微博 | `weibo` | posts, hot search, comments, reposts, analytics | QR, browser |
 | | Tieba 百度贴吧 | `tieba` | forums, threads, floors, check-in | QR, browser |
 | | Toutiao 今日头条 | `toutiao` | articles, videos, 微头条, comments, hot board | QR, browser |
-| | WeChat Official Accounts 公众号 | `mp` | articles, albums, drafts, publishing, comments, analytics | QR, AppID |
+| | WeChat Official Accounts 公众号 | `mp` | articles, article search, albums, drafts, publishing, comments, analytics | QR, AppID |
 | | Twitter / X | `twitter` | tweets, threads, lists, analytics | browser |
 | | Reddit | `reddit` | posts, comments, subreddits, inbox | browser, app |
 | | Facebook | `facebook` | profiles, pages, groups, Page insights, ads | browser, token |
