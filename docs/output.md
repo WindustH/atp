@@ -120,6 +120,10 @@ Job posts (job platforms) carry the job in `extra`: `company`, `salary`
 `deadline`. Tables show their company, pay and city; listings that date
 posts only by their last change show that time.
 
+Videos with chapters carry them in `extra.chapters`: a list of `title`,
+`start` and `end` (seconds from the start; `end` left out when unknown),
+in order. YouTube adds `chapters_auto: true` when it made them itself.
+
 `media`: `kind` (`image`, `video`, `audio`, `gif`), `url`, `audio_url` (separate
 audio track), `width`, `height`, `duration` (seconds), `alt`, `size` /
 `audio_size` (bytes) and `range_param` (the URL parameter a host takes byte

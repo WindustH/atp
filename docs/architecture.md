@@ -57,6 +57,7 @@ one. Each platform crate re-exports its `Command` enum for `run_extra`.
 | `text` | counts (`1.2万`), durations, truncation, HTML to text, timestamps |
 | `feed` | web feeds for platforms that read them (podcasts, RSS): RSS 0.9x–2.0, Atom and JSON Feed through feed-rs into a `Feed` whose entries are posts (enclosures as media, iTunes episode data in `extra`); `get` fetches as feed readers do (a declared client, `If-None-Match` / `If-Modified-Since` against a private cached copy), `load` also follows a web page to the feed it announces (`discover`); `FEED_URL#ENTRY_ID` entry references (`entry_ref`, `split_entry_ref`) |
 | `music` | what music platforms share: `Lyrics` (LRC with its translation, as plain text or LRC) and track lists inside a post (`with_tracks`) |
+| `chapters` | video chapters: `Chapter` (start in seconds, title), `parse` of `0:00 Title` lines (`--chapters FILE`), `Rules` and `check` (count, first at 0:00, shortest chapter, title length, shortest video), `lines` / `summary`, and `value`, the `chapters` key of `Post.extra` (`[{title, start, end}]`) |
 | `jobs` | what job platforms share: `Salary`, the pay of a job read from the text a platform shows (`parse`) or found in a title (`in_text`, conservative), with its figures per `Period` (hour, day, month, year), written into the job keys of `Post.extra` (`fill`) |
 | `browser` | import cookies from local browsers (`browser` feature, on by default) |
 | `credentials` | environment variables, `login --token` fields, credentials saved in the session, instance hosts (`host`) |
@@ -85,10 +86,12 @@ A platform crate exports one type implementing `atp_core::Platform`:
   so a platform implements only what it supports and lists it in `caps`;
   unsupported commands are hidden from its `--help`.
 - `edit` serves messages and posts alike: `edit_post` takes an `Edit` (text,
-  title, topics, cover, visibility; `None` keeps a field) and by default
-  sends a text-only change to the chat-style `edit(post, text)`. `Cap::Edit`
-  shows the command; `EditTitle`, `EditTopics`, `EditCover` and
-  `EditVisibility` show its options.
+  title, topics, cover, visibility, chapters, a new video file and its
+  part; `None` keeps a field) and by default sends a text-only change to
+  the chat-style `edit(post, text)`. `Cap::Edit` shows the command;
+  `EditTitle`, `EditTopics`, `EditCover`, `EditVisibility`, `EditChapters`
+  and `EditVideo` show its options. `post --chapters` shows with
+  `PostChapters`; both read a file of `0:00 Title` lines (`chapters`).
 - Listing methods return one `Page<T>` per call for a `PageReq { cursor, size }`;
   the core follows `next_cursor` until `--limit` is reached. Cursors are opaque
   strings owned by the platform (offset, page number, upstream cursor ...).

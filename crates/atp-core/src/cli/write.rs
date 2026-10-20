@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use clap::Subcommand;
 
 use super::follows;
-use super::input::{check_files, check_images, confirm, read_text};
+use super::input::{check_files, check_images, confirm, read_chapters, read_text};
 use crate::error::{Error, Result};
 use crate::model::Data;
 use crate::platform::{Cap, Draft, Edit, Platform, PlatformInfo, PlatformKind, Reply};
@@ -53,6 +53,9 @@ pub struct PublishArgs {
   /// Background music, by the id the platform's music list shows
   #[arg(long, value_name = "MUSIC")]
   pub music: Option<String>,
+  /// Chapters of the video: a file of `0:00 Title` lines; `-` reads stdin
+  #[arg(long, value_name = "FILE")]
+  pub chapters: Option<PathBuf>,
   /// Skip the confirmation question (needed in scripts)
   #[arg(short, long)]
   pub yes: bool,
@@ -81,6 +84,11 @@ impl PublishArgs {
         "post --collection",
       ),
       (self.music.is_some(), Cap::PostMusic, "post --music"),
+      (
+        self.chapters.is_some(),
+        Cap::PostChapters,
+        "post --chapters",
+      ),
     ];
     if let Some((_, _, name)) = given
       .iter()
@@ -114,6 +122,18 @@ pub struct EditArgs {
   /// Who can see the post
   #[arg(long, value_parser = ["public", "friends", "private"])]
   pub visibility: Option<String>,
+  /// Chapters replacing the video's own: a file of `0:00 Title` lines; `-` reads stdin
+  #[arg(long, value_name = "FILE")]
+  pub chapters: Option<PathBuf>,
+  /// Remove the video's chapters
+  #[arg(long, conflicts_with = "chapters")]
+  pub no_chapters: bool,
+  /// Replace the video with this file (it goes through review again)
+  #[arg(long, value_name = "PATH")]
+  pub video: Option<PathBuf>,
+  /// The part (from 1) of a video in several parts that --video or --chapters change
+  #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
+  pub part: Option<u32>,
   /// Skip the confirmation question (needed in scripts)
   #[arg(short, long)]
   pub yes: bool,
@@ -135,6 +155,13 @@ impl EditArgs {
         Cap::EditVisibility,
         "edit --visibility",
       ),
+      (
+        self.chapters.is_some() || self.no_chapters,
+        Cap::EditChapters,
+        "edit --chapters",
+      ),
+      (self.video.is_some(), Cap::EditVideo, "edit --video"),
+      (self.part.is_some(), Cap::EditVideo, "edit --part"),
     ];
     given
       .iter()
@@ -235,7 +262,7 @@ pub enum WriteCommand {
     #[arg(short, long)]
     yes: bool,
   },
-  /// Change one of your messages or posts: its text, title, topics, cover or visibility
+  /// Change one of your messages or posts: its text, title, topics, cover, visibility, chapters or video
   #[command(after_long_help = EX_EDIT)]
   Edit(Box<EditArgs>),
 }
@@ -250,6 +277,7 @@ const POST_OPTIONS: &[(&str, &[Cap])] = &[
   ("schedule", &[Cap::PostSchedule]),
   ("collection", &[Cap::PostCollection]),
   ("music", &[Cap::PostMusic]),
+  ("chapters", &[Cap::PostChapters]),
   ("yes", &[Cap::PostVideo, Cap::PostArticle]),
 ];
 
@@ -260,6 +288,10 @@ const EDIT_OPTIONS: &[(&str, &[Cap])] = &[
   ("no_topics", &[Cap::EditTopics]),
   ("cover", &[Cap::EditCover]),
   ("visibility", &[Cap::EditVisibility]),
+  ("chapters", &[Cap::EditChapters]),
+  ("no_chapters", &[Cap::EditChapters]),
+  ("video", &[Cap::EditVideo]),
+  ("part", &[Cap::EditVideo]),
 ];
 
 /// `post` without the options the platform does not offer.
@@ -387,6 +419,7 @@ async fn publish<P: Platform>(p: &P, args: PublishArgs) -> Result<crate::model::
     return Err(Error::unsupported(option));
   }
   let ctx = p.ctx();
+  let chapters = read_chapters(args.chapters.as_deref(), args.text.as_deref())?;
   let draft = Draft {
     title: args.title,
     text: read_text(args.text)?,
@@ -402,6 +435,7 @@ async fn publish<P: Platform>(p: &P, args: PublishArgs) -> Result<crate::model::
     schedule: args.schedule,
     collection: args.collection,
     music: args.music,
+    chapters: chapters.unwrap_or_default(),
     yes: args.yes,
   };
   let media = draft.video.is_some() || draft.article.is_some() || !draft.images.is_empty();
@@ -429,22 +463,32 @@ async fn edit<P: Platform>(p: &P, args: EditArgs) -> Result<crate::model::Action
   } else {
     Some(args.topics).filter(|t| !t.is_empty())
   };
+  let chapters = if args.no_chapters {
+    Some(Vec::new())
+  } else {
+    read_chapters(args.chapters.as_deref(), args.text.as_deref())?
+  };
   let edit = Edit {
     text: args.text.map(|t| read_text(Some(t))).transpose()?,
     title: args.title,
     topics,
     cover: args.cover,
     visibility: args.visibility,
+    chapters,
+    video: args.video,
+    part: args.part.map(|n| n as usize),
     yes: args.yes,
   };
-  let others = edit.title.is_some()
-    || edit.topics.is_some()
-    || edit.cover.is_some()
-    || edit.visibility.is_some();
-  if edit.text.is_none() && !others {
+  if edit.text.is_none() && !edit.others() {
     return Err(Error::input(
-      "nothing to change: give a new text, --title, --topic, --cover or --visibility",
+      "nothing to change: give a new text, --title, --topic, --cover, --visibility, --chapters or --video",
     ));
+  }
+  if edit.part.is_some() && edit.video.is_none() && edit.chapters.is_none() {
+    return Err(Error::input("--part goes with --video or --chapters"));
+  }
+  if let Some(video) = &edit.video {
+    check_files(std::slice::from_ref(video))?;
   }
   if edit.text_only() == Some("") {
     return Err(Error::input("the new text is empty"));
@@ -500,6 +544,7 @@ Examples:
   atp xhs post \"正文 #话题\" --title 标题 -i cover.jpg
   atp reddit post \"Body text\" --title Title --topic r/test
   atp douyin post --video clip.mp4 --title 标题 --visibility private
+  atp douyin post --video talk.mp4 --title 标题 --chapters chapters.txt
   cat draft.md | atp bili post -
 
 What `post` creates differs per platform: see `atp guide interact`.";
@@ -509,7 +554,11 @@ Examples:
   atp tg edit '#1' 'Fixed the link: https://example.com'
   atp douyin edit 7697611474302225714 --topic 操作系统 --topic 计算机
   atp douyin edit '#2' --title '新标题' --visibility private
+  atp yt edit dQw4w9WgXcQ --chapters chapters.txt
+  atp bili edit BV1xx411c7mD --video new-cut.mp4
 
 Options other than the text show where the platform can change them
-(edit-title, edit-topics, edit-cover, edit-visibility in `atp platforms`).
+(edit-title, edit-topics, edit-cover, edit-visibility, edit-chapters,
+edit-video in `atp platforms`). A chapters file holds one `0:00 Title`
+line per chapter.
 More: atp guide edit";

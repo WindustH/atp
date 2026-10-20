@@ -7,6 +7,8 @@ cover and visibility.
     cat fixed.md | atp discord edit 123456/789012 -
     atp douyin edit 7697611474302225714 --topic 操作系统 --topic 计算机
     atp douyin edit '#2' --title '新标题' --visibility private
+    atp yt edit dQw4w9WgXcQ --chapters chapters.txt
+    atp bili edit BV1xx411c7mD --video new-cut.mp4
 
 - POST: `CHAT/MESSAGE`, an id, a link, or `#N` of the last message or
   post list; the `id` that `send` or `post` printed works too.
@@ -17,7 +19,15 @@ cover and visibility.
   `--title` (`edit-title`); `--topic NAME` (repeatable, `edit-topics`)
   replaces the post's topics or hashtags and `--no-topics` removes them;
   `--cover PATH` (`edit-cover`); `--visibility public|friends|private`
-  (`edit-visibility`). Elsewhere they are hidden and refused.
+  (`edit-visibility`); `--chapters FILE` replaces a video's chapters and
+  `--no-chapters` removes them (`edit-chapters`); `--video PATH` replaces
+  a published video's file, `--part N` naming the part of a video in
+  several parts (`edit-video`). Elsewhere they are hidden and refused.
+- A chapters file holds one `0:00 Title` line per chapter (the format in
+  `atp guide post`); `-` reads it from standard input unless TEXT is read
+  from there. Each platform's guide gives its rules.
+- A replaced video goes through the platform's review again; the
+  platform's guide says what else it resets.
 - What is not given stays as it was.
 - Content platforms (Bilibili, Discourse, Douyin, Facebook, Instagram,
   Jike, Juejin, Lemmy, Mastodon, Misskey, Reddit, Weibo, X, YouTube,

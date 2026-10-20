@@ -49,6 +49,8 @@ pub enum Cap {
   PostCollection,
   /// `post --music`.
   PostMusic,
+  /// `post --chapters`.
+  PostChapters,
   Delete,
   Download,
   AccountInsights,
@@ -69,6 +71,10 @@ pub enum Cap {
   EditCover,
   /// `edit --visibility`.
   EditVisibility,
+  /// `edit --chapters` and `--no-chapters`.
+  EditChapters,
+  /// `edit --video` (and `--part`): a new file for a published video.
+  EditVideo,
   Listen,
   /// A drive: `search`, `read` and `download` work on files and folders.
   Files,
@@ -150,6 +156,7 @@ impl Cap {
     Cap::PostAiLabel,
     Cap::PostCollection,
     Cap::PostMusic,
+    Cap::PostChapters,
     Cap::Delete,
     Cap::Download,
     Cap::AccountInsights,
@@ -164,6 +171,8 @@ impl Cap {
     Cap::EditTopics,
     Cap::EditCover,
     Cap::EditVisibility,
+    Cap::EditChapters,
+    Cap::EditVideo,
     Cap::Listen,
     Cap::Files,
     Cap::FollowingSearch,
@@ -229,6 +238,7 @@ impl Cap {
       Cap::PostAiLabel => "post-ai-label",
       Cap::PostCollection => "post-collection",
       Cap::PostMusic => "post-music",
+      Cap::PostChapters => "post-chapters",
       Cap::Delete => "delete",
       Cap::Download => "download",
       Cap::AccountInsights => "insights",
@@ -243,6 +253,8 @@ impl Cap {
       Cap::EditTopics => "edit-topics",
       Cap::EditCover => "edit-cover",
       Cap::EditVisibility => "edit-visibility",
+      Cap::EditChapters => "edit-chapters",
+      Cap::EditVideo => "edit-video",
       Cap::Listen => "listen",
       Cap::Files => "files",
       Cap::FollowingSearch => "following-search",

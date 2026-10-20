@@ -32,7 +32,7 @@ use self::command::{Outcome, Run};
 pub use self::folders::FolderCommand;
 pub use self::follows::{FollowCommand, GroupCommand};
 pub use self::history::HistoryCommand;
-pub use self::input::{Change, check_files, check_images, confirm, read_text};
+pub use self::input::{Change, check_files, check_images, confirm, read_chapters, read_text};
 pub use self::library::LibraryCommand;
 pub use self::media::{DownloadArgs, MediaCommand};
 pub use self::read::{ReadCommand, SearchArgs, SearchKind};

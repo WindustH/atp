@@ -4,6 +4,8 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use crate::chapters::Chapter;
+
 /// Which page of a listing to fetch.
 #[derive(Debug, Clone, Default)]
 pub struct PageReq {
@@ -78,6 +80,9 @@ pub struct Draft {
   pub collection: Option<String>,
   /// Background music, by the platform's id ([`Cap::PostMusic`](super::Cap::PostMusic)).
   pub music: Option<String>,
+  /// Chapters of the video, in order; empty for none
+  /// ([`Cap::PostChapters`](super::Cap::PostChapters)).
+  pub chapters: Vec<Chapter>,
   /// The person said yes ahead (`--yes`); platforms that upload files ask first otherwise.
   pub yes: bool,
 }
@@ -96,6 +101,14 @@ pub struct Edit {
   pub cover: Option<PathBuf>,
   /// `public`, `friends` or `private` ([`Cap::EditVisibility`](super::Cap::EditVisibility)).
   pub visibility: Option<String>,
+  /// Chapters replacing the video's own, in order; empty removes them
+  /// ([`Cap::EditChapters`](super::Cap::EditChapters)).
+  pub chapters: Option<Vec<Chapter>>,
+  /// A new file for the video ([`Cap::EditVideo`](super::Cap::EditVideo)).
+  pub video: Option<PathBuf>,
+  /// The part (from 1) of a video in several parts that `video` or
+  /// `chapters` change.
+  pub part: Option<usize>,
   /// The person said yes ahead (`--yes`); platforms that show the change
   /// before sending it ask otherwise.
   pub yes: bool,
@@ -104,11 +117,17 @@ pub struct Edit {
 impl Edit {
   /// The new text when nothing else changes: what a message edit takes.
   pub fn text_only(&self) -> Option<&str> {
-    let others = self.title.is_some()
+    self.text.as_deref().filter(|_| !self.others())
+  }
+
+  /// Whether anything but the text changes.
+  pub fn others(&self) -> bool {
+    self.title.is_some()
       || self.topics.is_some()
       || self.cover.is_some()
-      || self.visibility.is_some();
-    self.text.as_deref().filter(|_| !others)
+      || self.visibility.is_some()
+      || self.chapters.is_some()
+      || self.video.is_some()
   }
 }
 

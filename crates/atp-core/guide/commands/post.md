@@ -26,7 +26,18 @@ platform: a tweet, a pin (想法), an image note, a dynamic, a Reddit post ...
   (`post-ai-label`); `--schedule WHEN` publishes later: `+2h`, `+1d`,
   `2026-10-20 20:00` (local) or an RFC 3339 time (`post-schedule`);
   `--collection NAME|ID` (`post-collection`) and `--music ID`
-  (`post-music`). Elsewhere they are hidden and refused.
+  (`post-music`); `--chapters FILE` gives a video chapters
+  (`post-chapters`). Elsewhere they are hidden and refused.
+- A chapters file holds one chapter a line: its start (`M:SS` or
+  `H:MM:SS`), then its title, optionally after ` - ` or ` | `:
+
+      0:00 Intro
+      1:02 Setting up
+      12:30 - Questions
+
+  Times must rise from line to line; `-` reads the file from standard
+  input (unless TEXT is read from there). Each platform's guide gives its
+  rules (how many, how long, the first at 0:00).
 - Douyin shows what it is about to publish and asks before uploading
   anything; scripts pass `-y`.
 - The result is an Action with the new post's `id` and `url`; both work as

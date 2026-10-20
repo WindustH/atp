@@ -1,8 +1,9 @@
 //! Checks and conversions of command arguments shared by every area.
 
 use std::io::{IsTerminal, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use crate::chapters::{self, Chapter};
 use crate::error::{Error, Result};
 
 /// Ask before something irreversible, unless `--yes`; refuse when nobody
@@ -84,6 +85,28 @@ pub fn read_text(text: Option<String>) -> Result<String> {
     Some(t) => Ok(t.to_owned()),
     None => Ok(String::new()),
   }
+}
+
+/// The chapters of `--chapters FILE`: a file of `0:00 Title` lines, or
+/// standard input for `-` unless the text (`text`) is read from there.
+pub fn read_chapters(file: Option<&Path>, text: Option<&str>) -> Result<Option<Vec<Chapter>>> {
+  let Some(file) = file else {
+    return Ok(None);
+  };
+  let content = if file == Path::new("-") {
+    if text == Some("-") {
+      return Err(Error::input(
+        "the text and --chapters cannot both come from standard input: give the chapters as a file",
+      ));
+    }
+    let mut buf = String::new();
+    std::io::stdin().read_to_string(&mut buf)?;
+    buf
+  } else {
+    std::fs::read_to_string(file)
+      .map_err(|e| Error::input(format!("cannot read {}: {e}", file.display())))?
+  };
+  chapters::parse(&content).map(Some)
 }
 
 /// Fails on the first image path that is not a file.

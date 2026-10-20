@@ -163,6 +163,10 @@ pub struct Post {
   /// `experience` and `degree` (what the job asks for, as shown) and
   /// `deadline` (when applications close). [`crate::jobs::Salary`] reads
   /// the pay keys from the text a platform shows.
+  ///
+  /// Videos with chapters carry them as `chapters`: `[{title, start,
+  /// end}]` in order, times in seconds from the start of the video, `end`
+  /// left out when unknown ([`crate::chapters::value`]).
   #[serde(skip_serializing_if = "Extra::is_empty")]
   pub extra: Extra,
   #[serde(skip_serializing_if = "Option::is_none")]
