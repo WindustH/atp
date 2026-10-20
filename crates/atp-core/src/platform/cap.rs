@@ -53,6 +53,8 @@ pub enum Cap {
   PostChapters,
   /// `post --category`: the category (分区) a video goes in.
   PostCategory,
+  /// `post --cover-horizontal`: a landscape (4:3) cover beside the main one.
+  PostCoverHorizontal,
   Delete,
   Download,
   AccountInsights,
@@ -77,6 +79,8 @@ pub enum Cap {
   EditChapters,
   /// `edit --video` (and `--part`): a new file for a published video.
   EditVideo,
+  /// `edit --cover-horizontal`: a new landscape (4:3) cover beside the main one.
+  EditCoverHorizontal,
   Listen,
   /// A drive: `search`, `read` and `download` work on files and folders.
   Files,
@@ -160,6 +164,7 @@ impl Cap {
     Cap::PostMusic,
     Cap::PostChapters,
     Cap::PostCategory,
+    Cap::PostCoverHorizontal,
     Cap::Delete,
     Cap::Download,
     Cap::AccountInsights,
@@ -176,6 +181,7 @@ impl Cap {
     Cap::EditVisibility,
     Cap::EditChapters,
     Cap::EditVideo,
+    Cap::EditCoverHorizontal,
     Cap::Listen,
     Cap::Files,
     Cap::FollowingSearch,
@@ -243,6 +249,7 @@ impl Cap {
       Cap::PostMusic => "post-music",
       Cap::PostChapters => "post-chapters",
       Cap::PostCategory => "post-category",
+      Cap::PostCoverHorizontal => "post-cover-horizontal",
       Cap::Delete => "delete",
       Cap::Download => "download",
       Cap::AccountInsights => "insights",
@@ -259,6 +266,7 @@ impl Cap {
       Cap::EditVisibility => "edit-visibility",
       Cap::EditChapters => "edit-chapters",
       Cap::EditVideo => "edit-video",
+      Cap::EditCoverHorizontal => "edit-cover-horizontal",
       Cap::Listen => "listen",
       Cap::Files => "files",
       Cap::FollowingSearch => "following-search",

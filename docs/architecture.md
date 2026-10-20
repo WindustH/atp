@@ -86,12 +86,14 @@ A platform crate exports one type implementing `atp_core::Platform`:
   so a platform implements only what it supports and lists it in `caps`;
   unsupported commands are hidden from its `--help`.
 - `edit` serves messages and posts alike: `edit_post` takes an `Edit` (text,
-  title, topics, cover, visibility, chapters, a new video file and its
-  part; `None` keeps a field) and by default sends a text-only change to
-  the chat-style `edit(post, text)`. `Cap::Edit` shows the command;
-  `EditTitle`, `EditTopics`, `EditCover`, `EditVisibility`, `EditChapters`
-  and `EditVideo` show its options. `post --chapters` shows with
-  `PostChapters` and `post --category` with `PostCategory`; chapters come
+  title, topics, cover, landscape cover, visibility, chapters, a new video
+  file and its part; `None` keeps a field) and by default sends a
+  text-only change to the chat-style `edit(post, text)`. `Cap::Edit` shows
+  the command; `EditTitle`, `EditTopics`, `EditCover`,
+  `EditCoverHorizontal`, `EditVisibility`, `EditChapters` and `EditVideo`
+  show its options. `post --chapters` shows with `PostChapters`, `post
+  --category` with `PostCategory` and `post --cover-horizontal` (a 4:3
+  cover beside the main one) with `PostCoverHorizontal`; chapters come
   from a file of `0:00 Title` lines (`chapters`).
 - Listing methods return one `Page<T>` per call for a `PageReq { cursor, size }`;
   the core follows `next_cursor` until `--limit` is reached. Cursors are opaque

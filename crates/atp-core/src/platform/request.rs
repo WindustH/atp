@@ -70,6 +70,9 @@ pub struct Draft {
   pub article: Option<PathBuf>,
   /// Cover image of a video or an article.
   pub cover: Option<PathBuf>,
+  /// A landscape (4:3) cover beside the main one
+  /// ([`Cap::PostCoverHorizontal`](super::Cap::PostCoverHorizontal)).
+  pub cover_horizontal: Option<PathBuf>,
   /// `public`, `friends` or `private` ([`Cap::PostVisibility`](super::Cap::PostVisibility)).
   pub visibility: Option<String>,
   /// Declared AI-generated ([`Cap::PostAiLabel`](super::Cap::PostAiLabel)).
@@ -102,6 +105,9 @@ pub struct Edit {
   pub topics: Option<Vec<String>>,
   /// A new cover image ([`Cap::EditCover`](super::Cap::EditCover)).
   pub cover: Option<PathBuf>,
+  /// A new landscape (4:3) cover beside the main one
+  /// ([`Cap::EditCoverHorizontal`](super::Cap::EditCoverHorizontal)).
+  pub cover_horizontal: Option<PathBuf>,
   /// `public`, `friends` or `private` ([`Cap::EditVisibility`](super::Cap::EditVisibility)).
   pub visibility: Option<String>,
   /// Chapters replacing the video's own, in order; empty removes them
@@ -128,6 +134,7 @@ impl Edit {
     self.title.is_some()
       || self.topics.is_some()
       || self.cover.is_some()
+      || self.cover_horizontal.is_some()
       || self.visibility.is_some()
       || self.chapters.is_some()
       || self.video.is_some()

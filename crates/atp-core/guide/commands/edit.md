@@ -18,7 +18,9 @@ cover and visibility.
 - Where the platform offers them (its capabilities in `atp platforms`):
   `--title` (`edit-title`); `--topic NAME` (repeatable, `edit-topics`)
   replaces the post's topics or hashtags and `--no-topics` removes them;
-  `--cover PATH` (`edit-cover`); `--visibility public|friends|private`
+  `--cover PATH` (`edit-cover`); `--cover-horizontal PATH` replaces the
+  landscape (4:3) cover a platform keeps beside the main one
+  (`edit-cover-horizontal`); `--visibility public|friends|private`
   (`edit-visibility`); `--chapters FILE` replaces a video's chapters and
   `--no-chapters` removes them (`edit-chapters`); `--video PATH` replaces
   a published video's file, `--part N` naming the part of a video in

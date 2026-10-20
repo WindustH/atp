@@ -38,6 +38,9 @@ pub struct PublishArgs {
   /// Cover image of the video or article
   #[arg(long, value_name = "PATH")]
   pub cover: Option<PathBuf>,
+  /// Landscape (4:3) cover, where a platform keeps one beside the main cover
+  #[arg(long, value_name = "PATH")]
+  pub cover_horizontal: Option<PathBuf>,
   /// Who can see the post
   #[arg(long, value_parser = ["public", "friends", "private"])]
   pub visibility: Option<String>,
@@ -97,6 +100,11 @@ impl PublishArgs {
         Cap::PostCategory,
         "post --category",
       ),
+      (
+        self.cover_horizontal.is_some(),
+        Cap::PostCoverHorizontal,
+        "post --cover-horizontal",
+      ),
     ];
     if let Some((_, _, name)) = given
       .iter()
@@ -127,6 +135,9 @@ pub struct EditArgs {
   /// New cover image
   #[arg(long, value_name = "PATH")]
   pub cover: Option<PathBuf>,
+  /// Landscape (4:3) cover, where a platform keeps one beside the main cover
+  #[arg(long, value_name = "PATH")]
+  pub cover_horizontal: Option<PathBuf>,
   /// Who can see the post
   #[arg(long, value_parser = ["public", "friends", "private"])]
   pub visibility: Option<String>,
@@ -158,6 +169,11 @@ impl EditArgs {
         "edit --topic",
       ),
       (self.cover.is_some(), Cap::EditCover, "edit --cover"),
+      (
+        self.cover_horizontal.is_some(),
+        Cap::EditCoverHorizontal,
+        "edit --cover-horizontal",
+      ),
       (
         self.visibility.is_some(),
         Cap::EditVisibility,
@@ -280,6 +296,7 @@ const POST_OPTIONS: &[(&str, &[Cap])] = &[
   ("video", &[Cap::PostVideo]),
   ("article", &[Cap::PostArticle]),
   ("cover", &[Cap::PostVideo, Cap::PostArticle]),
+  ("cover_horizontal", &[Cap::PostCoverHorizontal]),
   ("visibility", &[Cap::PostVisibility]),
   ("ai", &[Cap::PostAiLabel]),
   ("schedule", &[Cap::PostSchedule]),
@@ -296,6 +313,7 @@ const EDIT_OPTIONS: &[(&str, &[Cap])] = &[
   ("topics", &[Cap::EditTopics]),
   ("no_topics", &[Cap::EditTopics]),
   ("cover", &[Cap::EditCover]),
+  ("cover_horizontal", &[Cap::EditCoverHorizontal]),
   ("visibility", &[Cap::EditVisibility]),
   ("chapters", &[Cap::EditChapters]),
   ("no_chapters", &[Cap::EditChapters]),
@@ -439,6 +457,7 @@ async fn publish<P: Platform>(p: &P, args: PublishArgs) -> Result<crate::model::
     video: args.video,
     article: args.article,
     cover: args.cover,
+    cover_horizontal: args.cover_horizontal,
     visibility: args.visibility,
     ai_generated: args.ai,
     schedule: args.schedule,
@@ -455,11 +474,16 @@ async fn publish<P: Platform>(p: &P, args: PublishArgs) -> Result<crate::model::
     ));
   }
   check_images(&draft.images)?;
-  let files: Vec<PathBuf> = [&draft.video, &draft.article, &draft.cover]
-    .into_iter()
-    .flatten()
-    .cloned()
-    .collect();
+  let files: Vec<PathBuf> = [
+    &draft.video,
+    &draft.article,
+    &draft.cover,
+    &draft.cover_horizontal,
+  ]
+  .into_iter()
+  .flatten()
+  .cloned()
+  .collect();
   check_files(&files)?;
   p.publish(&draft).await
 }
@@ -483,6 +507,7 @@ async fn edit<P: Platform>(p: &P, args: EditArgs) -> Result<crate::model::Action
     title: args.title,
     topics,
     cover: args.cover,
+    cover_horizontal: args.cover_horizontal,
     visibility: args.visibility,
     chapters,
     video: args.video,
@@ -503,9 +528,12 @@ async fn edit<P: Platform>(p: &P, args: EditArgs) -> Result<crate::model::Action
   if edit.text_only() == Some("") {
     return Err(Error::input("the new text is empty"));
   }
-  if let Some(cover) = &edit.cover {
-    check_images(std::slice::from_ref(cover))?;
-  }
+  let covers: Vec<PathBuf> = [&edit.cover, &edit.cover_horizontal]
+    .into_iter()
+    .flatten()
+    .cloned()
+    .collect();
+  check_images(&covers)?;
   p.edit_post(&p.ctx().post_ref(&args.post)?, &edit).await
 }
 
@@ -569,7 +597,7 @@ Examples:
   atp bili edit BV1xx411c7mD --video new-cut.mp4
 
 Options other than the text show where the platform can change them
-(edit-title, edit-topics, edit-cover, edit-visibility, edit-chapters,
-edit-video in `atp platforms`). A chapters file holds one `0:00 Title`
-line per chapter.
+(edit-title, edit-topics, edit-cover, edit-cover-horizontal,
+edit-visibility, edit-chapters, edit-video in `atp platforms`). A
+chapters file holds one `0:00 Title` line per chapter.
 More: atp guide edit";

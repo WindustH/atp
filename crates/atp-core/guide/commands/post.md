@@ -21,7 +21,9 @@ platform: a tweet, a pin (想法), an image note, a dynamic, a Reddit post ...
 - Where the platform offers them (its capabilities in `atp platforms`):
   `--video PATH` publishes a video and `--article PATH` an article from a
   Markdown or text file (`post-video`, `post-article`), with `--cover
-  PATH`; `--visibility public|friends|private` (`post-visibility`);
+  PATH`; `--cover-horizontal PATH` adds a landscape (4:3) cover where the
+  platform keeps one beside the main cover (`post-cover-horizontal`);
+  `--visibility public|friends|private` (`post-visibility`);
   `--ai` declares the content AI-generated with the platform's label
   (`post-ai-label`); `--schedule WHEN` publishes later: `+2h`, `+1d`,
   `2026-10-20 20:00` (local) or an RFC 3339 time (`post-schedule`);
