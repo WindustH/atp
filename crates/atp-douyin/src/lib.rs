@@ -19,6 +19,7 @@ mod discover;
 mod drafts;
 mod extra;
 mod folders;
+mod hashtags;
 mod history;
 mod insights;
 mod items;
@@ -156,6 +157,7 @@ impl Platform for Douyin {
     "mix",
     "music",
     "related",
+    "tag",
     "live",
     "mixes",
     "musics",

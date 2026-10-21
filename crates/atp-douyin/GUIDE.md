@@ -123,6 +123,8 @@ log in again.
 - Mixes (合集): the id or a `douyin.com/collection/<id>` link; music: the id
   or a `douyin.com/music/<id>` link; live rooms: the `web_rid`, `live:<web_rid>`
   or a `live.douyin.com/<id>` link.
+- Hashtags (话题): the id, a `douyin.com/hashtag/<id>` link, `#N` after
+  `search -t topic`, or the name (`#美食` or `美食`).
 
 ## Commands
 
@@ -283,6 +285,15 @@ login`.
 
 `mix MIX` and `music MUSIC` list the posts of a mix or a music; `related
 POST` the posts Douyin recommends next to one.
+
+### tag
+
+`tag TAG` lists the posts of a hashtag (话题) as its page does
+(`challenge/aweme`, in the page's default 综合 order), signed with
+`a_bogus` like every other web call. A name is looked up first among the
+web search's hashtags (`challenge/search`) for one named exactly so;
+none is `not_found`. Tested with a login (by name and by link, two
+pages).
 
 ### post
 

@@ -8,7 +8,7 @@ use atp_core::cli::PageArgs;
 use atp_core::{Data, Result};
 
 use crate::api::Api;
-use crate::{login, posts, rooms};
+use crate::{hashtags, login, posts, rooms};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum Command {
@@ -36,6 +36,13 @@ pub enum Command {
   Related {
     /// Post: aweme id, douyin.com link, v.douyin.com short link, shared text or #N
     post: String,
+    #[command(flatten)]
+    page: PageArgs,
+  },
+  /// Posts of a hashtag (话题)
+  Tag {
+    /// Hashtag id, douyin.com/hashtag/… link, `#name`, name or #N
+    tag: String,
     #[command(flatten)]
     page: PageArgs,
   },
@@ -81,6 +88,14 @@ pub async fn run(api: &Api, command: Command) -> Result<Data> {
       Data::Posts(
         page
           .collect(async |r| posts::related(api, &post, &r).await)
+          .await?,
+      )
+    }
+    Command::Tag { tag, page } => {
+      let tag = api.ctx.collection_ref(&tag)?;
+      Data::Posts(
+        page
+          .collect_dated(async |r| hashtags::posts(api, &tag, &r).await)
           .await?,
       )
     }

@@ -117,6 +117,12 @@ pub fn music(arg: &str) -> Result<String> {
     .ok_or_else(|| Error::input(format!("not a Douyin music: {arg}")))
 }
 
+/// A hashtag (话题) id from an id or a `douyin.com/hashtag/<id>` link;
+/// `None` for a name.
+pub fn hashtag(arg: &str) -> Option<String> {
+  id_after(arg, &["/hashtag/", "ch_id="])
+}
+
 /// A live room's `web_rid` from an id, `live:<id>` or a
 /// `live.douyin.com/<id>` link.
 pub fn live(arg: &str) -> Result<String> {
