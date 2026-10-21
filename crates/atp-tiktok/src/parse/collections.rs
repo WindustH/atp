@@ -94,7 +94,8 @@ pub fn folder(v: &Value, kind: &str) -> Option<Collection> {
   })
 }
 
-fn slug(title: &str) -> String {
+/// The name part of a playlist or collection link.
+pub fn slug(title: &str) -> String {
   let s: String = title
     .chars()
     .map(|c| if c.is_alphanumeric() { c } else { '-' })

@@ -1,8 +1,10 @@
 //! TikTok-only commands: hashtags, sounds, playlists, related videos,
 //! live rooms, TikTok Studio's list of your videos, and the Marketing API
-//! (`ads`); those on your library are in [`library`].
+//! (`ads`); those on your library are in [`library`], and managing your
+//! playlists is in [`playlists`].
 
 mod library;
+mod playlists;
 
 use atp_core::cli::PageArgs;
 use atp_core::{Data, Page, Result};
@@ -101,6 +103,8 @@ pub enum Command {
   },
   #[command(flatten)]
   Library(library::LibraryCommand),
+  #[command(flatten)]
+  ManagePlaylists(playlists::PlaylistCommand),
 }
 
 pub async fn run(api: &Api, command: Command) -> Result<Data> {
@@ -149,5 +153,6 @@ pub async fn run(api: &Api, command: Command) -> Result<Data> {
     ),
     Command::Ads { command } => ads::run(api, command).await?,
     Command::Library(c) => library::run(api, c).await?,
+    Command::ManagePlaylists(command) => playlists::run(api, command).await?,
   })
 }

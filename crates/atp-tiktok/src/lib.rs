@@ -10,6 +10,7 @@
 
 mod ads;
 mod api;
+mod collections;
 mod extra;
 mod folders;
 mod insights;
@@ -17,12 +18,14 @@ mod live;
 mod login;
 mod notifications;
 mod parse;
+mod playlists;
 mod refs;
 mod relations;
 mod rooms;
 mod sign;
 mod sounds;
 mod studio;
+mod tab;
 mod users;
 mod videos;
 mod waf;
@@ -35,9 +38,9 @@ use std::time::Duration;
 
 use atp_core::output::Stream;
 use atp_core::{
-  Action, Cap, Choices, Collection, Comment, Ctx, Data, Insights, Media, Notification, Page,
-  PageReq, Platform, PlatformInfo, PlatformKind, Post, QrStatus, QrTicket, Query, Reply, Result,
-  User,
+  Action, Cap, Choices, Collection, Comment, Ctx, Data, FolderSpec, Insights, Media, Notification,
+  Page, PageReq, Platform, PlatformInfo, PlatformKind, Post, QrStatus, QrTicket, Query, Reply,
+  Result, User,
 };
 
 use crate::api::Api;
@@ -81,6 +84,10 @@ impl Platform for TikTok {
       Cap::Follow,
       Cap::Block,
       Cap::Blocked,
+      Cap::FolderCreate,
+      Cap::FolderEdit,
+      Cap::FolderPrivacy,
+      Cap::FolderDelete,
       Cap::FolderAdd,
       Cap::FolderRemove,
       Cap::FolderMove,
@@ -107,6 +114,12 @@ impl Platform for TikTok {
     guest: "read, user, download, live, listen; search, comments and lists often refused",
     guide: include_str!("../GUIDE.md"),
   };
+
+  /// Playlist writes are made by TikTok's page ([`tab`]); the tab is a
+  /// normal small window, since it acts on the account and a windowless
+  /// Chrome names itself HeadlessChrome to the page's signing script.
+  const BROWSER_TAB: bool = true;
+  const TAB_WINDOW: bool = true;
 
   type Extra = Command;
   const EXTRA_READS: &'static [&'static str] = &[
@@ -265,6 +278,18 @@ impl Platform for TikTok {
 
   async fn blocked(&self, page: &PageReq) -> Result<Page<User>> {
     relations::blocked(&self.api, page).await
+  }
+
+  async fn folder_create(&self, folder: &FolderSpec) -> Result<Action> {
+    collections::create(&self.api, folder).await
+  }
+
+  async fn folder_edit(&self, folder: &str, change: &FolderSpec) -> Result<Action> {
+    collections::edit(&self.api, folder, change).await
+  }
+
+  async fn folder_delete(&self, folders: &[String]) -> Result<Vec<Action>> {
+    collections::delete(&self.api, folders).await
   }
 
   async fn folder_add(&self, folder: &str, posts: &[String]) -> Result<Vec<Action>> {

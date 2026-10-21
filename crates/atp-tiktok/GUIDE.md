@@ -41,8 +41,10 @@ with `X-Gnarly`, which is not reproduced.
 Your own likes, favorites, collections and playlists (without a USER),
 `blocked`, `saved-music`, account `insights`, `notifications`, `studio`,
 and every write (`like`, `favorite`, `comment`, `delete-comment`,
-`follow`, `block`, `approve-follower`, `save-music`, `delete`) need a
-cookie session.
+`follow`, `block`, `approve-follower`, `save-music`, `delete`, the
+`folder-*` and `playlist-*` commands) need a cookie session. The
+playlist writes also need a Chromium-family browser on the machine (see
+`playlist-create` below).
 
 ### When the session ends
 
@@ -132,8 +134,41 @@ Your favorites collections, as the collection page's "Add videos",
   video first with `favorite`.
 - `folder-move FROM TO VIDEO…` uses TikTok's own move, 20 per call;
   `--copy` adds them to TO and leaves FROM as it is.
-- Creating, renaming and deleting collections is not offered: what those
-  calls send is not known here.
+- These calls also carry the `x-cthulhu-csrf: 1` header the page's CSRF
+  script puts on them.
+
+### folder-create, folder-edit, folder-delete
+
+The collections themselves, as the Favorites tab's "Create new
+collection" and a collection's menu ("Make public", "Edit name",
+"Delete") change them. FOLDER is a collection id, link or `#N` after
+`collections`.
+
+- `folder-create NAME` makes one (`/api/collection/create/` with
+  `collectionName` and `collectionStatus`: 3 public, 1 with
+  `--private`). The page's form starts private; ATP's `folder-create` is
+  public unless `--private`, as on other platforms. A public collection
+  shows on your profile.
+- `folder-edit FOLDER` renames it (`--name`) or makes it `--public` /
+  `--private` (`/api/collection/modify_info/`). The menu sends the name
+  and the visibility every time, so ATP reads what is not given from
+  your collection list (`/api/user/collection_list/` with
+  `publicOnly=false`, as the page asks for its own).
+- `folder-delete FOLDER…` deletes them, one call each, after asking; the
+  videos stay saved.
+- Names take 1 to 30 characters ("Character limit exceeded"). Before it
+  names a collection the page runs TikTok's name check
+  (`/api/playlist/name_check`: "This name is inappropriate"), and so does
+  ATP. Collections have no description or cover on the web.
+- The parameters go in the query with an empty body, as for
+  `folder-add`; they are signed like the other writes (`X-Bogus`) and
+  carry the `x-cthulhu-csrf: 1` header. The page also sends `X-Gnarly`,
+  which ATP does not make; whether TikTok wants it on these calls is not
+  known.
+
+Untested: built from the profile and collection pages' scripts; nothing
+was sent to TikTok, and the reads before sending were not run against an
+account either.
 
 ### block, unblock, blocked
 
@@ -178,7 +213,83 @@ playlist itself.
 ### playlists
 
 `playlists [USER]`: the playlists (mixes) a creator made of their videos;
-yours without a USER.
+yours without a USER, in your profile's order. `playlist-create` and the
+commands below make and change yours.
+
+### playlist-create, playlist-edit, playlist-delete, playlist-add, playlist-remove, playlist-sort, playlists-sort
+
+Your playlists, as the profile's Playlists tab ("Create a playlist",
+"Change playlist order") and a playlist's page ("Add posts", "Remove
+posts", "Edit playlist's name", "Delete playlist", dragging posts) keep
+them. PLAYLIST is one of yours: its id, link, exact name or `#N` after
+`playlists`. VIDEO is a post id, link or `#N` (`studio` lists yours).
+Each command reads what it changes, prints the change and asks (`-y` in
+scripts).
+
+- `playlist-create TITLE VIDEO…` makes one of the posts given, in that
+  order (`/api/playlist/create_with_items/`, `name` and `itemIds`); the
+  page creates none without a post.
+- `playlist-edit PLAYLIST --title NAME` renames it
+  (`/api/playlist/update/`). Playlists have no description or cover on
+  the web.
+- `playlist-delete PLAYLIST` deletes it (`/api/playlist/delete/`); it
+  cannot be recovered, its posts stay.
+- `playlist-add PLAYLIST VIDEO…` adds posts
+  (`/api/playlist/modify_items/` with `addItemIds`); the page shows added
+  posts first. `playlist-remove` takes posts out (`deleteItemsIds`); they
+  stay on your account.
+- `playlist-sort PLAYLIST VIDEO…` puts the posts given first, in that
+  order, and the others after them as they were. Like the page's
+  dragging, it sends the new order up to the last post that moved
+  (`commitItemIds`).
+- `playlists-sort PLAYLIST…` does the same with the order of your
+  playlists on your profile (`/api/playlist/modify_order/`,
+  `commitMixIds`).
+
+TikTok's rules, as the web client holds posts and accounts to them:
+
+- TikTok decides per account who may make playlists: your profile shows
+  "Create a playlist" only when its `canExpPlaylist` is true, and ATP
+  refuses `playlist-create` when it is false (`permission_denied`). What
+  earns it is not said in the web client.
+- Only your own public posts join ("Only public posts can be added to
+  playlists"): ATP refuses others' posts and private or friends-only ones
+  (`privateItem`, `secret`, `forFriend` of the post).
+- A post is in one playlist at most ("Each post can only be in 1 playlist
+  at a time"): ATP refuses a post whose `playlistId` names another
+  playlist; take it out there first.
+- Names take 1 to 25 characters and must pass TikTok's name check
+  (`/api/playlist/name_check`, "This name is inappropriate"), which ATP
+  runs before naming one, as the page does.
+- 100 posts: the page picks no more for a new playlist and adds none past
+  100 ("You can select up to 100 posts at a time"); ATP holds to that.
+  Whether TikTok itself caps a playlist is not known.
+- TikTok may refuse on its own: 206001 "Couldn't create playlist" and
+  206003 "Couldn't add post to playlist" are `permission_denied`; 206002
+  creates the playlist but shows it to you only for now.
+
+These calls carry a form body, and ATP's `X-Bogus` signs a query over an
+empty body only, so TikTok's own page makes them. ATP opens your profile
+in a browser tab (a Chromium-family browser of the machine, `ATP_BROWSER`
+names another; a small window, `--browser-window never` runs it without
+one), waits until the page has signed a request of its own, and has the
+page `fetch` the call. The page's signing script adds `msToken`,
+`X-Bogus` and `X-Gnarly`; ATP adds what the page's request library adds:
+the device block (built in the page from its app context), the context's
+`tt-csrf-token` for create and rename, and `x-cthulhu-csrf: 1` for create,
+delete and `playlists-sort`. Driven over DevTools the browser tells the
+page it is automated (`navigator.webdriver`); whether TikTok then turns
+these writes away is not known. The reads around them (your profile, its
+playlists, a playlist's posts, each post, the name check) are ATP's usual
+signed API calls. TikTok Studio has playlist calls of its own
+(`/tiktok/v1/creator/playlist/create/`, `…/manage`) in its post editor;
+ATP uses the profile's.
+
+Untested: built from the profile and playlist pages' scripts; nothing was
+sent to TikTok, and the checks before sending were not run against an
+account. Read without a login: `playlists USER`, `playlist ID` and
+`playlist ID --info` of a public creator, the reads these commands build
+on.
 
 ### related
 
@@ -307,3 +418,6 @@ sends it along. No login needed.
 - TikTok's rate limit ends a command with `rate_limited` ("TikTok is rate
   limiting"); wait a while.
 - Uploads are not supported.
+- The playlist writes run TikTok's page in a browser tab, which a
+  Chromium-family browser on the machine must provide; the tab keeps its
+  own profile (`logout` deletes it).

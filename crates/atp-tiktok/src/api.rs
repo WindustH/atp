@@ -9,7 +9,8 @@
 //!   refused one comes back as an empty 200, mapped to `verification_required`.
 //!
 //! The device block (web id, region) comes from the first page loaded, the
-//! `app-context` of its data. Writes go out as POST with the `tt-csrf-token`.
+//! `app-context` of its data. Writes go out as POST with the `tt-csrf-token`,
+//! and with `x-cthulhu-csrf` where the page's CSRF script adds it.
 
 use std::cell::RefCell;
 use std::time::Duration;
@@ -24,8 +25,28 @@ pub const WWW: &str = "https://www.tiktok.com";
 pub const SESSION_COOKIE: &str = "sessionid";
 const SCRIPT_ID: &str = "__UNIVERSAL_DATA_FOR_REHYDRATION__";
 const WAF_COOKIES: &[&str] = &["_wafchallengeid", "waforiginalreid", "waforigin_id"];
-const WALLED_HINT: &str = "TikTok answers its API only to sessions it trusts: log in \
+pub const WALLED_HINT: &str = "TikTok answers its API only to sessions it trusts: log in \
    (`atp tiktok login --browser`), or retry later / from another network (--proxy)";
+/// The header the web app's CSRF script ("cthulhu") puts on its POSTs to
+/// [`CSRF_PROTECTED`]: a fixed `1`, no token.
+pub const CSRF_HEADER: &str = "x-cthulhu-csrf";
+/// The paths that script guards, as the web app lists them.
+pub const CSRF_PROTECTED: &[&str] = &[
+  "/api/aweme/modify/visibility/",
+  "/api/playlist/create_with_items/",
+  "/api/playlist/delete/",
+  "/api/playlist/modify_order/",
+  "/api/schedule/aweme/delete/",
+  "/api/update/profile/",
+  "/api/user/set/settings/",
+  "/api/collection/create/",
+  "/api/collection/move_items/",
+  "/api/collection/modify_items/",
+  "/api/collection/modify_info/",
+  "/api/collection/delete/",
+  "/api/dislike/item/",
+  "/api/drama/collect/",
+];
 
 /// What the web app knows about this visitor: from a page's `webapp.app-context`.
 #[derive(Debug, Clone, Default)]
@@ -211,6 +232,9 @@ impl Api {
         "tt-csrf-token",
         self.ctx.http.cookie("tt_csrf_token").unwrap_or_default(),
       );
+      if CSRF_PROTECTED.contains(&path) {
+        req = req.header(CSRF_HEADER, "1");
+      }
       req = match json {
         Some((body, _)) => req.json(body),
         None => req.bytes(Vec::new(), "application/x-www-form-urlencoded"),
@@ -367,7 +391,7 @@ pub fn universal(html: &str) -> Option<Value> {
 }
 
 /// `statusCode` / `status_code` of an API answer, mapped to errors.
-fn check(path: &str, v: Value) -> Result<Value> {
+pub fn check(path: &str, v: Value) -> Result<Value> {
   let code = v
     .i64("statusCode")
     .or_else(|| v.i64("status_code"))
