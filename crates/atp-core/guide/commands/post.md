@@ -46,8 +46,8 @@ platform: a tweet, a pin (想法), an image note, a dynamic, a Reddit post ...
   Times must rise from line to line; `-` reads the file from standard
   input (unless TEXT is read from there). Each platform's guide gives its
   rules (how many, how long, the first at 0:00).
-- Douyin, and Bilibili for videos, show what they are about to publish
-  and ask before uploading anything; scripts pass `-y`.
+- Douyin, TikTok, and Bilibili for videos, show what they are about to
+  publish and ask before uploading anything; scripts pass `-y`.
 - The result is an Action with the new post's `id` and `url`; both work as
   POST later (`read`, `delete`).
 - Writes pause briefly first on platforms that flag bursts;

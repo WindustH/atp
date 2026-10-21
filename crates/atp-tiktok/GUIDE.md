@@ -41,10 +41,10 @@ with `X-Gnarly`, which is not reproduced.
 Your own likes, favorites, collections and playlists (without a USER),
 `blocked`, `saved-music`, account `insights`, `notifications`, `studio`,
 and every write (`like`, `favorite`, `comment`, `delete-comment`,
-`follow`, `block`, `approve-follower`, `save-music`, `delete`, the
-`folder-*` and `playlist-*` commands) need a cookie session. The
-playlist writes also need a Chromium-family browser on the machine (see
-`playlist-create` below).
+`follow`, `block`, `approve-follower`, `save-music`, `delete`, `post`,
+`edit`, the `folder-*` and `playlist-*` commands) need a cookie session.
+`post`, `edit` and the playlist writes also need a Chromium-family
+browser on this machine (see `post` and `playlist-create`).
 
 ### When the session ends
 
@@ -61,6 +61,10 @@ expired Marketing API token fails `ads` with `not_authenticated` as well.
 - An empty answer from the API, or TikTok's codes 10000 / 10101, also mean
   `verification_required`: log in (`--browser`), or retry later / from
   another network (`--proxy`).
+- A human check in front of TikTok Studio's page (`post`, `edit`) is
+  `verification_required` too; on a terminal ATP opens that page in a
+  window of its browser, on TikTok's profile, for you to pass, then runs
+  the command again. ATP never solves a check itself.
 
 ### Environment
 
@@ -196,6 +200,95 @@ offered. Untested so far.
 ### delete
 
 Deletes one of your posts.
+
+### post
+
+`post --video FILE` publishes a video, and `post -i PHOTO…` a photo post
+(up to 35 JPEG, PNG or WebP photos of 50 MB at most, with an optional
+`--title` of up to 90 characters), the way TikTok Studio's upload page
+(`/tiktokstudio/upload`) does. TEXT is the caption, 4000 characters at
+most. `--topic NAME` appends `#NAME` (one word); `#words` in the text are
+hashtags as well. A typed `@name` stays plain text (a linked mention
+needs the account's id, which the editor picks from its suggestions).
+
+- `--visibility public|friends|private` (everyone, friends, only you).
+- `--ai` sets TikTok's AI-generated content label.
+- `--schedule WHEN` publishes 15 minutes to 10 days ahead (TikTok allows
+  30 days on some accounts, and refuses past what it allows), to the
+  minute. TikTok holds at most 30 scheduled posts.
+- `--collection PLAYLIST` adds the post to one of your playlists: its id,
+  link or exact name, as `playlists` lists them. The post must be public.
+- Comments, duets and stitches are allowed, as Studio's form has them by
+  default; videos over a minute get no duets, stitches or reuse, as
+  Studio sets them.
+- A video has no title (`--title` is for photo posts). Studio takes a
+  video's cover from its frames: `--cover` is refused, and TikTok shows
+  the first frame.
+- Not offered: `--location` (Studio's place anchor needs a place search
+  ATP does not have), music, chapters, `--reply-to` / `--quote`.
+
+ATP shows what it is about to publish and asks before uploading anything;
+scripts pass `-y`. The upload keys come from `/api/v1/video/upload/auth/`;
+the files go to ByteDance's upload gateway at `www.tiktok.com/top/v1`
+(videos to the VOD space `tiktok`, photos to the ImageX service
+`photomode`), signed with those keys (AWS Signature V4) for the data
+region Studio's page names. TikTok then transcodes a video; ATP waits for
+that as the page does (`transcode/result`, up to an hour), then creates
+the post (`/tiktok/web/project/post/v1/`) with the fields Studio's form
+sends. The result has the new post's `id` and `url`; when TikTok answers
+without one (it is still working on the post), the Action says so and
+`studio` lists the post once it is up. A video upload cut off by the
+network continues on the next run (for two hours).
+
+How the calls are signed: Studio's pages sign the upload keys, the post
+and edits with tokens their own scripts compute (`byted_acrawler`'s
+`_signature`, the ZTI SDK's ticket-guard headers and `X-Gnarly`, besides
+`X-Bogus`). ATP does not compute them. Those calls are made by Studio's
+page itself, open in ATP's browser tab: a Chromium-family browser of this
+machine (`ATP_BROWSER` names another) in a small window
+(`--browser-window never` runs it without one, which TikTok's scripts see
+as HeadlessChrome), on TikTok's own profile, with the session's cookies.
+ATP waits until the page has signed a request of its own, then has it
+send the call; the page's scripts add what they add. Everything else goes as
+the other calls do: the upload gateway with its keys, the transcode calls
+and the post's details signed with `X-Bogus`.
+
+Untested: publishing has not been tried. Uploading creates objects on
+TikTok even without a post, and no session was at hand, so neither a post
+nor a read of Studio's pages has been run. What ATP sends was read from
+the scripts of Studio's upload page (web-creation 1.0.0.6391) in October
+2026. Tried without a login: in ATP's browser tab, tiktok.com's scripts
+replace the page's `fetch` and add `msToken`, `X-Bogus`, `X-Gnarly` and
+`X-Dynosaur` to what it sends, and Studio's pages show a browser without
+a session the login page. Whether TikTok accepts these calls from a
+browser driven over DevTools (it tells pages it is automated) is not
+known.
+
+### edit
+
+`edit POST` changes one of your posts as Studio's edit page does
+(`/tiktok/post/edit/v1/`, made by Studio's page like `post`). TEXT
+replaces the caption (its `#words` are hashtags; the @-mentions the
+caption had stay linked where the new text keeps their `@name`).
+`--topic NAME` replaces the caption's hashtags: TEXT, or the caption
+without its hashtags, then the new ones; `--no-topics` removes them.
+`--title` changes a photo post's title, `--visibility` who can see the
+post.
+
+ATP reads the post first (`/api/v1/post/detail/`, with what Studio lets
+change now), shows each change as old → new and asks; scripts pass
+`-y`. When Studio says a field cannot change now (one edit a day, only
+within some days of posting, an earlier edit still in review, a
+scheduled post's visibility ...), ATP shows why and sends nothing.
+`--dry-run` shows the change, what Studio allows and the request, and
+sends nothing.
+
+Not offered: a new video (TikTok keeps a post's video), chapters, a new
+cover (Studio's cover editor is not reproduced), and the comment, duet
+and stitch switches (no shared option has them).
+
+Untested: editing has not been tried, and neither has the read of a
+post's details (it needs a login).
 
 ### tag
 
@@ -417,7 +510,7 @@ sends it along. No login needed.
   person would.
 - TikTok's rate limit ends a command with `rate_limited` ("TikTok is rate
   limiting"); wait a while.
-- Uploads are not supported.
-- The playlist writes run TikTok's page in a browser tab, which a
-  Chromium-family browser on the machine must provide; the tab keeps its
-  own profile (`logout` deletes it).
+- `post`, `edit` and the playlist writes run TikTok's pages in a browser
+  tab, which a Chromium-family browser on the machine must provide; the
+  tab keeps its own profile (`logout` deletes it). `post` uploads in
+  parts of 3 to 10 MB, outside the request pacing.

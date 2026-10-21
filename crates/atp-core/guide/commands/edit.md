@@ -36,9 +36,10 @@ cover and visibility.
   platform's guide says what else it resets.
 - What is not given stays as it was.
 - Content platforms (Bilibili, Discourse, Douyin, Facebook, Instagram,
-  Jike, Juejin, Lemmy, Mastodon, Misskey, Reddit, Weibo, X, YouTube,
-  Zhihu) load the post first, print the change (each field as old → new)
-  and ask; scripts pass `-y`. Chat platforms change a message at once.
+  Jike, Juejin, Lemmy, Mastodon, Misskey, Reddit, TikTok, Weibo, X,
+  YouTube, Zhihu) load the post first, print the change (each field as
+  old → new) and ask; scripts pass `-y`. Chat platforms change a message
+  at once.
 - The result is an Action with the post's `id` and `url`.
 
 More: `atp guide refs`

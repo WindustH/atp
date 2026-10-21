@@ -4,12 +4,15 @@
 //! sounds) and the web client's signed API for lists (comments, a user's
 //! videos, search, followers ...), with the browser session cookies
 //! (`sessionid`) when logged in: the inbox's notices, and TikTok Studio's
-//! list of your videos with their counters. Ad accounts go through the
-//! official Marketing API (`ads`), with an access token. `listen` follows
-//! live rooms over the webcast websocket.
+//! list of your videos with their counters. Publishing and editing go
+//! through TikTok Studio's page in a browser tab, which signs those calls
+//! itself ([`posts`]). Ad accounts go through the official Marketing API
+//! (`ads`), with an access token. `listen` follows live rooms over the
+//! webcast websocket.
 
 mod ads;
 mod api;
+mod browser;
 mod collections;
 mod extra;
 mod folders;
@@ -19,6 +22,7 @@ mod login;
 mod notifications;
 mod parse;
 mod playlists;
+mod posts;
 mod refs;
 mod relations;
 mod rooms;
@@ -26,6 +30,7 @@ mod sign;
 mod sounds;
 mod studio;
 mod tab;
+mod uploads;
 mod users;
 mod videos;
 mod waf;
@@ -38,9 +43,9 @@ use std::time::Duration;
 
 use atp_core::output::Stream;
 use atp_core::{
-  Action, Cap, Choices, Collection, Comment, Ctx, Data, FolderSpec, Insights, Media, Notification,
-  Page, PageReq, Platform, PlatformInfo, PlatformKind, Post, QrStatus, QrTicket, Query, Reply,
-  Result, User,
+  Action, Cap, Choices, Collection, Comment, Ctx, Data, Draft, Edit, FolderSpec, Insights, Media,
+  Notification, Page, PageReq, Platform, PlatformInfo, PlatformKind, Post, QrStatus, QrTicket,
+  Query, Reply, Result, User,
 };
 
 use crate::api::Api;
@@ -54,7 +59,7 @@ impl Platform for TikTok {
     id: "tiktok",
     name: "TikTok",
     aliases: &["tt"],
-    about: "TikTok: videos, photo posts, comments, users, sounds, hashtags, live comments and ads",
+    about: "TikTok: videos, photo posts, comments, users, sounds, hashtags, live comments, publishing and ads",
     home: "https://www.tiktok.com/",
     cookie_domains: &["tiktok.com"],
     required_cookies: &["sessionid"],
@@ -92,6 +97,17 @@ impl Platform for TikTok {
       Cap::FolderRemove,
       Cap::FolderMove,
       Cap::Delete,
+      Cap::Publish,
+      Cap::PostVideo,
+      Cap::PostVisibility,
+      Cap::PostSchedule,
+      Cap::PostAiLabel,
+      Cap::PostCollection,
+      Cap::Edit,
+      Cap::EditTitle,
+      Cap::EditTopics,
+      Cap::EditVisibility,
+      Cap::EditDryRun,
       Cap::Download,
       Cap::AccountInsights,
       Cap::PostInsights,
@@ -115,9 +131,10 @@ impl Platform for TikTok {
     guide: include_str!("../GUIDE.md"),
   };
 
-  /// Playlist writes are made by TikTok's page ([`tab`]); the tab is a
-  /// normal small window, since it acts on the account and a windowless
-  /// Chrome names itself HeadlessChrome to the page's signing script.
+  /// Playlist writes ([`tab`]), publishing and editing ([`browser`]) are
+  /// made by TikTok's own pages, in a normal small window: they act on the
+  /// account, and a windowless Chrome names itself HeadlessChrome to the
+  /// page's signing script.
   const BROWSER_TAB: bool = true;
   const TAB_WINDOW: bool = true;
 
@@ -316,6 +333,14 @@ impl Platform for TikTok {
 
   async fn delete(&self, post: &str) -> Result<Action> {
     write::delete(&self.api, post).await
+  }
+
+  async fn publish(&self, draft: &Draft) -> Result<Action> {
+    posts::publish(&self.api, draft).await
+  }
+
+  async fn edit_post(&self, post: &str, edit: &Edit) -> Result<Action> {
+    posts::edit(&self.api, post, edit).await
   }
 
   /// Streams are bound to the `tt_chain_token` cookie the page set.

@@ -11,7 +11,7 @@
 //! name check, a post is yours, public and in no other playlist. Nothing
 //! goes out before the person has seen the change and said yes.
 
-mod lookup;
+pub(crate) mod lookup;
 
 use atp_core::cli::Change;
 use atp_core::{Action, Error, ErrorCode, Result, Value, ValueExt};

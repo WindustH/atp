@@ -97,11 +97,13 @@ pub async fn post(
 }
 
 /// Open `page` and wait until it has made a signed API request of its
-/// own: its signing script then signs what is asked from the page.
-async fn ready(tab: &Tab<'_>, page: &str) -> Result<()> {
-  let api_root = format!("{WWW}/api/");
+/// own (under `/api/`, or `/tiktok/` on Studio's pages): its signing script
+/// then signs what is asked from the page.
+pub(crate) async fn ready(tab: &Tab<'_>, page: &str) -> Result<()> {
+  let roots = [format!("{WWW}/api/"), format!("{WWW}/tiktok/")];
   let signed = |url: &str| {
-    url.starts_with(&api_root) && (url.contains("X-Bogus=") || url.contains("X-Gnarly="))
+    roots.iter().any(|root| url.starts_with(root.as_str()))
+      && (url.contains("X-Bogus=") || url.contains("X-Gnarly="))
   };
   match tab.capture(Trigger::Goto(page), signed).await {
     Ok(_) => Ok(()),

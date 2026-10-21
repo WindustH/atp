@@ -20,8 +20,8 @@ All of these need a login and act as your account.
 - `comment -i` attaches images where the platform takes them (Twitter / X;
   `comment-images` in `atp platforms`); the text may then be left out.
 - `delete` and `delete-comment` ask for confirmation on a terminal; scripts
-  pass `-y`. So does `post` on Douyin and a video `post` on Bilibili,
-  before they upload anything.
+  pass `-y`. So does `post` on Douyin and TikTok and a video `post` on
+  Bilibili, before they upload anything.
 - `--video`, `--article`, `--cover`, `--visibility`, `--ai`, `--schedule`,
   `--collection`, `--music`, `--chapters`, `--category`, `--location` and
   `--activity` exist where the platform offers them (`post-video`,
@@ -74,6 +74,7 @@ What `post` publishes, per platform:
 | Bilibili | a dynamic, or a video (投稿) with `--video` | text or image; a video `--title`, `--cover`, `--category`, `--topic` | a topic id; a video's tags | `--quote` reposts; videos: `--ai`, `--visibility`, `--schedule`, `--chapters`; asks first |
 | Reddit | a text, link, image or gallery post | `--title`, `--topic r/sub` or `u/you` | subreddit | a single URL makes a link post; `--quote` crossposts |
 | Douyin | a video, an image post (图文) or an article (文章) | `--video`, `-i` or `--article` | hashtags | `--ai`, `--visibility`, `--schedule`, `--collection`, `--music`, `--chapters`, `--location`, `--activity`; asks first |
+| TikTok | a video or a photo post | `--video` or `-i` | hashtags | `--title` (photo posts), `--ai`, `--visibility`, `--schedule`, `--collection` (a playlist); asks first |
 | YouTube | — | | | uploads are not supported |
 
 Reply-to forms: Bilibili takes `ROOT` or `ROOT:PARENT`; Reddit and X take the
