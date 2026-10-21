@@ -1,11 +1,14 @@
 //! TikTok-only commands: hashtags, sounds, playlists, related videos,
-//! TikTok Studio's list of your videos, and the Marketing API (`ads`).
+//! live rooms, TikTok Studio's list of your videos, and the Marketing API
+//! (`ads`); those on your library are in [`library`].
+
+mod library;
 
 use atp_core::cli::PageArgs;
 use atp_core::{Data, Page, Result};
 
 use crate::api::Api;
-use crate::{ads, studio, users, videos};
+use crate::{ads, rooms, studio, users, videos};
 
 const EX_STUDIO: &str = "\
 Examples:
@@ -79,6 +82,11 @@ pub enum Command {
     #[command(flatten)]
     page: PageArgs,
   },
+  /// A live room: title, host, viewers and stream addresses
+  Live {
+    /// Host: @handle or a tiktok.com/@handle/live link
+    room: String,
+  },
   /// Your videos as TikTok Studio lists them, with views, likes, comments, saves and shares
   #[command(after_long_help = EX_STUDIO)]
   Studio {
@@ -91,6 +99,8 @@ pub enum Command {
     #[command(subcommand)]
     command: ads::Command,
   },
+  #[command(flatten)]
+  Library(library::LibraryCommand),
 }
 
 pub async fn run(api: &Api, command: Command) -> Result<Data> {
@@ -131,11 +141,13 @@ pub async fn run(api: &Api, command: Command) -> Result<Data> {
         .collect_dated(async |r| videos::related(api, &video, &r).await)
         .await?,
     ),
+    Command::Live { room } => Data::Post(Box::new(rooms::room(api, &room).await?)),
     Command::Studio { page } => Data::Posts(
       page
         .collect_dated(async |r| studio::videos(api, &r).await)
         .await?,
     ),
     Command::Ads { command } => ads::run(api, command).await?,
+    Command::Library(c) => library::run(api, c).await?,
   })
 }

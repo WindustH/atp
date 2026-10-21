@@ -27,7 +27,7 @@ secret (`TIKTOK_ADS_APP_ID`, `TIKTOK_ADS_SECRET`).
 
 Pages: `read` (videos and photo posts, with exact counters, the stream
 ladder and the sound), `user`, `insights` of a post, and `download`.
-`listen` follows live rooms without a login too.
+`live` and `listen` read live rooms without a login too.
 TikTok puts a proof-of-work check in front of pages now and then; it is
 solved like the browser does.
 
@@ -39,8 +39,9 @@ session from a residential network fares best. Newer web pages also sign
 with `X-Gnarly`, which is not reproduced.
 
 Your own likes, favorites, collections and playlists (without a USER),
-account `insights`, `notifications`, `studio`, and every write (`like`,
-`favorite`, `comment`, `delete-comment`, `follow`, `delete`) need a
+`blocked`, `saved-music`, account `insights`, `notifications`, `studio`,
+and every write (`like`, `favorite`, `comment`, `delete-comment`,
+`follow`, `block`, `approve-follower`, `save-music`, `delete`) need a
 cookie session.
 
 ### When the session ends
@@ -82,7 +83,8 @@ expired Marketing API token fails `ads` with `not_authenticated` as well.
 - Favorites collections: the id or a `/@user/collection/<name>-<id>` link.
 - Comments: the comment id.
 - Live rooms (`listen`): the host's `@handle`, `live:@handle`, a
-  `https://www.tiktok.com/@handle/live` link, or the room id.
+  `https://www.tiktok.com/@handle/live` link, or the room id; `live`
+  takes the host, not a room id.
 
 ## Commands
 
@@ -133,11 +135,24 @@ Your favorites collections, as the collection page's "Add videos",
 - Creating, renaming and deleting collections is not offered: what those
   calls send is not known here.
 
-### block, unblock
+### block, unblock, blocked
 
 `block USER…` / `unblock USER…` as the profile menu does, one call per
-user (each looked up for its secUid first). The list of blocked accounts
-is not read.
+user (each looked up for its secUid first). `blocked` lists the accounts
+you block, as Settings → Privacy → Blocked accounts does
+(`/api/block/user_list/`, 20 a page, signed with `X-Bogus` like the
+other lists; whether TikTok asks it for more is not known). TikTok's web
+has no way to remove a follower, so there is no `remove-follower`.
+`blocked` is untested so far: it needs a login.
+
+### approve-follower
+
+`approve-follower USER…` lets people who asked to follow your private
+account follow it, as the inbox's Accept does
+(`/api/commit/follow/request/approve/` with their user id), one signed
+POST per user, sent like `follow`. The list of requests is not read
+(find them in the inbox of the app or the web), and declining is not
+offered. Untested so far.
 
 ### comment, delete-comment
 
@@ -168,6 +183,16 @@ yours without a USER.
 ### related
 
 `related VIDEO`: the videos TikTok recommends next to one.
+
+### saved-music, save-music
+
+Your saved sounds (Favorites → Sounds), as TikTok Studio's sound picker
+lists them (`/api/user/collect/music_list/`, signed with `X-Bogus`),
+latest saved first. `save-music SOUND…` saves sounds and `--undo`
+unsaves them, one call each (`/api/music/collect/`, a signed POST like
+`favorite`); SOUND is an id, a `/music/` link or `#N` after
+`saved-music`. TikTok's web cannot save playlists, so there is no list
+of saved playlists. Untested so far: both need a login.
 
 ### insights
 
@@ -238,6 +263,18 @@ metric names are the Marketing API's (`report/integrated/get`).
 path after `/open_api/v1.3`); values that parse as JSON are sent as JSON,
 `--post` sends a JSON body.
 
+### live
+
+`live @HANDLE`: the host's live room from the live page's call
+(`/api-live/user/room/`, sent without a login or a signature): the
+title, the host, when it started, `extra.live`, `extra.room_id` and
+`extra.viewers_total` (viewers in all); while it is on air also
+`extra.viewers` (now) and `extra.streams`, the FLV and HLS addresses by
+quality (`origin`, `uhd`, `hd`, `sd`, `ld`; `ao` is audio only). A host
+who is not live comes with `extra.live` false and the title, start and
+room of the last live. Tested on hosts whose live had ended; a room on
+air is untested.
+
 ### listen
 
 `listen @HANDLE …` follows live rooms over TikTok's webcast websocket,
@@ -263,6 +300,8 @@ sends it along. No login needed.
 
 ## Limits
 
+- TikTok's web keeps no watch history of videos (only one of short
+  dramas), so there is no `history`.
 - Requests are at least 1.5 s apart; writes wait another 1.5–4 s, as a
   person would.
 - TikTok's rate limit ends a command with `rate_limited` ("TikTok is rate

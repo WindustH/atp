@@ -18,8 +18,10 @@ mod login;
 mod notifications;
 mod parse;
 mod refs;
+mod relations;
 mod rooms;
 mod sign;
+mod sounds;
 mod studio;
 mod users;
 mod videos;
@@ -78,6 +80,7 @@ impl Platform for TikTok {
       Cap::DeleteComment,
       Cap::Follow,
       Cap::Block,
+      Cap::Blocked,
       Cap::FolderAdd,
       Cap::FolderRemove,
       Cap::FolderMove,
@@ -101,7 +104,7 @@ impl Platform for TikTok {
       "TIKTOK_ADS_SECRET",
       "TIKTOK_ADS_ADVERTISER_ID",
     ],
-    guest: "read, user, download, listen; search, comments and lists often refused",
+    guest: "read, user, download, live, listen; search, comments and lists often refused",
     guide: include_str!("../GUIDE.md"),
   };
 
@@ -112,7 +115,9 @@ impl Platform for TikTok {
     "playlist",
     "playlists",
     "related",
+    "live",
     "studio",
+    "saved-music",
     "ads me",
     "ads advertisers",
     "ads advertiser",
@@ -256,6 +261,10 @@ impl Platform for TikTok {
 
   async fn block(&self, users: &[String], undo: bool) -> Result<Vec<Action>> {
     write::block(&self.api, users, undo).await
+  }
+
+  async fn blocked(&self, page: &PageReq) -> Result<Page<User>> {
+    relations::blocked(&self.api, page).await
   }
 
   async fn folder_add(&self, folder: &str, posts: &[String]) -> Result<Vec<Action>> {
