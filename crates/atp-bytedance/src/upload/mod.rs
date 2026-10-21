@@ -54,8 +54,8 @@ pub struct Gateway {
   pub cookies: bool,
 }
 
-/// Temporary keys of the upload gateways.
-#[derive(Debug, Clone)]
+/// Temporary keys of the upload gateways (no `Debug`: they are secrets).
+#[derive(Clone)]
 pub struct Keys {
   access_key: String,
   secret: String,
@@ -66,7 +66,8 @@ pub struct Keys {
 
 impl Keys {
   /// The keys a site handed out, with the gateway's time as it told it
-  /// (`CurrentTime`: RFC 3339 or Unix seconds), which the SDK signs on.
+  /// (`CurrentTime`: RFC 3339, or Unix seconds or milliseconds), which the
+  /// SDK signs on.
   pub fn new(access_key: &str, secret: &str, token: &str, current_time: Option<&str>) -> Self {
     let now = jiff::Timestamp::now().as_second();
     let gap = current_time
@@ -75,6 +76,7 @@ impl Keys {
           .map(|t| t.as_second())
           .ok()
           .or_else(|| t.trim().parse::<i64>().ok())
+          .map(|t| if t > 100_000_000_000 { t / 1000 } else { t })
       })
       .map(|t| t - now)
       .filter(|gap| gap.abs() > 60)
