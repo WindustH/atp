@@ -1,5 +1,6 @@
 //! AWS Signature Version 4 as ByteDance's upload gateways take it
-//! (ImageX and VOD on `*.bytedanceapi.com`, with temporary STS keys).
+//! (ImageX and VOD on `*.bytedanceapi.com` or a site's own path such as
+//! TikTok's `/top/v1`, with temporary STS keys).
 //!
 //! The web upload SDK signs only the headers it sets itself: `x-amz-date`,
 //! `x-amz-security-token` and, on requests with a body,

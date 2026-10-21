@@ -10,7 +10,7 @@ implementation of everything more than one platform needs.
 src/main.rs                 registers platforms
 crates/atp-<platform>    one platform; depends on atp-core only
 crates/atp-meta          Graph API pieces of atp-facebook, atp-instagram and atp-threads
-crates/atp-bytedance     what Douyin, Toutiao, Juejin and TikTok share (signing, passports, webcast)
+crates/atp-bytedance     what Douyin, Toutiao, Juejin and TikTok share (signing, passports, uploads, webcast)
 crates/atp-core          everything shared; knows no platform
 ```
 

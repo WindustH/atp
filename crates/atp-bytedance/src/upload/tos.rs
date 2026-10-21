@@ -12,7 +12,6 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use super::Uploader;
-use crate::creator::CREATOR;
 
 const MB: u64 = 1 << 20;
 /// Files up to this size go in one request.
@@ -35,6 +34,35 @@ pub(super) struct Node {
 }
 
 impl Node {
+  /// The node of an `Apply` answer (`UploadAddress` or `UploadNodes[0]`)
+  /// from `site`'s gateway.
+  pub(super) fn of(v: &Value, host: Option<String>, site: &str) -> Result<Self> {
+    let store = v.at("StoreInfos.0");
+    let need = |value: Option<String>, what: &str| {
+      value
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| Error::upstream(format!("{site}'s upload gateway gave no {what}")))
+    };
+    let header = v
+      .at("UploadHeader")
+      .as_object()
+      .map(|m| {
+        m.iter()
+          .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_owned())))
+          .collect()
+      })
+      .unwrap_or_default();
+    Ok(Self {
+      host: need(host, "upload host")?,
+      store_uri: need(store.str("StoreUri"), "store uri")?,
+      auth: need(store.str("Auth"), "upload credential")?,
+      upload_id: store.str("UploadID").filter(|s| !s.is_empty()),
+      session_key: need(v.str("SessionKey"), "session key")?,
+      header,
+      vid: v.str("Vid"),
+    })
+  }
+
   fn gateway(&self) -> bool {
     self
       .header
@@ -127,7 +155,7 @@ impl Uploader<'_> {
     let url = node.url("uploadmode=part&phase=init");
     let v = self.tos_value(node, url, None, None).await?;
     v.str("data.uploadid")
-      .ok_or_else(|| Error::upstream("Douyin's storage gave no upload id"))
+      .ok_or_else(|| Error::upstream(format!("{}'s storage gave no upload id", self.gateway.site)))
   }
 
   async fn tos(
@@ -149,9 +177,8 @@ impl Uploader<'_> {
     crc: Option<&str>,
     body: Option<(Vec<u8>, &str)>,
   ) -> Result<Value> {
+    let origin = &self.gateway.origin;
     let mut req = self
-      .creator
-      .api
       .ctx
       .http
       .post(url)
@@ -160,8 +187,8 @@ impl Uploader<'_> {
       .timeout(Duration::from_secs(300))
       .header("authorization", &node.auth)
       .header("x-storage-u", encode_uri_component(&self.user))
-      .header("referer", format!("{CREATOR}/"))
-      .header("origin", CREATOR);
+      .header("referer", format!("{origin}/"))
+      .header("origin", origin);
     if let Some(crc) = crc {
       req = req
         .header("content-crc32", crc)
@@ -180,7 +207,8 @@ impl Uploader<'_> {
     let v = resp.value()?;
     if v.i64("code") != Some(2000) {
       return Err(Error::upstream(format!(
-        "Douyin's storage refused the upload: {} ({})",
+        "{}'s storage refused the upload: {} ({})",
+        self.gateway.site,
         v.str("message").unwrap_or_default(),
         v.i64("code").unwrap_or_default()
       )));

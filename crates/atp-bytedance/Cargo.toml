@@ -1,6 +1,6 @@
 [package]
 name = "atp-bytedance"
-description = "What all-the-platforms's ByteDance sites (Douyin, Toutiao, Juejin, TikTok) share: a_bogus signing, visitor cookies, the passports, ticket-guard keys, the webcast live protocol"
+description = "What all-the-platforms's ByteDance sites (Douyin, Toutiao, Juejin, TikTok) share: a_bogus signing, visitor cookies, the passports, ticket-guard keys, the webcast live protocol, uploads"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,6 +10,7 @@ atp-core.workspace = true
 base64.workspace = true
 # BoringSSL, already built for the HTTP client (wreq): ECDH with a stored P-256 key, which ring does not offer.
 btls = "0.5.6"
+crc32fast = "1"
 flate2 = "1"
 hmac = "0.12"
 jiff.workspace = true

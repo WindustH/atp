@@ -10,7 +10,7 @@ src/lib.rs                  the library: atp-core plus each platform crate behin
 crates/atp-core          platform-agnostic kernel
 crates/atp-<platform>    one crate per platform (atp-zhihu, atp-telegram ...)
 crates/atp-meta          Graph API pieces shared by atp-facebook, atp-instagram and atp-threads
-crates/atp-bytedance     what Douyin, Toutiao, Juejin and TikTok share: signing, passports, the webcast live protocol
+crates/atp-bytedance     what Douyin, Toutiao, Juejin and TikTok share: signing, passports, uploads, the webcast live protocol
 ```
 
 Naming, layout and size rules are in [conventions.md](conventions.md).
